@@ -1,0 +1,9 @@
+node_modules
+dist
+forta.config.json
+.env
+.idea
+.vscode
+research
+tests
+README.md
