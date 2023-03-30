@@ -11,6 +11,7 @@
     "start": "npm run start:dev",
     "start:dev": "nodemon --watch src --watch forta.config.json -e js,ts,json  --exec \"npm run build && forta-agent run\"",
     "start:prod": "forta-agent run --prod",
+    "start:pino": "tail -f ./logs.log | pino-pretty",
     "tx": "npm run build && forta-agent run --tx",
     "block": "npm run build && forta-agent run --block",
     "range": "npm run build && forta-agent run --range",
@@ -34,7 +35,9 @@
     "fast-csv": "^4.3.6",
     "forta-agent": "^0.1.20",
     "forta-bot-analytics": "^0.0.4",
-    "lodash": "^4.17.21"
+    "lodash": "^4.17.21",
+    "pino": "^8.11.0",
+    "dotenv": "^16.0.3"
   },
   "devDependencies": {
     "@types/async": "^3.2.18",
@@ -42,12 +45,12 @@
     "@types/lodash": "^4.14.191",
     "@types/nodemon": "^1.19.0",
     "@typescript-eslint/eslint-plugin": "^5.54.1",
-    "dotenv": "^16.0.3",
     "dune-ts": "^1.1.4",
     "eslint": "^8.36.0",
     "eslint-config-prettier": "^8.7.0",
     "jest": "^27.0.6",
     "nodemon": "^2.0.8",
+    "pino-pretty": "^10.0.0",
     "prettier": "^2.8.4",
     "sqlite3": "^5.1.6",
     "ts-jest": "^27.0.3",

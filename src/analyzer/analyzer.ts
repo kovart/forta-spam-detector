@@ -27,8 +27,6 @@ import TokenImpersonationModule from './modules/token-impersonation';
 import LowActivityAfterAirdropModule from './modules/low-activity';
 import ObservationTimeModule from './modules/observation-time';
 
-const logger = Logger.scope('TokenAnalyzer');
-
 class TokenAnalyzer {
   private modules: AnalyzerModule[];
   private storage: DataStorage;
@@ -81,7 +79,7 @@ class TokenAnalyzer {
         provider: this.provider,
       });
       const t1 = performance.now();
-      logger.debug(`Module ${module.key} executed in ${t1 - t0}ms`);
+      Logger.debug(`Module ${module.key} executed in ${t1 - t0}ms`);
       if (result?.interrupt) break;
     }
 

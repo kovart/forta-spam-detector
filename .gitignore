@@ -4,6 +4,7 @@ forta.config.json
 .env
 .idea
 .vscode
+logs.log
 research
 tests
 README.md

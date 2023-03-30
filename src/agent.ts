@@ -1,5 +1,4 @@
 import {
-  BlockEvent,
   Finding,
   getEthersBatchProvider,
   HandleBlock,
@@ -9,13 +8,15 @@ import {
 } from 'forta-agent';
 import dayjs from 'dayjs';
 import duration from 'dayjs/plugin/duration';
-
-dayjs.extend(duration);
+import dotenv from 'dotenv';
 
 import { findCreatedContracts, identifyTokenInterface } from './utils/helpers';
+import { createSpamNewFinding, createSpamRemoveFinding, createSpamUpdateFinding } from './findings';
 import { SpamDetector } from './detector';
 import { DataContainer } from './types';
-import { createSpamNewFinding, createSpamRemoveFinding, createSpamUpdateFinding } from './findings';
+
+dotenv.config();
+dayjs.extend(duration);
 
 const IS_DEBUG = process.env.debug === '1';
 const IS_DEVELOPMENT = process.env.NODE_ENV !== 'production';

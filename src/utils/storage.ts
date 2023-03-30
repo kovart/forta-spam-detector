@@ -12,7 +12,7 @@ export type Textify<T> = {
   [key in keyof T]: string | number;
 };
 
-async function exists(filePath: string) {
+export async function exists(filePath: string) {
   try {
     await fs.promises.access(filePath, fs.constants.F_OK);
     return true;
@@ -21,13 +21,13 @@ async function exists(filePath: string) {
   }
 }
 
-async function mkdir(path: string) {
+export async function mkdir(path: string) {
   try {
     await fs.promises.mkdir(path, { recursive: true });
   } catch {}
 }
 
-async function rmFile(path: string) {
+export async function rmFile(path: string) {
   try {
     await fs.promises.rm(path);
   } catch {}

@@ -9,8 +9,6 @@ import TokenAnalyzer from './analyzer/analyzer';
 import { CreatedContract, TokenContract, TokenStandard } from './types';
 import { AnalysisResult, AnalyzerTask } from './analyzer/types';
 
-const logger = Logger.scope('SpamDetector');
-
 export class SpamDetector {
   private tickInterval: number;
   private lastTickTimestamp: number;
@@ -59,7 +57,7 @@ export class SpamDetector {
   private async handleTask(task: AnalyzerTask) {
     const result = await task.run();
     this.analysisByToken.set(task.token, result);
-    logger.debug(
+    Logger.debug(
       `Analysis result for token ${task.token.address}:\n` +
         `${JSON.stringify(result.analysis, null, 2)}`,
     );
@@ -80,7 +78,7 @@ export class SpamDetector {
   }
 
   public logStats() {
-    logger.debug(
+    Logger.debug(
       [
         `Tokens: ${this.storage.tokenByAddress.size}`,
         `Analyses: ${this.analysisByToken.size}`,

@@ -1,46 +1,17 @@
-export enum LoggerLevel {
-  DEBUG,
-  INFO,
-  WARN,
-  ERROR,
-}
+import pino from 'pino';
+import path from 'path';
 
-class Logger {
-  static level: LoggerLevel = LoggerLevel.DEBUG;
+import { DATA_PATH } from '../contants';
 
-  private args: any[] = [];
+const transport = pino.transport({
+  target: 'pino-pretty',
+  options: {
+    colorize: true,
+    destination: path.resolve(DATA_PATH, '../logs.log'),
+  },
+});
 
-  public constructor(args?: any[]) {
-    if (args) {
-      this.args.push(...args);
-    }
-  }
+const Logger = pino(transport);
+Logger.level = 'trace';
 
-  public debug = (...args: any[]) => {
-    this._log(args, LoggerLevel.DEBUG);
-  };
-
-  public info = (...args: any[]) => {
-    this._log(args, LoggerLevel.INFO);
-  };
-
-  public warn = (...args: any[]) => {
-    this._log(args, LoggerLevel.WARN);
-  };
-
-  public error = (...args: any[]) => {
-    this._log(args, LoggerLevel.ERROR);
-  };
-
-  private _log = (args: any[], level: LoggerLevel) => {
-    if (level < Logger.level) return;
-
-    console.log(...this.args, ...args);
-  };
-
-  public scope(...args: any[]) {
-    return new Logger([...this.args, ...args]);
-  }
-}
-
-export default new Logger();
+export default Logger;

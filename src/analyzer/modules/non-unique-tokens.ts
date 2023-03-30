@@ -2,11 +2,11 @@ import { ethers } from 'ethers';
 import { chunk } from 'lodash';
 import axios from 'axios';
 
-import Logger from '../../utils/logger';
 import { isBase64, normalizeMetadataUri, parseBase64, retry } from '../../utils/helpers';
 import { TokenStandard } from '../../types';
 import { erc721Iface } from '../../contants';
 import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
+import Logger from '../../utils/logger';
 
 export const NON_UNIQUE_TOKENS_MODULE_KEY = 'Erc721NonUniqueTokens';
 export const MIN_NUMBER_OF_TOKENS = 5;
@@ -16,8 +16,6 @@ export type NonUniqueTokensModuleMetadata = {
   duplicationType: 'uri' | 'metadata';
   duplicatedItems: { tokenIds: string[]; uri?: string; metadata?: string }[];
 };
-
-const logger = Logger.scope(NON_UNIQUE_TOKENS_MODULE_KEY);
 
 class Erc721NonUniqueTokensModule extends AnalyzerModule {
   static Key = NON_UNIQUE_TOKENS_MODULE_KEY;
@@ -48,7 +46,7 @@ class Erc721NonUniqueTokensModule extends AnalyzerModule {
       const tokenId = tokenIdSet.values().next().value;
       memo('tokenURI', [tokenId], () => contract.tokenURI(tokenId));
     } catch (e) {
-      logger.info('ERC721 tokenURI() is not supported:', token.address);
+      Logger.info('ERC721 tokenURI() is not supported:', token.address);
       // tokenURI() not supported
       return;
     }
@@ -64,7 +62,7 @@ class Erc721NonUniqueTokensModule extends AnalyzerModule {
         );
         uris.forEach((url, i) => tokenUriByTokenId.set(batch[i], url));
       } catch (e) {
-        logger.error(e);
+        Logger.error(e);
         // Well, something went wrong so that even retry() didn't help
         return;
       }
@@ -120,7 +118,7 @@ class Erc721NonUniqueTokensModule extends AnalyzerModule {
           metadataArr.forEach((metadata, i) => metadataByTokenId.set(entries[i][0], metadata));
         } catch (e) {
           // Backend error?
-          logger.error(e);
+          Logger.error(e);
           return;
         }
       }

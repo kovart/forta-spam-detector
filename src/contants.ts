@@ -1,12 +1,12 @@
 import path from 'path';
 import { utils } from 'ethers';
+import { Network } from 'forta-agent';
 
 import Erc20Abi from './abi/erc20.json';
 import Erc165Abi from './abi/erc165.json';
 import Erc721Abi from './abi/erc721.json';
 import Erc1155Abi from './abi/erc1155.json';
 import { TokenStandard } from './types';
-import { Network } from 'forta-agent';
 
 export const erc165Iface = new utils.Interface(Erc165Abi);
 export const erc20Iface = new utils.Interface(Erc20Abi);
