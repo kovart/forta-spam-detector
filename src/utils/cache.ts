@@ -153,6 +153,7 @@ class Memoizer {
       return result
         .then((result) => {
           scope.set(hash, { value: result, thrown: false }, ttl);
+          return result;
         })
         .catch((e) => {
           scope.set(hash, { value: e, thrown: true }, ttl);
