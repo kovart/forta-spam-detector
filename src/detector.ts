@@ -54,13 +54,18 @@ export class SpamDetector {
     return this.queue.drain();
   }
 
-  private async handleTask(task: AnalyzerTask) {
-    const result = await task.run();
-    this.analysisByToken.set(task.token, result);
-    Logger.debug(
-      `Analysis result for token ${task.token.address}:\n` +
-        `${JSON.stringify(result.analysis, null, 2)}`,
-    );
+  private async handleTask(task: AnalyzerTask, callback: (err?: any) => void) {
+    try {
+      const result = await task.run();
+      this.analysisByToken.set(task.token, result);
+      Logger.debug(
+        `Analysis result (${task.token.address}):\n` +
+          `${JSON.stringify(result.analysis, null, 2)}`,
+      );
+      callback();
+    } catch (e) {
+      callback(e);
+    }
   }
 
   public releaseAnalyses() {
