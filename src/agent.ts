@@ -10,6 +10,7 @@ import dayjs from 'dayjs';
 import duration from 'dayjs/plugin/duration';
 import dotenv from 'dotenv';
 
+import Logger from './utils/logger';
 import { findCreatedContracts, identifyTokenInterface } from './utils/helpers';
 import { createSpamNewFinding, createSpamRemoveFinding, createSpamUpdateFinding } from './findings';
 import { SpamDetector } from './detector';
@@ -20,7 +21,7 @@ dayjs.extend(duration);
 
 const IS_DEBUG = process.env.debug === '1';
 const IS_DEVELOPMENT = process.env.NODE_ENV !== 'production';
-const TICK_INTERVAL = 15 * 60 * 1000;
+const TICK_INTERVAL = 15 * 60; // 15m
 
 const data = {} as DataContainer;
 const provideInitialize = (
@@ -42,9 +43,14 @@ const provideHandleTransaction = (data: DataContainer): HandleTransaction => {
   return async function handleTransaction(txEvent: TransactionEvent) {
     const createdContracts = findCreatedContracts(txEvent);
 
+    if (createdContracts.length > 0) {
+      Logger.debug(`Found ${createdContracts.length} created contracts in tx: ${txEvent.hash}`);
+    }
+
     for (const contract of createdContracts) {
       const type = await identifyTokenInterface(contract.address, data.provider);
       if (type) {
+        Logger.debug(`Found token contract (ERC${type}): ${contract.address}`);
         data.detector.addTokenToWatchList(type, contract);
       }
     }
@@ -74,6 +80,10 @@ const provideHandleTransaction = (data: DataContainer): HandleTransaction => {
         data.analysisByToken.delete(token);
       } else {
         data.analysisByToken.set(token, currentResult.analysis);
+      }
+
+      if (findings.length > 0) {
+        Logger.debug('Findings', findings);
       }
     }
 

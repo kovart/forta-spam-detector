@@ -65,7 +65,7 @@ class TokenAnalyzer {
   private async scan(token: TokenContract, timestamp: number, blockNumber: number) {
     const context: AnalysisContext = {};
 
-    console.info(`Scanning token: ${token.address}`);
+    Logger.debug(`Scanning token: ${token.address}`);
 
     for (const module of this.modules) {
       const t0 = performance.now();
@@ -87,10 +87,22 @@ class TokenAnalyzer {
   }
 
   createTask(token: TokenContract, timestamp: number, blockNumber: number): AnalyzerTask {
-    return {
+    const task = {
       token,
-      run: async () => this.createAnalysisResult(await this.scan(token, timestamp, blockNumber)),
+      timestamp,
+      blockNumber,
+      calledAt: null,
+      finishedAt: null,
+    } as AnalyzerTask;
+
+    task.run = async () => {
+      task.calledAt = Math.floor(Date.now() / 1000);
+      const result = await this.scan(token, timestamp, blockNumber);
+      task.finishedAt = Math.floor(Date.now() / 1000);
+      return this.createAnalysisResult(result);
     };
+
+    return task;
   }
 
   private createAnalysisResult(analysis: AnalysisContext) {

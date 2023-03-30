@@ -11,23 +11,22 @@ import { AnalysisResult, AnalyzerTask } from './analyzer/types';
 
 export class SpamDetector {
   private tickInterval: number;
-  private lastTickTimestamp: number;
-
   private analyzer: TokenAnalyzer;
   private queue: QueueObject<any>;
   private storage: DataStorage;
   private memoizer: Memoizer;
+  private taskByToken: Map<TokenContract, AnalyzerTask>;
   private analysisByToken: Map<TokenContract, AnalysisResult>;
 
   constructor(provider: ethers.providers.StaticJsonRpcProvider, tickInterval: number) {
     this.tickInterval = tickInterval;
-    this.lastTickTimestamp = -1;
 
     this.memoizer = new Memoizer();
     this.storage = new DataStorage();
     this.analyzer = new TokenAnalyzer(provider, this.storage, this.memoizer);
     this.queue = queue(this.handleTask.bind(this), 1);
-    this.analysisByToken = new Map<TokenContract, AnalysisResult>();
+    this.analysisByToken = new Map();
+    this.taskByToken = new Map();
   }
 
   addTokenToWatchList(type: TokenStandard, contract: CreatedContract) {
@@ -39,12 +38,23 @@ export class SpamDetector {
   }
 
   tick(timestamp: number, blockNumber: number) {
-    if (!this.queue.idle() && this.lastTickTimestamp + this.tickInterval <= timestamp) return;
-
-    this.lastTickTimestamp = timestamp;
-
     for (const token of this.storage.tokenByAddress.values()) {
-      this.queue.push(this.analyzer.createTask(token, timestamp, blockNumber));
+      // Should be released before we start analyzing it again
+      if (this.analysisByToken.has(token)) continue;
+
+      const existingTask = this.taskByToken.get(token);
+      if (existingTask) {
+        if (!existingTask.calledAt || !existingTask.finishedAt) continue;
+        if (existingTask.finishedAt + this.tickInterval > Math.floor(Date.now() / 1000)) continue;
+
+        if (existingTask.finishedAt) {
+          Logger.debug(`Re-analyzing token: ${token.address}`);
+        }
+      }
+
+      const task = this.analyzer.createTask(token, timestamp, blockNumber);
+      this.queue.push(task);
+      this.taskByToken.set(token, task);
     }
   }
 
@@ -57,6 +67,12 @@ export class SpamDetector {
   private async handleTask(task: AnalyzerTask, callback: (err?: any) => void) {
     try {
       const result = await task.run();
+
+      // check if it is still needed
+      if (!this.storage.tokenByAddress.has(task.token.address)) {
+        return callback();
+      }
+
       this.analysisByToken.set(task.token, result);
       Logger.debug(
         `Analysis result (${task.token.address}):\n` +
@@ -73,9 +89,11 @@ export class SpamDetector {
 
     for (const [token, result] of this.analysisByToken) {
       analyses.push({ token, result });
+      this.analysisByToken.delete(token);
 
       if (result.interpret().isFinalized) {
         this.storage.delete(token.address);
+        this.taskByToken.delete(token);
       }
     }
 
@@ -86,7 +104,7 @@ export class SpamDetector {
     Logger.debug(
       [
         `Tokens: ${this.storage.tokenByAddress.size}`,
-        `Analyses: ${this.analysisByToken.size}`,
+        `Finished: ${[...this.taskByToken.values()].filter((t) => t.finishedAt).length}`,
         `Queue: ${this.queue.running()}`,
         `Memory: ${Math.round(((process.memoryUsage().heapUsed / 1024 / 1024) * 100) / 100)}Mb`,
       ].join(' | '),

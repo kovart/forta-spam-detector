@@ -23,7 +23,8 @@ export type ScanParams = {
   storage: DataStorage;
 };
 
-export type ModuleScanReturn = { interrupt?: boolean } | undefined | void;
+// TODO Add `finalized` property to modules
+export type ModuleScanReturn = { interrupt?: boolean; finalized?: boolean } | undefined | void;
 
 export type AnalysisResult = {
   analysis: AnalysisContext;
@@ -33,6 +34,10 @@ export type AnalysisResult = {
 
 export interface AnalyzerTask {
   token: TokenContract;
+  timestamp: number;
+  blockNumber: number;
+  calledAt: number | null;
+  finishedAt: number | null;
   run: () => Promise<AnalysisResult>;
 }
 
