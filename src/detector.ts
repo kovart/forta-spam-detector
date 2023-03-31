@@ -93,6 +93,7 @@ export class SpamDetector {
 
       if (result.interpret().isFinalized) {
         this.storage.delete(token.address);
+        this.memoizer.deleteScope(token.address);
         this.taskByToken.delete(token);
       }
     }
