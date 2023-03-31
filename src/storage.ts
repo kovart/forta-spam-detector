@@ -35,6 +35,7 @@ class DataStorage {
       hash: txEvent.hash,
       from: txEvent.from,
       to: txEvent.to,
+      blockNumber: txEvent.blockNumber,
       timestamp: txEvent.timestamp,
     };
 

@@ -36,6 +36,7 @@ export type SimplifiedTransaction = {
   from: string;
   to: string | null;
   timestamp: number;
+  blockNumber: number;
   hash: string;
 };
 
