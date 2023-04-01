@@ -92,13 +92,18 @@ export class SpamDetector {
       this.analysisByToken.delete(token);
 
       if (result.interpret().isFinalized) {
-        this.storage.delete(token.address);
-        this.memoizer.deleteScope(token.address);
-        this.taskByToken.delete(token);
+        this.deleteToken(token)
       }
     }
 
     return analyses;
+  }
+
+  deleteToken(token: TokenContract) {
+    this.storage.delete(token.address);
+    this.memoizer.deleteScope(token.address);
+    this.taskByToken.delete(token);
+    this.analysisByToken.delete(token);
   }
 
   public logStats() {
