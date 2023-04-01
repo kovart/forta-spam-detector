@@ -1,6 +1,4 @@
 import { chunk } from 'lodash';
-import dayjs from 'dayjs';
-import duration from 'dayjs/plugin/duration';
 
 import {
   Erc1155TransferBatchEvent,
@@ -12,18 +10,26 @@ import {
 } from '../../types';
 import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
 
-dayjs.extend(duration);
-
 export type AirdropModuleMetadata = {
   senders: string[];
   receivers: string[];
   txHashes: string[];
-  airdropStartTime: number;
+  startTime: number;
+};
+
+export type AirdropModuleShortMetadata = {
+  senderCount: number;
+  senderShortList: string[];
+  receiverCount: number;
+  receiverShortList: string[];
+  transactionCount: number;
+  transactionShortList: string[];
+  startTime: number;
 };
 
 export const AIRDROP_MODULE_KEY = 'Airdrop';
 export const AIRDROP_RECEIVERS_THRESHOLD = 49;
-export const AIRDROP_TIME_WINDOW = dayjs.duration(4, 'day').asSeconds();
+export const AIRDROP_TIME_WINDOW = 4 * 24 * 60 * 60; // 4d
 
 // Criteria:
 // 1. The person receiving the mint didn't initiate (no claim action)
@@ -190,13 +196,25 @@ class AirdropModule extends AnalyzerModule {
         receivers: [...receivers],
         senders: [...airdropsBySender.keys()],
         txHashes: [...txHashes],
-        airdropStartTime: airdropStartTime,
+        startTime: airdropStartTime,
       };
     }
 
     context[AIRDROP_MODULE_KEY] = { detected, metadata };
 
     return { interrupt: !detected };
+  }
+
+  simplifyMetadata(metadata: AirdropModuleMetadata): AirdropModuleShortMetadata {
+    return {
+      senderCount: metadata.senders.length,
+      senderShortList: metadata.senders.slice(15),
+      receiverCount: metadata.receivers.length,
+      receiverShortList: metadata.receivers.slice(15),
+      transactionCount: metadata.txHashes.length,
+      transactionShortList: metadata.txHashes.slice(15),
+      startTime: metadata.startTime,
+    };
   }
 }
 

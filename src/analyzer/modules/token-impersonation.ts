@@ -7,7 +7,7 @@ import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
 
 export const TOKEN_IMPERSONATION_MODULE_KEY = 'TokenImpersonation';
 
-export type TokenImpersonationMetadata = {
+export type TokenImpersonationModuleMetadata = {
   name: string;
   symbol: string;
   type: TokenStandard;
@@ -25,7 +25,7 @@ class TokenImpersonationModule extends AnalyzerModule {
     const { token, context, provider, memoizer } = params;
 
     let detected = false;
-    let metadata: TokenImpersonationMetadata | undefined = undefined;
+    let metadata: TokenImpersonationModuleMetadata | undefined = undefined;
 
     context[TOKEN_IMPERSONATION_MODULE_KEY] = { detected, metadata };
 

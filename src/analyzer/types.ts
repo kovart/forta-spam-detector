@@ -6,7 +6,7 @@ import { TokenContract } from '../types';
 
 export type ModuleAnalysisResult = {
   detected: boolean;
-  metadata?: {};
+  metadata?: object;
 };
 
 export type AnalysisContext = {
@@ -47,6 +47,10 @@ export abstract class AnalyzerModule {
   constructor() {}
 
   abstract scan(params: ScanParams): Promise<ModuleScanReturn>;
+
+  simplifyMetadata(metadata: object) {
+    return metadata;
+  }
 
   get key() {
     return (this.constructor as typeof AnalyzerModule).Key;

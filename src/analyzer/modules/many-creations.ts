@@ -10,7 +10,7 @@ export const TOO_MANY_CREATIONS_MODULE_KEY = 'TooManyTokenCreations';
 export const CREATION_WINDOW_TIME = dayjs.duration(3, 'month').asSeconds();
 export const TOKEN_CREATIONS_THRESHOLD = 6;
 
-export type TooManyCreationsMetadata = {
+export type TooManyCreationsModuleMetadata = {
   startTime: number;
   endTime: number;
   createdTokens: string[];
@@ -23,7 +23,7 @@ class TooManyCreationsModule extends AnalyzerModule {
     const { token, context, storage } = params;
 
     let detected = false;
-    let metadata: TooManyCreationsMetadata | undefined = undefined;
+    let metadata: TooManyCreationsModuleMetadata | undefined = undefined;
 
     const tokens = [...storage.tokenByAddress.values()].filter(
       (t) => t.deployer === token.deployer,

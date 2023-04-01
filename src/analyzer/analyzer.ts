@@ -63,27 +63,35 @@ class TokenAnalyzer {
   }
 
   private async scan(token: TokenContract, timestamp: number, blockNumber: number) {
-    const context: AnalysisContext = {};
-
     Logger.debug(`Scanning token: ${token.address}`);
 
+    const privateContext: AnalysisContext = {};
+    const publicContext: AnalysisContext = {};
     for (const module of this.modules) {
       const t0 = performance.now();
       const result = await module.scan({
         token,
         timestamp,
         blockNumber,
-        context,
+        context: privateContext,
         memoizer: this.memoizer,
         storage: this.storage,
         provider: this.provider,
       });
       const t1 = performance.now();
       Logger.debug(`Module ${module.key} executed in ${t1 - t0}ms`);
+
+      publicContext[module.key] = {
+        detected: privateContext[module.key].detected,
+        metadata: privateContext[module.key].metadata
+          ? module.simplifyMetadata(privateContext[module.key].metadata!)
+          : undefined,
+      };
+
       if (result?.interrupt) break;
     }
 
-    return context;
+    return publicContext;
   }
 
   createTask(token: TokenContract, timestamp: number, blockNumber: number): AnalyzerTask {

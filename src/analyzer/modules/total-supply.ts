@@ -7,8 +7,8 @@ import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
 
 export const FALSE_TOTAL_SUPPLY_MODULE_KEY = 'Erc721FalseTotalSupply';
 
-type Erc721FalseTotalSupplyMetadata = {
-  expectedTotalSupply: number;
+type Erc721FalseTotalSupplyModuleMetadata = {
+  declaredTotalSupply: number;
   actualTotalSupply: number;
 };
 
@@ -19,7 +19,7 @@ class Erc721FalseTotalSupplyModule extends AnalyzerModule {
     const { token, context, storage, provider } = params;
 
     let detected = false;
-    let metadata: Erc721FalseTotalSupplyMetadata | undefined = undefined;
+    let metadata: Erc721FalseTotalSupplyModuleMetadata | undefined = undefined;
 
     context[FALSE_TOTAL_SUPPLY_MODULE_KEY] = { detected, metadata };
 
@@ -45,7 +45,7 @@ class Erc721FalseTotalSupplyModule extends AnalyzerModule {
 
       detected = true;
       metadata = {
-        expectedTotalSupply: totalSupply,
+        declaredTotalSupply: totalSupply,
         actualTotalSupply: actualTotalSupply,
       };
     } catch {

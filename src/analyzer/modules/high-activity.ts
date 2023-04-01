@@ -10,6 +10,13 @@ export type HighActivityModuleMetadata = {
   endTime: number;
 };
 
+export type HighActivityModuleShortMetadata = {
+  senderCount: number;
+  senderShortList: string[];
+  startTime: number;
+  endTime: number;
+};
+
 class HighActivityModule extends AnalyzerModule {
   static Key = HIGH_ACTIVITY_MODULE_KEY;
 
@@ -63,6 +70,15 @@ class HighActivityModule extends AnalyzerModule {
     context[HIGH_ACTIVITY_MODULE_KEY] = { detected, metadata };
 
     return { interrupt: detected };
+  }
+
+  simplifyMetadata(metadata: HighActivityModuleMetadata): HighActivityModuleShortMetadata {
+    return {
+      senderCount: metadata.senders.length,
+      senderShortList: metadata.senders.slice(15),
+      startTime: metadata.startTime,
+      endTime: metadata.endTime,
+    };
   }
 }
 

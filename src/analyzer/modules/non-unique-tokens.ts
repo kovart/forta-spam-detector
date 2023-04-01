@@ -12,9 +12,16 @@ export const NON_UNIQUE_TOKENS_MODULE_KEY = 'Erc721NonUniqueTokens';
 export const MIN_NUMBER_OF_TOKENS = 5;
 export const MIN_NUMBER_OF_DUPLICATE_TOKENS = 4;
 
+type DuplicatedItem = { tokenIds: string[]; uri?: string; metadata?: string };
+
 export type NonUniqueTokensModuleMetadata = {
   duplicationType: 'uri' | 'metadata';
-  duplicatedItems: { tokenIds: string[]; uri?: string; metadata?: string }[];
+  duplicatedItems: DuplicatedItem[];
+};
+
+export type NonUniqueTokensModuleShortMetadata = {
+  duplicationType: 'uri' | 'metadata';
+  duplicatedItemShortList: DuplicatedItem[];
 };
 
 class Erc721NonUniqueTokensModule extends AnalyzerModule {
@@ -154,6 +161,13 @@ class Erc721NonUniqueTokensModule extends AnalyzerModule {
     })();
 
     context[NON_UNIQUE_TOKENS_MODULE_KEY] = { detected, metadata };
+  }
+
+  simplifyMetadata(metadata: NonUniqueTokensModuleMetadata): NonUniqueTokensModuleShortMetadata {
+    return {
+      duplicationType: metadata.duplicationType,
+      duplicatedItemShortList: metadata.duplicatedItems.slice(15),
+    };
   }
 }
 

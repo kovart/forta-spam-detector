@@ -7,8 +7,13 @@ export const HONEYPOT_THRESHOLD = 8;
 
 type Honeypot = { address: string; metadata: HoneypotAnalysisMetadata };
 
-export type TooManyHoneyPotOwnersMetadata = {
+export type TooManyHoneyPotOwnersModuleMetadata = {
   honeypots: Honeypot[];
+};
+
+export type TooManyHoneyPotOwnersModuleShortMetadata = {
+  honeypotCount: number;
+  honeypotShortList: Honeypot[];
 };
 
 class TooManyHoneyPotOwnersModule extends AnalyzerModule {
@@ -22,7 +27,7 @@ class TooManyHoneyPotOwnersModule extends AnalyzerModule {
     const { token, context, provider, memoizer, blockNumber } = params;
 
     let detected = false;
-    let metadata: TooManyHoneyPotOwnersMetadata | undefined = undefined;
+    let metadata: TooManyHoneyPotOwnersModuleMetadata | undefined = undefined;
 
     const memo = memoizer.getScope(token.address);
 
@@ -53,6 +58,15 @@ class TooManyHoneyPotOwnersModule extends AnalyzerModule {
     }
 
     context[TOO_MANY_HONEY_POT_OWNERS_MODULE_KEY] = { detected, metadata };
+  }
+
+  simplifyMetadata(
+    metadata: TooManyHoneyPotOwnersModuleMetadata,
+  ): TooManyHoneyPotOwnersModuleShortMetadata {
+    return {
+      honeypotCount: metadata.honeypots.length,
+      honeypotShortList: metadata.honeypots.slice(15),
+    };
   }
 }
 

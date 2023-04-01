@@ -7,8 +7,13 @@ export const MIN_AIRDROP_RECEIVERS = 100;
 export const MIN_ACTIVE_RECEIVERS = 7;
 export const DELAY_AFTER_AIRDROP = 4 * 24 * 60 * 60; // 4d
 
-export type LowActivityAfterAirdropMetadata = {
+export type LowActivityModuleMetadata = {
   activeReceivers: string[];
+};
+
+export type LowActivityModuleShortMetadata = {
+  activeReceiverCount: number;
+  activeReceiverShortList: string[];
 };
 
 class LowActivityAfterAirdropModule extends AnalyzerModule {
@@ -18,14 +23,16 @@ class LowActivityAfterAirdropModule extends AnalyzerModule {
     const { timestamp, context } = params;
 
     let detected = false;
-    let metadata: LowActivityAfterAirdropMetadata | undefined = undefined;
+    let metadata: LowActivityModuleMetadata | undefined = undefined;
+
+    context[LOW_ACTIVITY_MODULE_KEY] = { detected, metadata };
 
     const airdropMetadata = context[AIRDROP_MODULE_KEY].metadata as AirdropModuleMetadata;
     const activityMetadata = context[HIGH_ACTIVITY_MODULE_KEY]
       .metadata as HighActivityModuleMetadata;
 
     if (airdropMetadata.receivers.length < MIN_AIRDROP_RECEIVERS) return;
-    if (airdropMetadata.airdropStartTime + DELAY_AFTER_AIRDROP < timestamp) return;
+    if (airdropMetadata.startTime + DELAY_AFTER_AIRDROP < timestamp) return;
 
     const senderSet = new Set(activityMetadata.senders);
     const activeReceivers = airdropMetadata.receivers.filter((r) => senderSet.has(r));
@@ -36,6 +43,13 @@ class LowActivityAfterAirdropModule extends AnalyzerModule {
     metadata = { activeReceivers };
 
     context[LOW_ACTIVITY_MODULE_KEY] = { detected, metadata };
+  }
+
+  simplifyMetadata(metadata: LowActivityModuleMetadata): LowActivityModuleShortMetadata {
+    return {
+      activeReceiverCount: metadata.activeReceivers.length,
+      activeReceiverShortList: metadata.activeReceivers.slice(15),
+    };
   }
 }
 

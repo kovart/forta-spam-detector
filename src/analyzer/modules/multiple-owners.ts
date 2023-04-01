@@ -11,6 +11,11 @@ export type Erc721MultipleOwnersModuleMetadata = {
   ownersByTokenId: { [tokenId: string]: string[] };
 };
 
+export type Erc721MultipleOwnersModuleShortMetadata = {
+  duplicatedTokenCount: number;
+  duplicatedTokenShortMap: { [tokenId: string]: string[] };
+};
+
 class Erc721MultipleOwnersModule extends AnalyzerModule {
   static Key = MULTIPLE_OWNERS_MODULE_KEY;
 
@@ -53,6 +58,22 @@ class Erc721MultipleOwnersModule extends AnalyzerModule {
     }
 
     context[MULTIPLE_OWNERS_MODULE_KEY] = { detected, metadata };
+  }
+
+  simplifyMetadata(
+    metadata: Erc721MultipleOwnersModuleMetadata,
+  ): Erc721MultipleOwnersModuleShortMetadata {
+    const duplicatedTokenShortMap: { [tokenId: string]: string[] } = {};
+    Object.entries(metadata.ownersByTokenId)
+      .slice(15)
+      .map(([tokenId, owners]) => {
+        duplicatedTokenShortMap[tokenId] = owners;
+      });
+
+    return {
+      duplicatedTokenCount: Object.keys(metadata.ownersByTokenId).length,
+      duplicatedTokenShortMap: duplicatedTokenShortMap,
+    };
   }
 }
 

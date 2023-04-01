@@ -7,12 +7,19 @@ export const SLEEP_MINT_MODULE_KEY = 'SleepMint';
 
 type SleepMintInfo = {
   owner: string;
-  passivelyApproved: boolean;
+  isPassivelyApproved: boolean;
 };
 
-export type SleepMintMetadata = {
+export type SleepMintModuleMetadata = {
   sleepMintTxs: string[];
   sleepMints: SleepMintInfo[];
+};
+
+export type SleepMintModuleShortMetadata = {
+  sleepMintCount: number;
+  sleepMintShortList: SleepMintInfo[];
+  sleepMintTxCount: number;
+  sleepMintTxShortList: string[];
 };
 
 class SleepMintModule extends AnalyzerModule {
@@ -22,7 +29,7 @@ class SleepMintModule extends AnalyzerModule {
     const { token, storage, context } = params;
 
     let detected = false;
-    let metadata: SleepMintMetadata | undefined = undefined;
+    let metadata: SleepMintModuleMetadata | undefined = undefined;
 
     context[SLEEP_MINT_MODULE_KEY] = { detected, metadata };
 
@@ -78,7 +85,7 @@ class SleepMintModule extends AnalyzerModule {
         const isPassivelyApproved =
           passiveApprovals.get(event.from)?.has(event.transaction.from) || false;
 
-        sleepMints.push({ owner: event.from, passivelyApproved: isPassivelyApproved });
+        sleepMints.push({ owner: event.from, isPassivelyApproved });
         sleepMintTxs.push(event.transaction.hash);
       }
     }
@@ -92,6 +99,15 @@ class SleepMintModule extends AnalyzerModule {
     }
 
     context[SLEEP_MINT_MODULE_KEY] = { detected, metadata };
+  }
+
+  simplifyMetadata(metadata: SleepMintModuleMetadata): SleepMintModuleShortMetadata {
+    return {
+      sleepMintCount: metadata.sleepMints.length,
+      sleepMintShortList: metadata.sleepMints.slice(15),
+      sleepMintTxCount: metadata.sleepMintTxs.length,
+      sleepMintTxShortList: metadata.sleepMintTxs.slice(15),
+    };
   }
 }
 

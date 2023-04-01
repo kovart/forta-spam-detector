@@ -74,6 +74,7 @@ export class SpamDetector {
       }
 
       this.analysisByToken.set(task.token, result);
+
       Logger.debug(
         `Analysis result (${task.token.address}):\n` +
           `${JSON.stringify(result.analysis, null, 2)}`,
@@ -92,7 +93,7 @@ export class SpamDetector {
       this.analysisByToken.delete(token);
 
       if (result.interpret().isFinalized) {
-        this.deleteToken(token)
+        this.deleteToken(token);
       }
     }
 

@@ -11,13 +11,22 @@ export const DEVIATION_THRESHOLD = 0.15;
 export const MIN_DOMINANT_ACCOUNTS = 12;
 export const MAX_HONEYPOTS_DOMINANCE_RATE = 0.49;
 
-export type HoneyPotsShareDominanceMetadata = {
-  honeypots: {
-    address: string;
-    share: number;
-  }[];
-  honeypotsShare: number;
-  honeypotsDominanceRate: number;
+type HoneypotShare = {
+  address: string;
+  share: number;
+};
+
+export type HoneyPotsShareModuleMetadata = {
+  honeypots: HoneypotShare[];
+  honeypotTotalShare: number;
+  honeypotDominanceRate: number;
+};
+
+export type HoneyPotsShareModuleShortMetadata = {
+  honeypotCount: number;
+  honeypotShortList: HoneypotShare[];
+  honeypotTotalShare: number;
+  honeypotDominanceRate: number;
 };
 
 class HoneyPotsShareDominanceModule extends AnalyzerModule {
@@ -31,7 +40,7 @@ class HoneyPotsShareDominanceModule extends AnalyzerModule {
     const { token, storage, memoizer, provider, blockNumber, context } = params;
 
     let detected = false;
-    let metadata: HoneyPotsShareDominanceMetadata | undefined = undefined;
+    let metadata: HoneyPotsShareModuleMetadata | undefined = undefined;
 
     const memo = memoizer.getScope(token.address);
 
@@ -147,13 +156,22 @@ class HoneyPotsShareDominanceModule extends AnalyzerModule {
         address: account,
         share: new BigNumber(balance).div(totalBalance).toNumber(),
       })),
-      honeypotsShare: sum(dominantHoneypots.map((h) => h[1]))
+      honeypotTotalShare: sum(dominantHoneypots.map((h) => h[1]))
         .div(totalBalance)
         .toNumber(),
-      honeypotsDominanceRate: dominanceRate,
+      honeypotDominanceRate: dominanceRate,
     };
 
     context[HONEY_POTS_SHARE_MODULE_KEY] = { detected, metadata };
+  }
+
+  simplifyMetadata(metadata: HoneyPotsShareModuleMetadata): HoneyPotsShareModuleShortMetadata {
+    return {
+      honeypotCount: metadata.honeypots.length,
+      honeypotShortList: metadata.honeypots.slice(15),
+      honeypotTotalShare: metadata.honeypotTotalShare,
+      honeypotDominanceRate: metadata.honeypotDominanceRate,
+    };
   }
 }
 
