@@ -154,6 +154,8 @@ class TokenAnalyzer {
     const prevInterpretation = this.interpret(prevAnalysis);
 
     const moduleKeys = [
+      ObservationTimeModule.Key,
+      HighActivityModule.Key,
       AirdropModule.Key,
       MultipleOwnersModule.Key,
       Erc721FalseTotalSupplyModule.Key,
