@@ -1,13 +1,8 @@
-import dayjs from 'dayjs';
-import duration from 'dayjs/plugin/duration';
-
 import { TokenContract } from '../../types';
 import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
 
-dayjs.extend(duration);
-
 export const TOO_MANY_CREATIONS_MODULE_KEY = 'TooManyTokenCreations';
-export const CREATION_WINDOW_TIME = dayjs.duration(3, 'month').asSeconds();
+export const CREATION_WINDOW_TIME = 3 * 31 * 24 * 60 * 60; // 3 months
 export const TOKEN_CREATIONS_THRESHOLD = 6;
 
 export type TooManyCreationsModuleMetadata = {

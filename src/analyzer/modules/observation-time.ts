@@ -1,11 +1,6 @@
-import dayjs from 'dayjs';
-import duration from 'dayjs/plugin/duration';
-
-dayjs.extend(duration);
-
 import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
 
-export const TOKEN_OBSERVATION_PERIOD = dayjs.duration(4, 'month').asSeconds();
+export const TOKEN_OBSERVATION_TIME = 4 * 31 * 24 * 60 * 60;
 export const OBSERVATION_TIME_IS_OVER_MODULE_KEY = 'ObservationTimeIsOver';
 
 export type ObservationTimeModuleMetadata = {
@@ -22,7 +17,7 @@ class ObservationTimeModule extends AnalyzerModule {
     let detected = false;
     let metadata: ObservationTimeModuleMetadata | undefined = undefined;
 
-    if (token.timestamp + TOKEN_OBSERVATION_PERIOD < timestamp) {
+    if (timestamp - token.timestamp > TOKEN_OBSERVATION_TIME) {
       detected = true;
       metadata = {
         startTime: token.timestamp,
