@@ -81,6 +81,8 @@ export class SpamDetector {
       );
       callback();
     } catch (e) {
+      Logger.error('Task error:');
+      Logger.error(e);
       callback(e);
     }
   }
