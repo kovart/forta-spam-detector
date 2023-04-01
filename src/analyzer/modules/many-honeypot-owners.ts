@@ -65,7 +65,7 @@ class TooManyHoneyPotOwnersModule extends AnalyzerModule {
   ): TooManyHoneyPotOwnersModuleShortMetadata {
     return {
       honeypotCount: metadata.honeypots.length,
-      honeypotShortList: metadata.honeypots.slice(15),
+      honeypotShortList: metadata.honeypots.slice(0, 15),
     };
   }
 }

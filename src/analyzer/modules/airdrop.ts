@@ -208,11 +208,11 @@ class AirdropModule extends AnalyzerModule {
   simplifyMetadata(metadata: AirdropModuleMetadata): AirdropModuleShortMetadata {
     return {
       senderCount: metadata.senders.length,
-      senderShortList: metadata.senders.slice(15),
+      senderShortList: metadata.senders.slice(0, 15),
       receiverCount: metadata.receivers.length,
-      receiverShortList: metadata.receivers.slice(15),
+      receiverShortList: metadata.receivers.slice(0, 15),
       transactionCount: metadata.txHashes.length,
-      transactionShortList: metadata.txHashes.slice(15),
+      transactionShortList: metadata.txHashes.slice(0, 15),
       startTime: metadata.startTime,
     };
   }

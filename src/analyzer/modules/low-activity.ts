@@ -48,7 +48,7 @@ class LowActivityAfterAirdropModule extends AnalyzerModule {
   simplifyMetadata(metadata: LowActivityModuleMetadata): LowActivityModuleShortMetadata {
     return {
       activeReceiverCount: metadata.activeReceivers.length,
-      activeReceiverShortList: metadata.activeReceivers.slice(15),
+      activeReceiverShortList: metadata.activeReceivers.slice(0, 15),
     };
   }
 }

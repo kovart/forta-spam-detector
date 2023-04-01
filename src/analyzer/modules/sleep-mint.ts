@@ -104,9 +104,9 @@ class SleepMintModule extends AnalyzerModule {
   simplifyMetadata(metadata: SleepMintModuleMetadata): SleepMintModuleShortMetadata {
     return {
       sleepMintCount: metadata.sleepMints.length,
-      sleepMintShortList: metadata.sleepMints.slice(15),
+      sleepMintShortList: metadata.sleepMints.slice(0, 15),
       sleepMintTxCount: metadata.sleepMintTxs.length,
-      sleepMintTxShortList: metadata.sleepMintTxs.slice(15),
+      sleepMintTxShortList: metadata.sleepMintTxs.slice(0, 15),
     };
   }
 }

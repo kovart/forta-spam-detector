@@ -65,7 +65,7 @@ class Erc721MultipleOwnersModule extends AnalyzerModule {
   ): Erc721MultipleOwnersModuleShortMetadata {
     const duplicatedTokenShortMap: { [tokenId: string]: string[] } = {};
     Object.entries(metadata.ownersByTokenId)
-      .slice(15)
+      .slice(0, 15)
       .map(([tokenId, owners]) => {
         duplicatedTokenShortMap[tokenId] = owners;
       });

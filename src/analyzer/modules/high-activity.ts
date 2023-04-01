@@ -75,7 +75,7 @@ class HighActivityModule extends AnalyzerModule {
   simplifyMetadata(metadata: HighActivityModuleMetadata): HighActivityModuleShortMetadata {
     return {
       senderCount: metadata.senders.length,
-      senderShortList: metadata.senders.slice(15),
+      senderShortList: metadata.senders.slice(0, 15),
       startTime: metadata.startTime,
       endTime: metadata.endTime,
     };

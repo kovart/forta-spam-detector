@@ -168,7 +168,7 @@ class HoneyPotsShareDominanceModule extends AnalyzerModule {
   simplifyMetadata(metadata: HoneyPotsShareModuleMetadata): HoneyPotsShareModuleShortMetadata {
     return {
       honeypotCount: metadata.honeypots.length,
-      honeypotShortList: metadata.honeypots.slice(15),
+      honeypotShortList: metadata.honeypots.slice(0, 15),
       honeypotTotalShare: metadata.honeypotTotalShare,
       honeypotDominanceRate: metadata.honeypotDominanceRate,
     };

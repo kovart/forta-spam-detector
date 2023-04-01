@@ -166,7 +166,7 @@ class Erc721NonUniqueTokensModule extends AnalyzerModule {
   simplifyMetadata(metadata: NonUniqueTokensModuleMetadata): NonUniqueTokensModuleShortMetadata {
     return {
       duplicationType: metadata.duplicationType,
-      duplicatedItemShortList: metadata.duplicatedItems.slice(15),
+      duplicatedItemShortList: metadata.duplicatedItems.slice(0, 15),
     };
   }
 }
