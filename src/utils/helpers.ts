@@ -196,7 +196,7 @@ export async function retry<T>(
   fn: () => Promise<T>,
   opts?: { attempts?: number; wait?: number },
 ): Promise<T> {
-  const { attempts = 3, wait = 5 * 1000 } = opts || {};
+  const { attempts = 3, wait = 15 * 1000 } = opts || {};
   let attempt = 0;
   // eslint-disable-next-line no-constant-condition
   while (true) {
@@ -204,9 +204,10 @@ export async function retry<T>(
       return await fn();
     } catch (e: any) {
       // eslint-disable-next-line no-console
-      Logger.info(`Attempt (${attempt}/${attempts}):`, e?.message || e?.details || e?.code || e);
+      Logger.error(`Attempt (${attempt}/${attempts}):`);
+      Logger.error(e);
       if (attempt >= attempts) {
-        return e;
+        throw e;
       }
       attempt++;
       await delay(wait);
