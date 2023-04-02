@@ -141,9 +141,9 @@ class Memoizer {
     if (scope.has(hash)) {
       const result = scope.get(hash)!;
       if (result.thrown) {
-        throw result;
+        throw result.value;
       } else {
-        return result as TResult;
+        return result.value as TResult;
       }
     }
 
