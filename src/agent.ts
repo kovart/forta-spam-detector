@@ -39,6 +39,7 @@ const provideInitialize = (
     data.analysisByToken = new Map();
   };
 };
+
 const provideHandleTransaction = (data: DataContainer): HandleTransaction => {
   return async function handleTransaction(txEvent: TransactionEvent) {
     const createdContracts = findCreatedContracts(txEvent);
