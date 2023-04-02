@@ -51,7 +51,7 @@ class Erc721NonUniqueTokensModule extends AnalyzerModule {
     // Test if the token implements tokenURI() with the first tokenId
     try {
       const tokenId = tokenIdSet.values().next().value;
-      memo('tokenURI', [tokenId], () => contract.tokenURI(tokenId));
+      await memo('tokenURI', [tokenId], () => contract.tokenURI(tokenId));
     } catch (e) {
       Logger.info('ERC721 tokenURI() is not supported:', token.address);
       // tokenURI() not supported
@@ -122,7 +122,14 @@ class Erc721NonUniqueTokensModule extends AnalyzerModule {
         for (const batch of chunk(entries, 5)) {
           try {
             const metadataArr = await retry(() =>
-              Promise.all(batch.map(([, uri]) => memo('axios.get', [uri], () => axios.get(uri)))),
+              Promise.all(
+                batch.map(([, uri]) =>
+                  memo('axios.get', [uri], async () => {
+                    const { data } = await axios.get(uri);
+                    return data;
+                  }),
+                ),
+              ),
             );
             metadataArr.forEach((metadata, i) => metadataByTokenId.set(entries[i][0], metadata));
           } catch (e) {
