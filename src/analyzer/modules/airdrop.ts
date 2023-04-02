@@ -111,27 +111,34 @@ class AirdropModule extends AnalyzerModule {
     let t0 = performance.now();
     // Detect senders with signs of an airdrop
     const airdropsBySender = new Map<string, AirdropData>();
+    let iterations = 0;
     for (const [sender, transferSet] of transfersBySender) {
       const transfers = [...transferSet];
+      const txHashSet = new Set<string>();
+      const receiverSet = new Set<string>();
 
       for (let startIndex = 0; startIndex < transfers.length; startIndex++) {
+        const startTransfer = transfers[startIndex];
+
         let detected = false;
         let interval: [number, number];
-        const txHashSet = new Set<string>();
-        const receiverSet = new Set<string>();
+
+        receiverSet.clear();
+        txHashSet.clear();
 
         for (let t = startIndex; t < transfers.length; t++) {
-          const transfer = transfers[t];
+          const endTransfer = transfers[t];
 
-          if (transfer.tx.timestamp - transfers[startIndex].tx.timestamp > AIRDROP_TIME_WINDOW)
-            break;
+          iterations++;
 
-          receiverSet.add(transfer.receiver);
-          txHashSet.add(transfer.tx.hash);
+          if (endTransfer.tx.timestamp - startTransfer.tx.timestamp > AIRDROP_TIME_WINDOW) break;
+
+          receiverSet.add(endTransfer.receiver);
+          txHashSet.add(endTransfer.tx.hash);
 
           if (receiverSet.size > AIRDROP_RECEIVERS_THRESHOLD) {
             detected = true;
-            interval = [transfers[startIndex].tx.timestamp, transfer.tx.timestamp];
+            interval = [startTransfer.tx.timestamp, endTransfer.tx.timestamp];
             break;
           }
         }
