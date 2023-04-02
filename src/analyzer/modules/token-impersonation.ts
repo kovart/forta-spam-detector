@@ -49,7 +49,10 @@ class TokenImpersonationModule extends AnalyzerModule {
       const tokensByHash = new Map(tokens.map((t) => [this.tokenProvider.getTokenHash(t), t]));
       const existingToken = tokensByHash.get(this.tokenProvider.getTokenHash({ name, symbol }));
 
-      detected = !!existingToken;
+      // If the same token exists and its address does not match the current token.
+      detected =
+        !!existingToken &&
+        !Object.entries(existingToken.deployments).find((e) => e[1].toLowerCase() == token.address);
       metadata = {
         symbol,
         name,
