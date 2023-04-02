@@ -9,7 +9,7 @@ import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
 export const TOO_MANY_HONEY_POT_OWNERS_MODULE_KEY = 'TooManyHoneyPotOwners';
 export const HONEYPOT_THRESHOLD = 25;
 export const MAX_ACCOUNTS = 1000;
-export const CONCURRENCY = 8;
+export const CONCURRENCY = 20;
 
 type Honeypot = { address: string; metadata: HoneypotAnalysisMetadata };
 

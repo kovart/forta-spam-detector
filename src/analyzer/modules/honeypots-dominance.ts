@@ -1,13 +1,18 @@
 import BigNumber from 'bignumber.js';
+import { queue } from 'async';
 
+import Logger from '../../utils/logger';
 import HoneyPotChecker from '../../utils/honeypot';
 import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
 
 export const HONEY_POT_SHARE_MODULE_KEY = 'HoneypotShareDominance';
 export const MIN_TOTAL_ACCOUNTS = 30;
-export const DEVIATION_THRESHOLD = 0.15;
-export const MIN_DOMINANT_ACCOUNTS = 12;
-export const MAX_HONEYPOTS_DOMINANCE_RATE = 0.49;
+export const DEVIATION_THRESHOLD = 0.2;
+export const MIN_DOMINANT_ACCOUNTS = 10;
+export const MAX_DOMINANT_ACCOUNTS = 50;
+export const MIN_HONEYPOT_ACCOUNTS = 10;
+export const MIN_HONEYPOT_DOMINANCE_RATE = 0.5;
+export const CONCURRENCY = 40;
 
 type HoneypotShare = {
   address: string;
@@ -71,21 +76,53 @@ class HoneyPotShareDominanceModule extends AnalyzerModule {
       isPreponderance(balance),
     );
 
-    if (dominantAccounts.length < MIN_DOMINANT_ACCOUNTS) return;
+    if (
+      dominantAccounts.length < MIN_DOMINANT_ACCOUNTS ||
+      dominantAccounts.length > MAX_DOMINANT_ACCOUNTS
+    )
+      return;
+
+    Logger.debug(`Dominant accounts: ${dominantAccounts.length}`);
+
+    let counter = 0;
+    const accountQueue = queue<{ account: string; balance: BigNumber }>(async (task, callback) => {
+      const { account, balance } = task;
+
+      Logger.debug(
+        `[${counter}/${dominantAccounts.length}] Testing address if it is a honeypot: ${account}`,
+      );
+
+      try {
+        const result = await memo('honeypot', [account], () =>
+          this.honeypotChecker.testAddress(account, provider, blockNumber),
+        );
+
+        if (result.isHoneypot) {
+          dominantHoneypots.push([account, balance]);
+        }
+
+        counter++;
+        callback();
+      } catch (e: any) {
+        Logger.error(e);
+        accountQueue.kill();
+      }
+    }, CONCURRENCY);
 
     const dominantHoneypots: [string, BigNumber][] = [];
-    for (const [account, balance] of dominantAccounts) {
-      const isHoneypot = await memo('honeypot', [account], () =>
-        this.honeypotChecker.testAddress(account, provider, blockNumber),
-      );
-      if (isHoneypot) {
-        dominantHoneypots.push([account, balance]);
-      }
+    for (const entry of dominantAccounts) {
+      accountQueue.push({ account: entry[0], balance: entry[1] });
     }
+
+    if (!accountQueue.idle()) {
+      await accountQueue.drain();
+    }
+
+    if (dominantHoneypots.length < MIN_HONEYPOT_ACCOUNTS) return;
 
     const dominanceRate = dominantHoneypots.length / dominantAccounts.length;
 
-    detected = dominanceRate > MAX_HONEYPOTS_DOMINANCE_RATE;
+    detected = dominanceRate >= MIN_HONEYPOT_DOMINANCE_RATE;
     metadata = {
       honeypots: dominantHoneypots.map(([account, balance]) => ({
         address: account,
@@ -105,9 +142,12 @@ class HoneyPotShareDominanceModule extends AnalyzerModule {
   }
 
   simplifyMetadata(metadata: HoneyPotShareModuleMetadata): HoneyPotShareModuleShortMetadata {
+    const sortedHoneyPotList = metadata.honeypots.slice();
+    sortedHoneyPotList.sort((h1, h2) => h2.share - h1.share);
+
     return {
       honeypotCount: metadata.honeypots.length,
-      honeypotShortList: metadata.honeypots.slice(0, 15),
+      honeypotShortList: sortedHoneyPotList.slice(0, 15),
       honeypotTotalShare: metadata.honeypotTotalShare,
       honeypotDominanceRate: metadata.honeypotDominanceRate,
     };
