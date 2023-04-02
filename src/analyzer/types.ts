@@ -2,6 +2,7 @@ import { ethers } from 'ethers';
 
 import Memoizer from '../utils/cache';
 import DataStorage from '../storage';
+import DataTransformer from './transformer';
 import { TokenContract } from '../types';
 
 export type ModuleAnalysisResult = {
@@ -21,6 +22,7 @@ export type ScanParams = {
   memoizer: Memoizer;
   provider: ethers.providers.StaticJsonRpcProvider;
   storage: DataStorage;
+  transformer: DataTransformer;
 };
 
 // TODO Add `finalized` property to modules

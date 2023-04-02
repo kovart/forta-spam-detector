@@ -1,11 +1,9 @@
-import { ethers } from 'ethers';
 import BigNumber from 'bignumber.js';
 
-import { TokenStandard } from '../../types';
 import HoneyPotChecker from '../../utils/honeypot';
 import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
 
-export const HONEY_POTS_SHARE_MODULE_KEY = 'HoneypotsShareDominance';
+export const HONEY_POT_SHARE_MODULE_KEY = 'HoneypotShareDominance';
 export const MIN_TOTAL_ACCOUNTS = 30;
 export const DEVIATION_THRESHOLD = 0.15;
 export const MIN_DOMINANT_ACCOUNTS = 12;
@@ -16,103 +14,40 @@ type HoneypotShare = {
   share: number;
 };
 
-export type HoneyPotsShareModuleMetadata = {
+export type HoneyPotShareModuleMetadata = {
   honeypots: HoneypotShare[];
   honeypotTotalShare: number;
   honeypotDominanceRate: number;
 };
 
-export type HoneyPotsShareModuleShortMetadata = {
+export type HoneyPotShareModuleShortMetadata = {
   honeypotCount: number;
   honeypotShortList: HoneypotShare[];
   honeypotTotalShare: number;
   honeypotDominanceRate: number;
 };
 
-class HoneyPotsShareDominanceModule extends AnalyzerModule {
-  static Key = HONEY_POTS_SHARE_MODULE_KEY;
+class HoneyPotShareDominanceModule extends AnalyzerModule {
+  static Key = HONEY_POT_SHARE_MODULE_KEY;
 
   constructor(private honeypotChecker: HoneyPotChecker) {
     super();
   }
 
   async scan(params: ScanParams): Promise<ModuleScanReturn> {
-    const { token, storage, memoizer, provider, blockNumber, context } = params;
+    const { token, memoizer, provider, transformer, blockNumber, context } = params;
 
     let detected = false;
-    let metadata: HoneyPotsShareModuleMetadata | undefined = undefined;
+    let metadata: HoneyPotShareModuleMetadata | undefined = undefined;
+
+    context[HONEY_POT_SHARE_MODULE_KEY] = { detected, metadata };
 
     const memo = memoizer.getScope(token.address);
 
-    context[HONEY_POTS_SHARE_MODULE_KEY] = { detected, metadata };
-
-    const sum = (arr: (string | BigNumber)[]) =>
-      arr.reduce((acc: BigNumber, curr) => acc.plus(curr), new BigNumber(0));
-
-    const balanceByAccount = new Map<string, BigNumber>();
-
-    if (token.type === TokenStandard.Erc20) {
-      const transferEvents = storage.erc20TransferEventsByToken.get(token.address) || [];
-
-      for (const event of transferEvents) {
-        if (event.from !== ethers.constants.AddressZero) {
-          let fromBalance = balanceByAccount.get(event.from) || new BigNumber(0);
-          fromBalance = fromBalance.minus(event.value);
-          balanceByAccount.set(event.from, fromBalance);
-        }
-        if (event.to !== ethers.constants.AddressZero) {
-          let toBalance = balanceByAccount.get(event.to) || new BigNumber(0);
-          toBalance = toBalance.plus(event.value);
-          balanceByAccount.set(event.to, toBalance);
-        }
-      }
-    } else if (token.type === TokenStandard.Erc721) {
-      const transferEvents = storage.erc721TransferEventsByToken.get(token.address) || [];
-
-      for (const event of transferEvents) {
-        if (event.from !== ethers.constants.AddressZero) {
-          let fromBalance = balanceByAccount.get(event.from) || new BigNumber(0);
-          fromBalance = fromBalance.minus(1);
-          balanceByAccount.set(event.from, fromBalance);
-        }
-        if (event.to !== ethers.constants.AddressZero) {
-          let toBalance = balanceByAccount.get(event.to) || new BigNumber(0);
-          toBalance = toBalance.plus(1);
-          balanceByAccount.set(event.to, toBalance);
-        }
-      }
-    } else if (token.type === TokenStandard.Erc1155) {
-      const transferSingleEvents =
-        storage.erc1155TransferSingleEventsByToken.get(token.address) || [];
-      const transferBatchEvents =
-        storage.erc1155TransferBatchEventsByToken.get(token.address) || [];
-
-      for (const event of transferSingleEvents) {
-        if (event.from !== ethers.constants.AddressZero) {
-          let fromBalance = balanceByAccount.get(event.from) || new BigNumber(0);
-          fromBalance = fromBalance.minus(event.value);
-          balanceByAccount.set(event.from, fromBalance);
-        }
-        if (event.to !== ethers.constants.AddressZero) {
-          let toBalance = balanceByAccount.get(event.to) || new BigNumber(0);
-          toBalance = toBalance.plus(event.value);
-          balanceByAccount.set(event.to, toBalance);
-        }
-      }
-
-      for (const event of transferBatchEvents) {
-        if (event.from !== ethers.constants.AddressZero) {
-          let fromBalance = balanceByAccount.get(event.from) || new BigNumber(0);
-          fromBalance = fromBalance.minus(sum(event.values));
-          balanceByAccount.set(event.from, fromBalance);
-        }
-        if (event.to !== ethers.constants.AddressZero) {
-          let toBalance = balanceByAccount.get(event.to) || new BigNumber(0);
-          toBalance = toBalance.plus(sum(event.values));
-          balanceByAccount.set(event.to, toBalance);
-        }
-      }
-    }
+    // Use the cache, but clone it, since we will be modifying it
+    const balanceByAccount = new Map(
+      memo('balanceByAccount', [blockNumber], () => transformer.balanceByAccount(token)),
+    );
 
     // Creators often allocate most of the tokens to themselves
     balanceByAccount.delete(token.deployer);
@@ -121,9 +56,9 @@ class HoneyPotsShareDominanceModule extends AnalyzerModule {
     if (balanceByAccount.size < MIN_TOTAL_ACCOUNTS) return;
 
     const balances = [...balanceByAccount.values()];
-    const totalBalance = sum(balances);
+    const totalBalance = this.sum(balances);
 
-    const mean = sum(balances).div(balances.length);
+    const mean = this.sum(balances).div(balances.length);
     const variance = balances
       .reduce((acc, balance) => acc.plus(balance.minus(mean).pow(2)), new BigNumber(0))
       .div(balances.length);
@@ -156,16 +91,20 @@ class HoneyPotsShareDominanceModule extends AnalyzerModule {
         address: account,
         share: new BigNumber(balance).div(totalBalance).toNumber(),
       })),
-      honeypotTotalShare: sum(dominantHoneypots.map((h) => h[1]))
+      honeypotTotalShare: this.sum(dominantHoneypots.map((h) => h[1]))
         .div(totalBalance)
         .toNumber(),
       honeypotDominanceRate: dominanceRate,
     };
 
-    context[HONEY_POTS_SHARE_MODULE_KEY] = { detected, metadata };
+    context[HONEY_POT_SHARE_MODULE_KEY] = { detected, metadata };
   }
 
-  simplifyMetadata(metadata: HoneyPotsShareModuleMetadata): HoneyPotsShareModuleShortMetadata {
+  private sum(arr: (string | BigNumber)[]) {
+    return arr.reduce((acc: BigNumber, curr) => acc.plus(curr), new BigNumber(0));
+  }
+
+  simplifyMetadata(metadata: HoneyPotShareModuleMetadata): HoneyPotShareModuleShortMetadata {
     return {
       honeypotCount: metadata.honeypots.length,
       honeypotShortList: metadata.honeypots.slice(0, 15),
@@ -175,4 +114,4 @@ class HoneyPotsShareDominanceModule extends AnalyzerModule {
   }
 }
 
-export default HoneyPotsShareDominanceModule;
+export default HoneyPotShareDominanceModule;

@@ -1,15 +1,16 @@
 import { ethers } from 'ethers';
 import { isEqual } from 'lodash';
 
-import { TokenContract } from '../types';
 import DataStorage from '../storage';
+import DataTransformer from './transformer';
 import HoneyPotChecker, { EnsLeaderBoard, HoneypotSet } from '../utils/honeypot';
 import Memoizer from '../utils/cache';
 import TokenProvider from '../utils/tokens';
+import Logger from '../utils/logger';
 import { JsonStorage } from '../utils/storage';
 import { AnalysisContext, AnalyzerModule, AnalyzerTask } from './types';
 import { DATA_PATH } from '../contants';
-import Logger from '../utils/logger';
+import { TokenContract } from '../types';
 
 import HighActivityModule from './modules/high-activity';
 import AirdropModule from './modules/airdrop';
@@ -30,6 +31,7 @@ import ObservationTimeModule from './modules/observation-time';
 class TokenAnalyzer {
   private modules: AnalyzerModule[];
   private storage: DataStorage;
+  private transformer: DataTransformer;
   private provider: ethers.providers.StaticJsonRpcProvider;
   private memoizer: Memoizer;
 
@@ -45,6 +47,7 @@ class TokenAnalyzer {
     this.storage = storage;
     this.provider = provider;
     this.memoizer = memoizer;
+    this.transformer = new DataTransformer(storage);
     this.modules = [
       new ObservationTimeModule(),
       new HighActivityModule(),
@@ -56,8 +59,8 @@ class TokenAnalyzer {
       new TooManyCreationsModule(),
       new PhishingMetadataModule(),
       new SleepMintModule(),
-      new TooManyHoneyPotOwnersModule(honeyPotChecker),
       new HoneypotsDominanceModule(honeyPotChecker),
+      new TooManyHoneyPotOwnersModule(honeyPotChecker),
       new TokenImpersonationModule(new TokenProvider(tokenStorage)),
     ];
   }
@@ -76,6 +79,7 @@ class TokenAnalyzer {
         context: privateContext,
         memoizer: this.memoizer,
         storage: this.storage,
+        transformer: this.transformer,
         provider: this.provider,
       });
       const t1 = performance.now();
