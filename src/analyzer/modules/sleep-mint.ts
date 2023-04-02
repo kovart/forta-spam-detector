@@ -28,12 +28,14 @@ class SleepMintModule extends AnalyzerModule {
   static Key = SLEEP_MINT_MODULE_KEY;
 
   async scan(params: ScanParams): Promise<ModuleScanReturn> {
-    const { token, storage, context } = params;
+    const { token, storage, memoizer, provider, context } = params;
 
     let detected = false;
     let metadata: SleepMintModuleMetadata | undefined = undefined;
 
     context[SLEEP_MINT_MODULE_KEY] = { detected, metadata };
+
+    const memo = memoizer.getScope(token.address);
 
     // Map owner -> spenders
     // A bit of a simplified structure, with no knowledge of a particular token or values.
@@ -88,6 +90,12 @@ class SleepMintModule extends AnalyzerModule {
 
         // Skip if transaction is legal
         if (directApprovals.get(event.from)?.has(event.transaction.from)) continue;
+
+        const code = await memo('getCode', [event.from], () => provider.getCode(event.from));
+
+        // Contracts sometimes cause FP, such as in this transaction:
+        // https://etherscan.io/tx/0x5eb2f12136d80a45cace29b1dfccb4213b097444694cb23ed9960ed5bc6c89c7
+        if (code !== '0x') continue;
 
         const isPassivelyApproved =
           passiveApprovals.get(event.from)?.has(event.transaction.from) || false;
