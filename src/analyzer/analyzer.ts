@@ -59,8 +59,8 @@ class TokenAnalyzer {
       new TooManyCreationsModule(),
       new PhishingMetadataModule(),
       new SleepMintModule(),
-      new HoneypotsDominanceModule(honeyPotChecker),
       new TooManyHoneyPotOwnersModule(honeyPotChecker),
+      new HoneypotsDominanceModule(honeyPotChecker),
       new TokenImpersonationModule(new TokenProvider(tokenStorage)),
     ];
   }
