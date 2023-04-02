@@ -22,7 +22,11 @@ export const INTERFACE_ID_BY_TYPE = {
 };
 
 export const PUBLIC_RPC_URLS_BY_NETWORK = {
-  [Network.MAINNET]: ['https://rpc.ankr.com/eth'],
+  [Network.MAINNET]: [
+    'https://rpc.ankr.com/eth',
+    'https://eth-rpc.gateway.pokt.network',
+    'https://1rpc.io/eth',
+  ],
   [Network.POLYGON]: ['https://polygon-rpc.com'],
   [Network.BSC]: ['https://rpc.ankr.com/bsc'],
   [Network.AVALANCHE]: ['https://rpc.ankr.com/avalanche'],
