@@ -6,8 +6,13 @@ import { createTransactionEvent, EventType, Log, Network, TransactionEvent } fro
 import Database from './utils/database';
 import { SimplifiedTransaction, TokenStandard } from '../src/types';
 import { getTestTokenStorage, TokenRecord } from './utils/storages';
-import { Erc20ApprovalEvent, Erc20TransferEvent } from './scripts/types';
-import { erc20Iface } from '../src/contants';
+import {
+  Erc20ApprovalEvent,
+  Erc20TransferEvent,
+  Erc721ApprovalEvent,
+  Erc721TransferEvent,
+} from './scripts/types';
+import { erc20Iface, erc721Iface } from '../src/contants';
 
 dayjs.extend(duration);
 
@@ -88,6 +93,77 @@ export async function readTokens() {
   return tokens.filter((t) => contractByAddress.has(t.contract));
 }
 
+export async function getTxEvents(
+  token: TokenRecord,
+  eventList: {
+    name: string;
+    events: { transaction_id: string }[];
+    encode: (e: any) => { data: any; topics: any[] };
+  }[],
+) {
+  const transactionIds: string[] = eventList
+    .map((t) => t.events.map((e) => e.transaction_id))
+    .flat();
+
+  type Tx = SimplifiedTransaction & { transaction_id: string };
+
+  const transactionById = new Map<string, Tx>();
+  for (const batch of chunk(transactionIds, MAX_NUMBER_OF_INLINE_VALUES)) {
+    const transactions = await Database.all<Tx>(`
+        SELECT t.transaction_id, t.block_number AS blockNumber, t.timestamp, t.transaction_hash AS "hash", from_a.address AS "from", to_a.address AS "to"
+        FROM (
+            SELECT *
+            FROM transactions t
+            WHERE t.transaction_id IN (${batch.join(',')})
+        ) AS t
+           JOIN addresses from_a ON from_a.address_id = t.from_id
+           JOIN addresses to_a ON to_a.address_id = t.to_id
+      `);
+
+    transactions.forEach((t) => transactionById.set(t.transaction_id, t));
+  }
+
+  console.log(`Token (ERC${token.type}): ${token.contract}`);
+  console.log(
+    `Total transactions: ${transactionById.size}. ${eventList
+      .map((e) => `${e.name} events: ${e.events.length}`)
+      .join('. ')}`,
+  );
+
+  const maps = eventList.map((e) => new Map<string, Set<(typeof e.events)[0]>>());
+
+  const append = <P, K>(map: Map<K, Set<P>>, key: K, event: P) => {
+    let eventSet = map.get(key);
+    if (!eventSet) {
+      eventSet = new Set();
+      map.set(key, eventSet);
+    }
+    eventSet.add(event);
+  };
+
+  eventList.forEach((e, i) => {
+    e.events.forEach((e) => append(maps[i], e.transaction_id, e));
+  });
+
+  const sortedTransactions = [...transactionById.values()];
+  sortedTransactions.sort((t1, t2) => t1.timestamp - t2.timestamp);
+
+  const txEvents: TransactionEvent[] = [];
+  for (const tx of sortedTransactions) {
+    const eventSets = maps.map((m) => m.get(tx.transaction_id) || new Set());
+
+    const txEvent = createTxEvent(tx, [
+      ...[...eventSets]
+        .map((set, i) => [...set].map((e) => createLog(token.contract, tx, eventList[i].encode(e))))
+        .flat(),
+    ]);
+
+    txEvents.push(txEvent);
+  }
+
+  return txEvents;
+}
+
 export async function getErc20TxEvents(token: TokenRecord) {
   const transferEvents = await Database.all<any>(`
       SELECT *
@@ -114,73 +190,64 @@ export async function getErc20TxEvents(token: TokenRecord) {
       WHERE e.contract = "${token.contract}"
     `);
 
-  const transactionIds: string[] = [...transferEvents, ...approvalEvents].map(
-    (t) => t.transaction_id,
-  );
-
-  type Tx = SimplifiedTransaction & { transaction_id: string };
-
-  const transactionById = new Map<string, Tx>();
-  for (const batch of chunk(transactionIds, MAX_NUMBER_OF_INLINE_VALUES)) {
-    const transactions = await Database.all<Tx>(`
-        SELECT t.transaction_id, t.block_number AS blockNumber, t.timestamp, t.transaction_hash AS "hash", from_a.address AS "from", to_a.address AS "to"
-        FROM (
-            SELECT *
-            FROM transactions t
-            WHERE t.transaction_id IN (${batch.join(',')})
-        ) AS t
-           JOIN addresses from_a ON from_a.address_id = t.from_id
-           JOIN addresses to_a ON to_a.address_id = t.to_id
-      `);
-
-    transactions.forEach((t) => transactionById.set(t.transaction_id, t));
-  }
-
-  console.log(`Token (ERC${token.type}): ${token.contract}`);
-  console.log(
-    `Total transactions: ${transactionById.size}. Transfer events: ${transferEvents.length}. Approval events: ${approvalEvents.length}.`,
-  );
-
-  const transferEventsByTransactionId = new Map<string, Set<Erc20TransferEvent>>();
-  const approvalEventsByTransactionId = new Map<string, Set<Erc20ApprovalEvent>>();
-
-  const append = <P, K>(map: Map<K, Set<P>>, key: K, event: P) => {
-    let eventSet = map.get(key);
-    if (!eventSet) {
-      eventSet = new Set();
-      map.set(key, eventSet);
-    }
-    eventSet.add(event);
-  };
-
-  transferEvents.forEach((e) => append(transferEventsByTransactionId, e.transaction_id, e));
-  approvalEvents.forEach((e) => append(approvalEventsByTransactionId, e.transaction_id, e));
-
-  const sortedTransactions = [...transactionById.values()];
-  sortedTransactions.sort((t1, t2) => t1.timestamp - t2.timestamp);
-
-  const events: TransactionEvent[] = [];
-  for (const tx of sortedTransactions) {
-    const transferEvents = transferEventsByTransactionId.get(tx.transaction_id) || new Set();
-    const approvalEvents = approvalEventsByTransactionId.get(tx.transaction_id) || new Set();
-
-    const approvalLogs = [...approvalEvents].map((e) =>
-      createLog(
-        token.contract,
-        tx,
+  return getTxEvents(token, [
+    {
+      name: 'Transfer',
+      events: transferEvents,
+      encode: (e: Erc20TransferEvent) =>
+        erc20Iface.encodeEventLog('Transfer', [e.from, e.to, e.value]),
+    },
+    {
+      name: 'Approval',
+      events: approvalEvents,
+      encode: (e: Erc20ApprovalEvent) =>
         erc20Iface.encodeEventLog('Approval', [e.owner, e.spender, e.value]),
-      ),
-    );
+    },
+  ]);
+}
 
-    const transferLogs = [...transferEvents].map((e) =>
-      createLog(token.contract, tx, erc20Iface.encodeEventLog('Transfer', [e.from, e.to, e.value])),
-    );
+export async function getErc721TxEvents(token: TokenRecord) {
+  const transferEvents = await Database.all<any>(`
+      SELECT *
+      FROM (
+          SELECT from_a.address AS "from", to_a.address AS "to", e.transaction_id, e.token_id, address_a.address AS "contract"
+          FROM erc_721_transfer_events e 
+              JOIN addresses from_a ON e.from_id = from_a.address_id
+              JOIN addresses to_a ON e.to_id = to_a.address_id
+              JOIN contracts contract_a ON e.contract_id = contract_a.contract_id
+              JOIN addresses address_a ON contract_a.address_id = address_a.address_id
+      ) AS e
+      WHERE e.contract = "${token.contract}"
+    `);
+  const approvalEvents = await Database.all<any>(`
+      SELECT *
+      FROM (
+          SELECT owner_a.address AS "owner", approved_a.address AS "approved", e.token_id, e.transaction_id, address_a.address AS "contract"
+          FROM erc_721_approval_events e 
+              JOIN addresses owner_a ON e.owner_id = owner_a.address_id
+              JOIN addresses approved_a ON e.approved_id = approved_a.address_id
+              JOIN contracts contract_a ON e.contract_id = contract_a.contract_id
+              JOIN addresses address_a ON contract_a.address_id = address_a.address_id
+      ) AS e
+      WHERE e.contract = "${token.contract}"
+    `);
 
-    const event = createTxEvent(tx, [...transferLogs, ...approvalLogs]);
-    events.push(event);
-  }
+  // approvalForAll table is empty
 
-  return events;
+  return getTxEvents(token, [
+    {
+      name: 'Transfer',
+      events: transferEvents,
+      encode: (e: Erc721TransferEvent) =>
+        erc721Iface.encodeEventLog('Transfer', [e.from, e.to, e.token_id]),
+    },
+    {
+      name: 'Approval',
+      events: approvalEvents,
+      encode: (e: Erc721ApprovalEvent) =>
+        erc721Iface.encodeEventLog('Approval', [e.owner, e.approved, e.token_id]),
+    },
+  ]);
 }
 
 export function* generateBlocks(

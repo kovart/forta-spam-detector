@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import { Network } from 'forta-agent';
+import { Network, TransactionEvent } from 'forta-agent';
 import dotenv from 'dotenv';
 
 import Logger from '../src/utils/logger';
@@ -10,7 +10,13 @@ import { AnalysisContext } from '../src/analyzer/types';
 import { SpamDetector } from '../src/detector';
 import { delay } from './utils/utils';
 import { PUBLIC_RPC_URLS_BY_NETWORK } from '../src/contants';
-import { formatDate, generateBlocks, getErc20TxEvents, readTokens } from './helpers';
+import {
+  formatDate,
+  generateBlocks,
+  getErc20TxEvents,
+  getErc721TxEvents,
+  readTokens,
+} from './helpers';
 
 dotenv.config();
 
@@ -36,7 +42,10 @@ export type TokenTestResult = {
   finalizedAt: number;
 };
 
-async function testErc20Tokens(tokens: TokenRecord[]) {
+async function testTokens(
+  tokens: TokenRecord[],
+  fetch: (token: TokenRecord) => Promise<TransactionEvent[]>,
+) {
   const provider = new ethers.providers.JsonRpcBatchProvider(RPC_URL);
   const detector = new SpamDetector(provider, 0);
   const resultStorage = getTestResultStorage(NETWORK);
@@ -63,7 +72,7 @@ async function testErc20Tokens(tokens: TokenRecord[]) {
 
     detector.addTokenToWatchList(tokenContract.type as TokenStandard, tokenContract);
 
-    const events = await getErc20TxEvents(token);
+    const events = await fetch(token);
 
     let isSpamDetected = false;
     let isAssessmentChanged = false;
@@ -181,7 +190,14 @@ async function testErc20Tokens(tokens: TokenRecord[]) {
 async function main() {
   const tokens = (await readTokens()).filter((t) => t.type !== 'Unknown');
 
-  await testErc20Tokens(tokens.filter((t) => t.type === TokenStandard.Erc20));
+  await testTokens(
+    tokens.filter((t) => t.type === TokenStandard.Erc20),
+    getErc20TxEvents,
+  );
+  await testTokens(
+    tokens.filter((t) => t.type === TokenStandard.Erc721),
+    getErc721TxEvents,
+  );
 }
 
 main().catch((e) => {
