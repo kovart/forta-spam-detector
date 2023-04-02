@@ -1,4 +1,5 @@
 import { ethers } from 'ethers';
+import { shuffle } from 'lodash';
 
 import { TokenEvent, TokenStandard } from '../../types';
 import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
@@ -7,6 +8,7 @@ export const SLEEP_MINT_MODULE_KEY = 'SleepMint';
 
 type SleepMintInfo = {
   owner: string;
+  spender: string;
   isPassivelyApproved: boolean;
 };
 
@@ -39,7 +41,7 @@ class SleepMintModule extends AnalyzerModule {
     const directApprovals = new Map<string, Set<string>>();
     const passiveApprovals = new Map<string, Set<string>>();
 
-    // Normalize events that we can apply common logic for them
+    // Normalize events so that we can apply common handlers for them
     const allApprovalEvents: (TokenEvent & { owner: string; spender: string })[] = [];
 
     if (token.type === TokenStandard.Erc20) {
@@ -70,13 +72,17 @@ class SleepMintModule extends AnalyzerModule {
       }
     }
 
-    const sleepMints: SleepMintInfo[] = [];
-    const sleepMintTxs: string[] = [];
+    const sleepMintTxSet = new Set<string>();
+    const sleepMintsByOwner = new Map<string, SleepMintInfo[]>();
     if (token.type === TokenStandard.Erc20) {
       const transferEvents = storage.erc20TransferEventsByToken.get(token.address) || [];
 
       for (const event of transferEvents) {
-        if (event.from === ethers.constants.AddressZero || event.transaction.from === event.from)
+        if (
+          event.from === ethers.constants.AddressZero ||
+          event.transaction.from === event.from ||
+          event.transaction.from === event.to
+        )
           continue;
 
         // Skip if transaction is legal
@@ -85,16 +91,21 @@ class SleepMintModule extends AnalyzerModule {
         const isPassivelyApproved =
           passiveApprovals.get(event.from)?.has(event.transaction.from) || false;
 
-        sleepMints.push({ owner: event.from, isPassivelyApproved });
-        sleepMintTxs.push(event.transaction.hash);
+        let mints = sleepMintsByOwner.get(event.from);
+        if (!mints) {
+          mints = [];
+          sleepMintsByOwner.set(event.to, mints);
+        }
+        mints.push({ owner: event.from, spender: event.to, isPassivelyApproved });
+        sleepMintTxSet.add(event.transaction.hash);
       }
     }
 
-    if (sleepMints.length > 0) {
+    if (sleepMintTxSet.size > 0) {
       detected = true;
       metadata = {
-        sleepMints,
-        sleepMintTxs,
+        sleepMints: [...sleepMintsByOwner.values()].flat(),
+        sleepMintTxs: [...sleepMintTxSet],
       };
     }
 
@@ -104,9 +115,9 @@ class SleepMintModule extends AnalyzerModule {
   simplifyMetadata(metadata: SleepMintModuleMetadata): SleepMintModuleShortMetadata {
     return {
       sleepMintCount: metadata.sleepMints.length,
-      sleepMintShortList: metadata.sleepMints.slice(0, 15),
+      sleepMintShortList: shuffle(metadata.sleepMints).slice(0, 15),
       sleepMintTxCount: metadata.sleepMintTxs.length,
-      sleepMintTxShortList: metadata.sleepMintTxs.slice(0, 15),
+      sleepMintTxShortList: shuffle(metadata.sleepMintTxs).slice(0, 15),
     };
   }
 }
