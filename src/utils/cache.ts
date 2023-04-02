@@ -1,3 +1,5 @@
+import { utils } from 'ethers';
+
 import Logger from './logger';
 
 interface CacheValue<T> {
@@ -41,6 +43,11 @@ class Cache<T extends unknown = unknown> {
     } else {
       this.entryMap.delete(key);
     }
+  }
+
+  // A special function to use with has()
+  public unsafeGet(key: string): T {
+    return this.entryMap.get(key)!.value as T;
   }
 
   public clearExpired(): void {
@@ -133,13 +140,14 @@ class Memoizer {
 
     if (!scope) throw new Error(`Scope hasn't been initialized`);
 
-    const hash = [queryKey, ...queryArgs].join('.');
+    const key = [queryKey, ...queryArgs].join('.');
+    const hash = utils.keccak256(utils.defaultAbiCoder.encode(['string'], [key])).slice(2);
 
-    Logger.trace(`Querying hash: ${hash}`);
+    Logger.trace(`Querying key: ${key} (${hash.slice(0, 10)}...)`);
 
     // undefined is also a valid value
     if (scope.has(hash)) {
-      const result = scope.get(hash)!;
+      const result = scope.unsafeGet(hash);
       if (result.thrown) {
         throw result.value;
       } else {
