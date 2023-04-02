@@ -4,17 +4,15 @@ import { TokenContract } from './types';
 
 import { AnalysisContext } from './analyzer/types';
 
-const BASE_ALERT_ID = 'AK-TOKEN-SPAM-BOT';
+const BASE_ALERT_ID = 'SPAM-TOKEN';
 const NEW_ALERT_ID = `${BASE_ALERT_ID}-NEW`;
 const UPDATE_ALERT_ID = `${BASE_ALERT_ID}-UPDATE`;
 const REMOVE_ALERT_ID = `${BASE_ALERT_ID}-REMOVE`;
 
-// TODO Simplify analysis
-
 export function createSpamNewFinding(token: TokenContract, analysis: AnalysisContext) {
   return Finding.from({
     alertId: NEW_ALERT_ID,
-    name: 'Token Spam',
+    name: 'Spam Token',
     description: '',
     type: FindingType.Suspicious,
     severity: FindingSeverity.Low,
@@ -32,13 +30,11 @@ export function createSpamNewFinding(token: TokenContract, analysis: AnalysisCon
 export function createSpamUpdateFinding(
   token: TokenContract,
   currAnalysis: AnalysisContext,
-  prevAnalysis: AnalysisContext,
+  prevAnalysis: AnalysisContext, // currently not used
 ) {
-  // TODO show difference
-
   return Finding.from({
     alertId: UPDATE_ALERT_ID,
-    name: 'Token Spam',
+    name: 'Spam Token',
     description: '',
     type: FindingType.Suspicious,
     severity: FindingSeverity.Low,
@@ -54,11 +50,9 @@ export function createSpamUpdateFinding(
 }
 
 export function createSpamRemoveFinding(token: TokenContract, currAnalysis: AnalysisContext) {
-  // TODO show difference
-
   return Finding.from({
     alertId: REMOVE_ALERT_ID,
-    name: 'Token Spam',
+    name: 'Spam Token',
     description: '',
     type: FindingType.Info,
     severity: FindingSeverity.Info,
