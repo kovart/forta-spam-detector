@@ -30,7 +30,7 @@ export type AirdropModuleShortMetadata = {
 
 export const AIRDROP_MODULE_KEY = 'Airdrop';
 export const AIRDROP_RECEIVERS_THRESHOLD = 49;
-export const AIRDROP_TIME_WINDOW = 4 * 24 * 60 * 60; // 4d
+export const AIRDROP_WINDOW_TIME = 4 * 24 * 60 * 60; // 4d
 
 // Criteria:
 // 1. The person receiving the mint didn't initiate (no claim action)
@@ -79,142 +79,145 @@ class AirdropModule extends AnalyzerModule {
       );
     }
 
-    for (const transferEvent of transferEvents) {
-      const sender = transferEvent.transaction.from;
+    // If we have exactly the same number of events, then we don't need to perform this again
+    await memo(AIRDROP_MODULE_KEY, [transferEvents.size], async () => {
+      for (const transferEvent of transferEvents) {
+        const sender = transferEvent.transaction.from;
 
-      if (token.type === TokenStandard.Erc20) {
-        // Zero transfer phishing?
-        if ((transferEvent as Erc20TransferEvent).value === '0') continue;
-      }
-
-      // Claim or exchange action?
-      if (sender == transferEvent.to) continue;
-
-      let transferSet = transfersBySender.get(sender);
-      if (!transferSet) {
-        transferSet = new Set();
-        transfersBySender.set(sender, transferSet);
-      }
-
-      transferSet.add({
-        receiver: transferEvent.to,
-        tx: transferEvent.transaction,
-      });
-    }
-
-    type AirdropData = {
-      receivers: string[];
-      txHashes: string[];
-      interval: [number, number];
-    };
-
-    let t0 = performance.now();
-    // Detect senders with signs of an airdrop
-    const airdropsBySender = new Map<string, AirdropData>();
-    let iterations = 0;
-    for (const [sender, transferSet] of transfersBySender) {
-      const transfers = [...transferSet];
-      const txHashSet = new Set<string>();
-      const receiverSet = new Set<string>();
-
-      for (let startIndex = 0; startIndex < transfers.length; startIndex++) {
-        const startTransfer = transfers[startIndex];
-
-        let detected = false;
-        let interval: [number, number];
-
-        receiverSet.clear();
-        txHashSet.clear();
-
-        for (let t = startIndex; t < transfers.length; t++) {
-          const endTransfer = transfers[t];
-
-          iterations++;
-
-          if (endTransfer.tx.timestamp - startTransfer.tx.timestamp > AIRDROP_TIME_WINDOW) break;
-
-          receiverSet.add(endTransfer.receiver);
-          txHashSet.add(endTransfer.tx.hash);
-
-          if (receiverSet.size > AIRDROP_RECEIVERS_THRESHOLD) {
-            detected = true;
-            interval = [startTransfer.tx.timestamp, endTransfer.tx.timestamp];
-            break;
-          }
+        if (token.type === TokenStandard.Erc20) {
+          // Zero transfer phishing?
+          if ((transferEvent as Erc20TransferEvent).value === '0') continue;
         }
 
-        if (detected) {
-          airdropsBySender.set(sender, {
-            interval: interval!,
-            receivers: [...receiverSet],
-            txHashes: [...txHashSet],
-          });
-          // Go to next sender
-          break;
-        }
-      }
-    }
-    Logger.trace(`Scanned for airdrops in ${performance.now() - t0}ms`);
+        // Claim or exchange action?
+        if (sender == transferEvent.to) continue;
 
-    t0 = performance.now();
-    // Check if receivers are EOAs
-    for (const [sender, airdrop] of airdropsBySender) {
-      const { receivers } = airdrop;
-      const EOAs = [];
-
-      for (const batch of chunk(receivers, 4)) {
-        if (EOAs.length > AIRDROP_RECEIVERS_THRESHOLD) {
-          // This is enough to confirm the airdrop
-          break;
+        let transferSet = transfersBySender.get(sender);
+        if (!transferSet) {
+          transferSet = new Set();
+          transfersBySender.set(sender, transferSet);
         }
 
-        // Execute 4 queries in parallel.
-        // If we use JsonRpcBatchProvider, this will help us complete the task faster
-        const codes = await Promise.all(
-          batch.map((receiver) => memo('getCode', [receiver], () => provider.getCode(receiver))),
-        );
-
-        for (let i = 0; i < batch.length; i++) {
-          if (codes[i] === '0x') EOAs.push(batch[i]);
-        }
-      }
-
-      if (EOAs.length <= AIRDROP_RECEIVERS_THRESHOLD) {
-        airdropsBySender.delete(sender);
-      }
-    }
-    Logger.trace(`Checked for EOAs in ${performance.now() - t0}ms`);
-
-    // Check if detected at least one airdrop
-    if (airdropsBySender.size > 0) {
-      detected = true;
-
-      const receivers = new Set<string>();
-      const txHashes = new Set<string>();
-
-      // Pushing all receivers of all transfers from senders
-      // noticed engaging in the airdrop campaign
-      for (const sender of airdropsBySender.keys()) {
-        transfersBySender.get(sender)!.forEach((t) => {
-          receivers.add(t.receiver);
-          txHashes.add(t.tx.hash);
+        transferSet.add({
+          receiver: transferEvent.to,
+          tx: transferEvent.transaction,
         });
       }
 
-      let airdropStartTime = Infinity;
-      for (const airdrop of airdropsBySender.values()) {
-        if (airdrop.interval[0] < airdropStartTime) {
-          airdropStartTime = airdrop.interval[0];
+      type AirdropData = {
+        receivers: string[];
+        txHashes: string[];
+        interval: [number, number];
+      };
+
+      let t0 = performance.now();
+      // Detect senders with signs of an airdrop
+      const airdropsBySender = new Map<string, AirdropData>();
+      let iterations = 0;
+      for (const [sender, transferSet] of transfersBySender) {
+        const transfers = [...transferSet];
+        const txHashSet = new Set<string>();
+        const receiverSet = new Set<string>();
+
+        for (let startIndex = 0; startIndex < transfers.length; startIndex++) {
+          const startTransfer = transfers[startIndex];
+
+          let detected = false;
+          let interval: [number, number];
+
+          receiverSet.clear();
+          txHashSet.clear();
+
+          for (let t = startIndex; t < transfers.length; t++) {
+            const endTransfer = transfers[t];
+
+            iterations++;
+
+            if (endTransfer.tx.timestamp - startTransfer.tx.timestamp > AIRDROP_WINDOW_TIME) break;
+
+            receiverSet.add(endTransfer.receiver);
+            txHashSet.add(endTransfer.tx.hash);
+
+            if (receiverSet.size > AIRDROP_RECEIVERS_THRESHOLD) {
+              detected = true;
+              interval = [startTransfer.tx.timestamp, endTransfer.tx.timestamp];
+              break;
+            }
+          }
+
+          if (detected) {
+            airdropsBySender.set(sender, {
+              interval: interval!,
+              receivers: [...receiverSet],
+              txHashes: [...txHashSet],
+            });
+            // Go to next sender
+            break;
+          }
         }
       }
+      Logger.trace(`Scanned for airdrops in ${performance.now() - t0}ms`);
 
-      metadata = {
-        receivers: [...receivers],
-        senders: [...airdropsBySender.keys()],
-        txHashes: [...txHashes],
-        startTime: airdropStartTime,
-      };
-    }
+      t0 = performance.now();
+      // Check if receivers are EOAs
+      for (const [sender, airdrop] of airdropsBySender) {
+        const { receivers } = airdrop;
+        const EOAs = [];
+
+        for (const batch of chunk(receivers, 4)) {
+          if (EOAs.length > AIRDROP_RECEIVERS_THRESHOLD) {
+            // This is enough to confirm the airdrop
+            break;
+          }
+
+          // Execute 4 queries in parallel.
+          // If we use JsonRpcBatchProvider, this will help us complete the task faster
+          const codes = await Promise.all(
+            batch.map((receiver) => memo('getCode', [receiver], () => provider.getCode(receiver))),
+          );
+
+          for (let i = 0; i < batch.length; i++) {
+            if (codes[i] === '0x') EOAs.push(batch[i]);
+          }
+        }
+
+        if (EOAs.length <= AIRDROP_RECEIVERS_THRESHOLD) {
+          airdropsBySender.delete(sender);
+        }
+      }
+      Logger.trace(`Checked for EOAs in ${performance.now() - t0}ms`);
+
+      // Check if detected at least one airdrop
+      if (airdropsBySender.size > 0) {
+        detected = true;
+
+        const receivers = new Set<string>();
+        const txHashes = new Set<string>();
+
+        // Pushing all receivers of all transfers from senders
+        // noticed engaging in the airdrop campaign
+        for (const sender of airdropsBySender.keys()) {
+          transfersBySender.get(sender)!.forEach((t) => {
+            receivers.add(t.receiver);
+            txHashes.add(t.tx.hash);
+          });
+        }
+
+        let airdropStartTime = Infinity;
+        for (const airdrop of airdropsBySender.values()) {
+          if (airdrop.interval[0] < airdropStartTime) {
+            airdropStartTime = airdrop.interval[0];
+          }
+        }
+
+        metadata = {
+          receivers: [...receivers],
+          senders: [...airdropsBySender.keys()],
+          txHashes: [...txHashes],
+          startTime: airdropStartTime,
+        };
+      }
+    });
 
     context[AIRDROP_MODULE_KEY] = { detected, metadata };
 
