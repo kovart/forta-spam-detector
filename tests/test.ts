@@ -1,5 +1,6 @@
 import { ethers } from 'ethers';
 import { Network } from 'forta-agent';
+import dotenv from 'dotenv';
 
 import Logger from '../src/utils/logger';
 import AirdropModule from '../src/analyzer/modules/airdrop';
@@ -11,10 +12,14 @@ import { delay } from './utils/utils';
 import { PUBLIC_RPC_URLS_BY_NETWORK } from '../src/contants';
 import { formatDate, generateBlocks, getErc20TxEvents, readTokens } from './helpers';
 
+dotenv.config();
+
 const TICK_INTERVAL = 12 * 60 * 60; // 12h
 const OBSERVATION_TIME = 4 * 31 * 24 * 60 * 60; // 4 months
 const NETWORK = Network.MAINNET;
-const PUBLIC_RPC = PUBLIC_RPC_URLS_BY_NETWORK[NETWORK][0];
+const RPC_URL = process.env.PROVIDER_RPC_URL || PUBLIC_RPC_URLS_BY_NETWORK[NETWORK][0];
+
+console.log(`RPC URL: ${RPC_URL}`);
 
 export type TokenTestResult = {
   type: TokenStandard;
@@ -32,7 +37,7 @@ export type TokenTestResult = {
 };
 
 async function testErc20Tokens(tokens: TokenRecord[]) {
-  const provider = new ethers.providers.JsonRpcBatchProvider(PUBLIC_RPC);
+  const provider = new ethers.providers.JsonRpcBatchProvider(RPC_URL);
   const detector = new SpamDetector(provider, 0);
   const resultStorage = getTestResultStorage(NETWORK);
   const metadataStorage = getTestMetadataStorage(NETWORK);
