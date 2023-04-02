@@ -1,6 +1,7 @@
 import { AIRDROP_MODULE_KEY, AirdropModuleMetadata } from './airdrop';
 import HoneyPotChecker, { HoneypotAnalysisMetadata } from '../../utils/honeypot';
 import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
+import Logger from '../../utils/logger';
 
 export const TOO_MANY_HONEY_POT_OWNERS_MODULE_KEY = 'TooManyHoneyPotOwners';
 export const HONEYPOT_THRESHOLD = 8;
@@ -39,8 +40,12 @@ class TooManyHoneyPotOwnersModule extends AnalyzerModule {
     if (airdropMetadata) {
       const receivers = airdropMetadata.receivers;
 
-      for (const receiver of receivers) {
+      for (let i = 0; i < receivers.length; i++) {
+        const receiver = receivers[i];
+
         if (receiver === token.deployer || receiver === token.address) continue;
+
+        Logger.debug(`[${i}/${receivers.length}] Testing address if it is a honeypot: ${receiver}`);
 
         const result = await memo('honeypot', [receiver], () =>
           this.honeypotChecker.testAddress(receiver, provider, blockNumber),
