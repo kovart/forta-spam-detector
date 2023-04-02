@@ -2,7 +2,7 @@ import { SimplifiedTransaction, TokenStandard } from '../../types';
 import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
 
 export const HIGH_ACTIVITY_MODULE_KEY = 'HighActivity';
-export const UNIQUE_SENDERS_THRESHOLD = 60;
+export const MIN_UNIQUE_SENDERS = 50;
 
 export type HighActivityModuleMetadata = {
   senders: string[];
@@ -60,7 +60,7 @@ class HighActivityModule extends AnalyzerModule {
 
     transactionSet.forEach((t) => sendersSet.add(t.from));
 
-    detected = sendersSet.size > UNIQUE_SENDERS_THRESHOLD;
+    detected = sendersSet.size > MIN_UNIQUE_SENDERS;
     metadata = {
       senders: [...sendersSet],
       startTime: token.timestamp,
