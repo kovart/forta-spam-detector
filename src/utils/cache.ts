@@ -1,3 +1,5 @@
+import Logger from './logger';
+
 interface CacheValue<T> {
   value: T;
   thrown: boolean;
@@ -110,10 +112,10 @@ class Memoizer {
     } else if (args.length === 4) {
       scopeKey = args[0];
       queryKey = args[1];
-      if (typeof args[2] === 'object') {
-        opts = args[2];
+      if (Array.isArray(args[2])) {
+        queryArgs = args[2] as TArgs;
       } else {
-        queryArgs = args[2];
+        opts = args[2];
       }
       queryFn = args[3];
     } else if (args.length === 5) {
@@ -132,6 +134,8 @@ class Memoizer {
     if (!scope) throw new Error(`Scope hasn't been initialized`);
 
     const hash = [queryKey, ...queryArgs].join('.');
+
+    Logger.trace(`Querying hash: ${hash}`);
 
     // undefined is also a valid value
     if (scope.has(hash)) {
