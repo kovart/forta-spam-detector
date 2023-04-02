@@ -15,8 +15,6 @@ const TICK_INTERVAL = 12 * 60 * 60; // 12h
 const OBSERVATION_TIME = 4 * 31 * 24 * 60 * 60; // 4 months
 const NETWORK = Network.MAINNET;
 const PUBLIC_RPC = PUBLIC_RPC_URLS_BY_NETWORK[NETWORK][0];
-// Temp solution to speedup first-time tests
-const LIMITER = 800;
 
 export type TokenTestResult = {
   type: TokenStandard;
@@ -39,8 +37,17 @@ async function testErc20Tokens(tokens: TokenRecord[]) {
   const resultStorage = getTestResultStorage(NETWORK);
   const metadataStorage = getTestMetadataStorage(NETWORK);
 
+  const testedTokens = await resultStorage.read();
+  const testedTokenSet = new Set<string>(testedTokens.map((t) => t.contract));
+
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
+
+    if (testedTokenSet.has(token.contract)) {
+      console.log(`Already tested token, skip: ${token.contract}`);
+      continue;
+    }
+
     const tokenContract: TokenContract = {
       type: token.type as TokenStandard,
       address: token.contract,
