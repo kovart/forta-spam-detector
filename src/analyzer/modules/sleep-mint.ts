@@ -81,7 +81,8 @@ class SleepMintModule extends AnalyzerModule {
         if (
           event.from === ethers.constants.AddressZero ||
           event.transaction.from === event.from ||
-          event.transaction.from === event.to
+          event.transaction.from === event.to ||
+          event.from === token.address
         )
           continue;
 
