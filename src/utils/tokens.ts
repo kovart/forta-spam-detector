@@ -81,8 +81,15 @@ class TokenProvider {
 
   public async getList(): Promise<TokenRecord[]> {
     return await this.mutex.runExclusive(async () => {
-      if (!this.cache) this.cache = await this.storage.read();
-      if (this.cache && this.cache.updatedAt + this.ttl <= Date.now()) {
+      if (!this.cache) {
+        Logger.debug('There are no token cache');
+        this.cache = await this.storage.read();
+        if (this.cache) {
+          Logger.debug('Cache has been successfully loaded');
+        }
+      }
+
+      if (this.cache && Date.now() - this.cache.updatedAt <= this.ttl) {
         Logger.debug('Using tokens cache');
         return this.cache.tokens;
       }
