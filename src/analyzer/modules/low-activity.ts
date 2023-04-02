@@ -4,8 +4,8 @@ import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
 
 export const LOW_ACTIVITY_MODULE_KEY = 'LowActivityAfterAirdrop';
 export const MIN_AIRDROP_RECEIVERS = 100;
-export const MIN_ACTIVE_RECEIVERS = 7;
-export const DELAY_AFTER_AIRDROP = 4 * 24 * 60 * 60; // 4d
+export const MIN_ACTIVE_RECEIVERS = 5;
+export const DELAY_AFTER_AIRDROP = 14 * 24 * 60 * 60; // 14d
 
 export type LowActivityModuleMetadata = {
   activeReceivers: string[];
