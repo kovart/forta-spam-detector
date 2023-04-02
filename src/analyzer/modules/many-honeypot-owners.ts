@@ -8,7 +8,8 @@ import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
 
 export const TOO_MANY_HONEY_POT_OWNERS_MODULE_KEY = 'TooManyHoneyPotOwners';
 export const HONEYPOT_THRESHOLD = 25;
-export const MAX_ACCOUNTS = 3000;
+export const MAX_ACCOUNTS = 1000;
+export const CONCURRENCY = 8;
 
 type Honeypot = { address: string; metadata: HoneypotAnalysisMetadata };
 
@@ -75,7 +76,7 @@ class TooManyHoneyPotOwnersModule extends AnalyzerModule {
             this.honeypotChecker.testAddress(receiver, provider, blockNumber),
           );
 
-          if (result.honeypot) {
+          if (result.isHoneypot) {
             honeypots.push({ address: receiver, metadata: result.metadata });
           }
 
@@ -85,14 +86,12 @@ class TooManyHoneyPotOwnersModule extends AnalyzerModule {
           Logger.error(e);
           receiverQueue.kill();
         }
-      }, 2);
+      }, CONCURRENCY);
 
       for (let i = 0; i < receivers.length; i++) {
         const receiver = receivers[i];
 
         if (receiver === token.deployer || receiver === token.address) continue;
-
-        Logger.debug(`[${i}/${receivers.length}] Testing address if it is a honeypot: ${receiver}`);
 
         receiverQueue.push(receiver);
       }
