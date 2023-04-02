@@ -1,5 +1,7 @@
 import { chunk } from 'lodash';
 
+import Logger from '../../utils/logger';
+import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
 import {
   Erc1155TransferBatchEvent,
   Erc1155TransferSingleEvent,
@@ -8,7 +10,6 @@ import {
   SimplifiedTransaction,
   TokenStandard,
 } from '../../types';
-import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
 
 export type AirdropModuleMetadata = {
   senders: string[];
@@ -49,10 +50,12 @@ class AirdropModule extends AnalyzerModule {
   static Key = AIRDROP_MODULE_KEY;
 
   async scan(params: ScanParams): Promise<ModuleScanReturn> {
-    const { token, storage, provider, context } = params;
+    const { token, storage, provider, memoizer, context } = params;
 
     let detected = false;
     let metadata: AirdropModuleMetadata | undefined = undefined;
+
+    const memo = memoizer.getScope(token.address);
 
     const transfersBySender = new Map<
       string,
@@ -105,6 +108,7 @@ class AirdropModule extends AnalyzerModule {
       interval: [number, number];
     };
 
+    let t0 = performance.now();
     // Detect senders with signs of an airdrop
     const airdropsBySender = new Map<string, AirdropData>();
     for (const [sender, transferSet] of transfersBySender) {
@@ -143,7 +147,9 @@ class AirdropModule extends AnalyzerModule {
         }
       }
     }
+    Logger.trace(`Scanned for airdrops in ${performance.now() - t0}ms`);
 
+    t0 = performance.now();
     // Check if receivers are EOAs
     for (const [sender, airdrop] of airdropsBySender) {
       const { receivers } = airdrop;
@@ -157,7 +163,9 @@ class AirdropModule extends AnalyzerModule {
 
         // Execute 4 queries in parallel.
         // If we use JsonRpcBatchProvider, this will help us complete the task faster
-        const codes = await Promise.all(batch.map((r) => provider.getCode(r)));
+        const codes = await Promise.all(
+          batch.map((receiver) => memo('getCode', [receiver], () => provider.getCode(receiver))),
+        );
 
         for (let i = 0; i < batch.length; i++) {
           if (codes[i] === '0x') EOAs.push(batch[i]);
@@ -168,6 +176,7 @@ class AirdropModule extends AnalyzerModule {
         airdropsBySender.delete(sender);
       }
     }
+    Logger.trace(`Checked for EOAs in ${performance.now() - t0}ms`);
 
     // Check if detected at least one airdrop
     if (airdropsBySender.size > 0) {
