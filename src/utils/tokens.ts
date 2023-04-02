@@ -4,6 +4,7 @@ import { Network } from 'forta-agent';
 import { groupBy } from 'lodash';
 import { Mutex } from 'async-mutex';
 
+import Logger from './logger';
 import { JsonStorage } from './storage';
 import { delay, retry } from './helpers';
 import { erc20Iface, PUBLIC_RPC_URLS_BY_NETWORK } from '../contants';
@@ -48,8 +49,11 @@ export const NETWORK_BY_COINGECKO_PLATFORM_ID: Record<CoinGeckoPlatformId, Netwo
   [CoinGeckoPlatformId.OPTIMISM]: Network.OPTIMISM,
 };
 
-// @ts-ignore
-export const COINGECKO_PLATFORM_ID_BY_NETWORK: Record<Network, CoinGeckoPlatformId> = {};
+export const COINGECKO_PLATFORM_ID_BY_NETWORK = {} as Record<Network, CoinGeckoPlatformId>;
+Object.entries(NETWORK_BY_COINGECKO_PLATFORM_ID).forEach(
+  // @ts-ignore
+  ([platformId, network]) => (COINGECKO_PLATFORM_ID_BY_NETWORK[network] = platformId),
+);
 
 export type TokenRecord = {
   name: string;
@@ -78,13 +82,16 @@ class TokenProvider {
   public async getList(): Promise<TokenRecord[]> {
     return await this.mutex.runExclusive(async () => {
       if (!this.cache) this.cache = await this.storage.read();
-      if (this.cache && this.cache.updatedAt + this.ttl <= Date.now()) return this.cache.tokens;
+      if (this.cache && this.cache.updatedAt + this.ttl <= Date.now()) {
+        Logger.debug('Using tokens cache');
+        return this.cache.tokens;
+      }
 
       try {
         await this.fetch();
       } catch (e) {
         if (this.cache) {
-          console.error('Caught fetch error. Fallback to the cached version', e);
+          Logger.error('Caught fetch error. Fallback to the cached version', e);
           return this.cache.tokens;
         }
 
@@ -92,6 +99,7 @@ class TokenProvider {
       }
 
       await this.storage.write(this.cache!);
+      Logger.debug('Tokens have been successfully fetched and cached');
 
       return this.cache!.tokens;
     });
@@ -108,6 +116,8 @@ class TokenProvider {
   }
 
   private async fetchNfts(): Promise<TokenRecord[]> {
+    Logger.debug('Fetching NFTs from CoinGecko...');
+
     let nfts: CoinGeckoNft[] = [];
 
     let page = 0;
@@ -124,6 +134,8 @@ class TokenProvider {
       total = Number(response.headers?.total || 0);
       nfts.push(...response.data);
       page++;
+
+      Logger.debug(`[${nfts.length}/${total}] Fetched page: ${page}`);
 
       await delay(10 * 1000);
     }
@@ -153,10 +165,14 @@ class TokenProvider {
   }
 
   private async fetchCoins(): Promise<TokenRecord[]> {
+    Logger.debug('Fetching coins from CoinGecko...');
+
     const { data: coins } = await retry(() => axios.get<CoinGeckoCoin[]>(COINGECKO_COIN_API_URL), {
       wait: 2 * 60 * 1000,
       attempts: 5,
     });
+
+    Logger.debug(`Coins have been successfully fetched: ${coins.length}`);
 
     const tokens: TokenRecord[] = [];
 
@@ -175,6 +191,12 @@ class TokenProvider {
             address),
       );
 
+      if (Object.keys(deployments).length === 0) {
+        Logger.warn(`Skipping coin due to missing contract data: ${coin.name} (${coin.symbol})`);
+        Logger.debug(coin.platforms);
+        continue;
+      }
+
       tokens.push({
         name: coin.name,
         symbol: coin.symbol,
@@ -183,27 +205,61 @@ class TokenProvider {
       });
     }
 
-    // Unfortunately, Coingecko returns not quite correct names of tokens.
-    // For example the contract of the "Tether" token returns "Tether USD" when you call name(),
-    // while Coingecko returns just "Tether".
+    // Unfortunately, CoinGecko returns not quite correct names of tokens.
+    // For example the contract of the "Tether" token returns "Tether USD" when you call name() function,
+    // however CoinGecko returns just "Tether".
     // https://etherscan.io/address/0xdac17f958d2ee523a2206206994597c13d831ec7#readContract
 
-    const tokenCashByHash = new Map<string, TokenRecord>(
+    const tokenCacheByHash = new Map<string, TokenRecord>(
       (this.cache?.tokens || []).map((t) => [this.getTokenHash(t), t]),
     );
 
     // Get correct values for symbol() and name()
-    for (const token of tokens) {
-      const tokenCache = tokenCashByHash.get(this.getTokenHash(token));
+    let failedTokens = 0;
+    const maxFailedTokens = 3;
+    for (let i = 0; i < tokens.length; i++) {
+      const token = tokens[i];
+      const tokenCache = tokenCacheByHash.get(this.getTokenHash(token));
+
+      const log = (msg: string) => Logger.debug(`[${i}/${tokens.length}] ${msg}`);
 
       if (tokenCache) {
         token.symbol = tokenCache.symbol;
         token.name = tokenCache.name;
       } else {
-        const deployment = Object.entries(token.deployments)[0];
-        const meta = await this.fetchTokenMetadata(deployment[1], Number(deployment[0]) as Network);
-        token.symbol = meta.symbol;
-        token.name = meta.name;
+        const deployment = Object.entries(token.deployments).find((v) => v[1]);
+
+        if (!deployment) {
+          Logger.error(`Cannot find deployed contract for token ${token.name} (${token.symbol})`);
+          Logger.error(token.deployments);
+          continue;
+        }
+
+        const [network, tokenAddress] = deployment;
+
+        log(`Updating token metadata (${tokenAddress}): ${token.name} (${token.symbol})`);
+
+        try {
+          const meta = await this.fetchTokenMetadata(tokenAddress, Number(network) as Network);
+          log(
+            `Token metadata updated. Before: ${token.name} (${token.symbol}). After: ${meta.name} (${meta.symbol}).`,
+          );
+          token.symbol = meta.symbol.toLowerCase();
+          token.name = meta.name;
+          failedTokens = 0;
+        } catch (e) {
+          Logger.error('Failed to get token metadata.');
+          failedTokens++;
+          if (failedTokens >= maxFailedTokens) {
+            Logger.error(`Already failed ${failedTokens} tokens. Break the updating process`);
+            break;
+          } else {
+            // Some tokens return metadata in a slightly different standard.
+            // For example, this token returns bytes instead of strings, which causes an error when retrieving this data:
+            // https://etherscan.io/address/0x0d88ed6e74bbfd96b831231638b66c05571e824f#readContract
+            Logger.error('Skip token');
+          }
+        }
       }
     }
 
@@ -216,27 +272,32 @@ class TokenProvider {
     if (!rpcUrls) throw new Error(`No RPC urls for network: ${network}`);
 
     for (const rpcUrl of rpcUrls) {
+      Logger.debug(
+        `Fetching metadata with the following RPC url (${Network[network]}): ${rpcUrls}`,
+      );
+
       const provider = new ethers.providers.StaticJsonRpcProvider(rpcUrl);
       const contract = new ethers.Contract(address, erc20Iface, provider);
 
       try {
-        const symbol: string = await contract.symbol();
-        const name: string = await contract.name();
+        const symbol: string = await retry(() => contract.symbol());
+        const name: string = await retry(() => contract.name());
 
         return { symbol, name };
       } catch (e) {
-        console.error(e);
+        Logger.error('Cannot read token metadata');
+        Logger.error(e);
         // ignore, use the next rpc url
       }
     }
 
     throw new Error(
-      `Cannot fetch token metadata using the following rpc urls: ${rpcUrls.join(', ')}`,
+      `Cannot fetch token metadata using the following RPC urls: ${rpcUrls.join(', ')}`,
     );
   }
 
   getTokenHash(t: { name: string; symbol: string }) {
-    return `${t.name} (${t.symbol})`;
+    return `${t.name.toLowerCase()} (${t.symbol.toLowerCase()})`;
   }
 }
 
