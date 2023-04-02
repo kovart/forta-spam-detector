@@ -17,7 +17,7 @@ function log(title: string, tokens: TokenTestResult[]) {
     else if (!token.isSpam && token.isSpamDetected) falsePositives++;
     else if (!token.isSpam && !token.isSpamDetected) trueNegatives++;
 
-    if (token.spamDetectedAt > 0) {
+    if (token.isSpam && token.spamDetectedAt > 0) {
       spamDetectionTimeList.push(token.spamDetectedAt - token.deployedAt);
     }
 
@@ -26,9 +26,12 @@ function log(title: string, tokens: TokenTestResult[]) {
     }
   }
 
+  const spamTokens = tokens.filter((t) => t.isSpam);
+  const nonSpamTokens = tokens.filter((t) => !t.isSpam);
+
   console.log(
     [
-      `${title} (${tokens.length})`,
+      `${title}: ${spamTokens.length} Spam + ${nonSpamTokens.length} Good = ${tokens.length} tokens`,
       `------------------------`,
       `True Positives: ${truePositives}`,
       `True Negatives: ${trueNegatives}`,

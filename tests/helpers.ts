@@ -18,7 +18,7 @@ const getTxHash = (tx: SimplifiedTransaction) => `0x${tx.hash}${tx.blockNumber}$
 export const formatDate = (timestamp: number) => dayjs.unix(timestamp).format('DD-MM-YYYY HH:mm');
 
 export const formatDuration = (timestamp: number) =>
-  dayjs.duration(timestamp).format('DD HH:mm:ss');
+  dayjs.duration(timestamp, 'second').format('DD[d] HH[h]:mm[m]:ss[s]');
 
 function createLog(
   address: string,
