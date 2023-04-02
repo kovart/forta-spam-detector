@@ -4,6 +4,7 @@ import { Network } from 'forta-agent';
 import { Mutex } from 'async-mutex';
 
 import { JsonStorage } from './storage';
+import Logger from './logger';
 
 export const HoneypotSet = new Set([
   // vitalik.eth
@@ -74,6 +75,7 @@ export class EnsLeaderBoard {
       if (this.updatedAt === -1) {
         const cache = await this.storage.read();
         if (cache) {
+          Logger.debug('Reading ENS leaderboard cache.');
           this.updatedAt = cache.updatedAt;
           this.leaderByEns = new Map(cache.leaders.map((l) => [l.ens, l]));
         }
@@ -81,6 +83,7 @@ export class EnsLeaderBoard {
 
       if (this.updatedAt + EnsLeaderBoard.UPDATE_INTERVAL < Date.now()) {
         await this.update();
+        this.updatedAt = Date.now();
         await this.storage.write({
           updatedAt: this.updatedAt,
           leaders: [...this.leaderByEns.values()],
@@ -103,6 +106,8 @@ export class EnsLeaderBoard {
   }
 
   async fetchData() {
+    Logger.debug('Fetching ENS leaderboard...');
+
     const accounts: EnsLeader[] = [];
 
     const limit = 100;
@@ -126,6 +131,7 @@ export class EnsLeaderBoard {
           ranking: f.ranking,
         })),
       );
+      Logger.debug(`Fetched ${page} page`);
       if (accounts.length >= data.count || page >= maxPage) break;
     }
 
@@ -176,6 +182,8 @@ class HoneyPotChecker {
       };
     }
 
+    Logger.debug(`Hard coded address: ${metadata['HardCodedAccount']!.detected}`);
+
     const network = provider.network;
     const balance = await provider.getBalance(address, blockNumber);
 
@@ -191,12 +199,16 @@ class HoneyPotChecker {
       metadata['HighBalance']!.detected = true;
     }
 
+    Logger.debug(`High balance: ${metadata['HighBalance']!.detected}`);
+
     const name = await provider.lookupAddress(address);
 
     metadata['EnsRegistered'] = {
       detected: !!name,
       name: name || undefined,
     };
+
+    Logger.debug(`ENS registered: ${metadata['EnsRegistered']!.detected}`);
 
     if (name) {
       const leader = await this.leaderboard.get(name);
@@ -212,6 +224,8 @@ class HoneyPotChecker {
     } else {
       metadata['ManyTwitterFollowers'] = { detected: false };
     }
+
+    Logger.debug(`Many twitter followers: ${metadata['ManyTwitterFollowers']!.detected}`);
 
     return {
       honeypot:
