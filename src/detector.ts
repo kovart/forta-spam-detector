@@ -66,7 +66,9 @@ export class SpamDetector {
 
   private async handleTask(task: AnalyzerTask, callback: (err?: any) => void) {
     try {
+      const t0 = performance.now();
       const result = await task.run();
+      Logger.debug(`Task completed in ${performance.now() - t0}ms`);
 
       // check if it is still needed
       if (!this.storage.tokenByAddress.has(task.token.address)) {
