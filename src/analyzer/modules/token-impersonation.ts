@@ -31,8 +31,8 @@ class TokenImpersonationModule extends AnalyzerModule {
 
     const memo = memoizer.getScope(token.address);
 
-    let symbol: string;
-    let name: string;
+    let symbol: string | undefined;
+    let name: string | undefined;
 
     try {
       const contract = new ethers.Contract(token.address, erc20Iface, provider);
@@ -40,8 +40,9 @@ class TokenImpersonationModule extends AnalyzerModule {
       name = await memo('name', () => contract.name());
     } catch {
       // not implemented metadata
-      return;
     }
+
+    if (!symbol || !name) return;
 
     try {
       const tokens = await this.tokenProvider.getList();

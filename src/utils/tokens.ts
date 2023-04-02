@@ -304,7 +304,7 @@ class TokenProvider {
   }
 
   getTokenHash(t: { name: string; symbol: string }) {
-    return `${t.name.toLowerCase()} (${t.symbol.toLowerCase()})`;
+    return `${(t.name || '').toLowerCase()} (${(t.symbol || '').toLowerCase()})`;
   }
 }
 
