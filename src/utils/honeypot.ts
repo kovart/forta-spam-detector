@@ -8,6 +8,10 @@ import Logger from './logger';
 import { retry } from './helpers';
 import { PUBLIC_RPC_URLS_BY_NETWORK } from '../contants';
 
+const PUBLIC_ENS_PROVIDER = new ethers.providers.JsonRpcBatchProvider(
+  PUBLIC_RPC_URLS_BY_NETWORK[Network.MAINNET][0],
+);
+
 export const HoneypotSet = new Set([
   // vitalik.eth
   '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045',
@@ -87,7 +91,7 @@ export type HoneypotAnalysisMetadata = {
 };
 
 export type HoneypotAnalysisResult = {
-  honeypot: boolean;
+  isHoneypot: boolean;
   metadata: HoneypotAnalysisMetadata;
 };
 
@@ -215,12 +219,10 @@ class HoneyPotChecker {
 
     if (metadata['HardCodedAccount'].detected) {
       return {
-        honeypot: true,
+        isHoneypot: true,
         metadata: metadata,
       };
     }
-
-    Logger.debug(`Hard coded address: ${metadata['HardCodedAccount']!.detected}`);
 
     const network = provider.network;
     const balance = await retry(() => provider.getBalance(address, blockNumber));
@@ -237,13 +239,9 @@ class HoneyPotChecker {
       metadata['HighBalance']!.detected = true;
     }
 
-    Logger.debug(`High balance: ${metadata['HighBalance']!.detected}`);
-
     let ensProvider: ethers.providers.StaticJsonRpcProvider = provider;
     if (provider.network.chainId !== Network.MAINNET) {
-      ensProvider = new ethers.providers.StaticJsonRpcProvider(
-        PUBLIC_RPC_URLS_BY_NETWORK[Network.MAINNET][0],
-      );
+      ensProvider = PUBLIC_ENS_PROVIDER;
     }
 
     const name = await retry(() => ensProvider.lookupAddress(address));
@@ -252,8 +250,6 @@ class HoneyPotChecker {
       detected: !!name,
       name: name || undefined,
     };
-
-    Logger.debug(`ENS registered: ${metadata['EnsRegistered']!.detected}`);
 
     metadata['ManyTwitterFollowers'] = { detected: false };
 
@@ -268,10 +264,8 @@ class HoneyPotChecker {
       }
     }
 
-    Logger.debug(`Many twitter followers: ${metadata['ManyTwitterFollowers']!.detected}`);
-
     return {
-      honeypot:
+      isHoneypot:
         (metadata['HighBalance']!.detected && metadata['EnsRegistered']!.detected) ||
         metadata['ManyTwitterFollowers']!.detected,
       metadata: metadata,
