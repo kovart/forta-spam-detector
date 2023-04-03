@@ -1,8 +1,8 @@
 import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
 
 export const HIGH_ACTIVITY_MODULE_KEY = 'HighActivity';
-export const MIN_UNIQUE_SENDERS_TOTAL = 90;
-export const MIN_UNIQUE_SENDERS_IN_WINDOW_TIME = 30;
+export const MIN_UNIQUE_SENDERS_TOTAL = 200;
+export const MIN_UNIQUE_SENDERS_IN_WINDOW_TIME = 50;
 export const WINDOW_TIME = 7 * 24 * 60 * 60; // 7d
 
 export type HighActivityModuleMetadata = {
@@ -24,12 +24,12 @@ class HighActivityModule extends AnalyzerModule {
   static Key = HIGH_ACTIVITY_MODULE_KEY;
 
   async scan(params: ScanParams): Promise<ModuleScanReturn> {
-    const { token, transformer, context } = params;
+    const { token, storage, transformer, context } = params;
 
     let detected = false;
     let metadata: HighActivityModuleMetadata | undefined = undefined;
 
-    const transactionSet = transformer.transactions(token);
+    const transactionSet = storage.transactionsByToken.get(token.address) || new Set();
     const senderSet = new Set<string>([...transactionSet].map((t) => t.from));
 
     detected = senderSet.size > MIN_UNIQUE_SENDERS_TOTAL;

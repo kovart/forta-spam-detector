@@ -29,12 +29,12 @@ export type AirdropModuleShortMetadata = {
 };
 
 export const AIRDROP_MODULE_KEY = 'Airdrop';
-export const AIRDROP_RECEIVERS_THRESHOLD = 49;
+export const AIRDROP_RECEIVERS_THRESHOLD = 20;
 export const AIRDROP_WINDOW_TIME = 4 * 24 * 60 * 60; // 4d
 
 // Criteria:
 // 1. The person receiving the mint didn't initiate (no claim action)
-// 2. One sender with more than 49 unique receivers in a short interval of time (4 days)
+// 2. One sender with more than 20 unique receivers in a short interval of time (4 days)
 // 3. Receivers are EOAs
 // ----------
 // Random airdrop:
