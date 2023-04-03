@@ -7,6 +7,7 @@ import { Mutex } from 'async-mutex';
 import Logger from './logger';
 import { JsonStorage } from './storage';
 import { delay, retry } from './helpers';
+import { normalizeText } from './normalizer';
 import { erc20Iface, PUBLIC_RPC_URLS_BY_NETWORK } from '../contants';
 
 export enum CoinGeckoPlatformId {
@@ -315,7 +316,7 @@ class TokenProvider {
   }
 
   getTokenHash(t: { name: string; symbol: string }) {
-    return `${(t.name || '').toLowerCase()} (${(t.symbol || '').toLowerCase()})`;
+    return `${normalizeText(t.name || '')} (${normalizeText(t.symbol || '')})`;
   }
 }
 
