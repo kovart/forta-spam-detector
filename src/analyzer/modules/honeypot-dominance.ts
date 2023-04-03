@@ -82,21 +82,22 @@ class HoneyPotShareDominanceModule extends AnalyzerModule {
     )
       return;
 
-    Logger.debug(`Dominant accounts: ${dominantAccounts.length}`);
+    if (dominantAccounts.length > 0) {
+      Logger.debug(`Testing dominant accounts: ${dominantAccounts.length}`);
+    }
 
     let counter = 0;
     const accountQueue = queue<{ account: string; balance: BigNumber }>(async (task, callback) => {
       const { account, balance } = task;
 
-      Logger.debug(
-        `[${counter + 1}/${dominantAccounts.length}] ` +
-          `Testing address if it is a honeypot: ${account}`,
-      );
-
       try {
-        const result = await memo('honeypot', [account], () =>
-          this.honeypotChecker.testAddress(account, provider, blockNumber),
-        );
+        const result = await memo('honeypot', [account], () => {
+          Logger.trace(
+            `[${counter + 1}/${dominantAccounts.length}] ` +
+              `Testing address if it is a honeypot: ${account}`,
+          );
+          return this.honeypotChecker.testAddress(account, provider, blockNumber);
+        });
 
         if (result.isHoneypot) {
           dominantHoneypots.push([account, balance]);

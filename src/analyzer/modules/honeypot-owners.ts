@@ -71,15 +71,14 @@ class TooManyHoneyPotOwnersModule extends AnalyzerModule {
 
       let counter = 0;
       const receiverQueue = queue<string>(async (receiver, callback) => {
-        Logger.debug(
-          `[${counter + 1}/${receivers.length}] ` +
-            `Testing address if it is a honeypot: ${receiver}`,
-        );
-
         try {
-          const result = await memo('honeypot', [receiver], () =>
-            this.honeypotChecker.testAddress(receiver, provider, blockNumber),
-          );
+          const result = await memo('honeypot', [receiver], () => {
+            Logger.debug(
+              `[${counter + 1}/${receivers.length}] ` +
+                `Testing address if it is a honeypot: ${receiver}`,
+            );
+            return this.honeypotChecker.testAddress(receiver, provider, blockNumber);
+          });
 
           if (result.isHoneypot) {
             honeypots.push({ address: receiver, metadata: result.metadata });
