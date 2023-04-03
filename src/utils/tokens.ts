@@ -70,7 +70,7 @@ export type TokenProviderCache = {
 class TokenProvider {
   private mutex: Mutex;
   private cache: TokenProviderCache | null = null;
-  private ttl: number = 24 * 60 * 60 * 1000; // 1d
+  private ttl: number = 7 * 24 * 60 * 60 * 1000; // 7d
 
   private storage: JsonStorage<TokenProviderCache>;
 
