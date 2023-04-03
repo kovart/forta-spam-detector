@@ -121,14 +121,12 @@ class Erc721NonUniqueTokensModule extends AnalyzerModule {
 
         for (const batch of chunk(entries, 5)) {
           try {
-            const metadataArr = await retry(() =>
-              Promise.all(
-                batch.map(([, uri]) =>
-                  memo('axios.get', [uri], async () => {
-                    const { data } = await axios.get(uri);
-                    return data;
-                  }),
-                ),
+            const metadataArr = await Promise.all(
+              batch.map(([, uri]) =>
+                memo('axios.get', [uri], async () => {
+                  const { data } = await retry(() => axios.get(uri), { wait: 30 * 1000 });
+                  return data;
+                }),
               ),
             );
             metadataArr.forEach((metadata, i) => metadataByTokenId.set(entries[i][0], metadata));
