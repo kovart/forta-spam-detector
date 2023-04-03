@@ -66,15 +66,27 @@ type QueryArgument = number | string;
 class Memoizer {
   protected scopeByKey = new Map<string, Cache<CacheValue<unknown>>>();
 
-  getScope(key = '') {
-    let scope = this.scopeByKey.get(key);
+  getScope(scopeKey = '') {
+    let scope = this.scopeByKey.get(scopeKey);
 
     if (!scope) {
       scope = new Cache();
-      this.scopeByKey.set(key, scope);
+      this.scopeByKey.set(scopeKey, scope);
     }
 
-    return this.bindQuery(key);
+    const memoFn = this.bindQuery(scopeKey);
+
+    type ScopeInstance = typeof memoFn & {
+      get<P>(key: string): P | undefined;
+      set(key: string, value: any): void;
+    };
+
+    const instance = memoFn as ScopeInstance;
+
+    instance.set = (key: string, value: any, ttl?: number) => this.set(scopeKey, key, value, ttl);
+    instance.get = (key: string) => this.get(scopeKey, key);
+
+    return instance;
   }
 
   deleteScope(key = '') {
@@ -175,6 +187,14 @@ class Memoizer {
       scope.set(hash, { value: e, thrown: true }, ttl);
       throw e;
     }
+  }
+
+  protected get<P>(scopeKey: string, key: string) {
+    return this.scopeByKey.get(scopeKey)!.get(key) as P | undefined;
+  }
+
+  protected set<P>(scopeKey: string, key: string, value: P, ttl = Infinity): void {
+    this.scopeByKey.get(scopeKey)!.set(key, { value, thrown: false }, ttl);
   }
 }
 
