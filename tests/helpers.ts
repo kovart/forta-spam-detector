@@ -263,10 +263,10 @@ export function* generateBlocks(
     events: TransactionEvent[];
   };
 
-  const totalBlocks = Math.floor((endTimestamp - startTimestamp) / interval);
+  const blockCount = Math.floor((endTimestamp - startTimestamp) / interval);
 
   let blockCounter = 0;
-  let prevEventIndex = 0;
+  let nextEventIndex = 0;
   let prevBlockNumber = startBlockNumber - 1;
   for (let timestamp = startTimestamp; timestamp <= endTimestamp; timestamp += interval) {
     const block: Block = {
@@ -275,13 +275,12 @@ export function* generateBlocks(
       events: [],
     };
 
-    for (let i = prevEventIndex; i < events.length; i++) {
+    for (let i = nextEventIndex; i < events.length; i++, nextEventIndex++) {
       const event = events[i];
 
       if (event.block.timestamp >= timestamp + interval) break;
 
       block.events.push(event);
-      prevEventIndex = i;
       block.number = event.blockNumber;
       prevBlockNumber = block.number;
     }
@@ -289,8 +288,8 @@ export function* generateBlocks(
     yield {
       block,
       blockCounter: blockCounter,
-      eventCounter: prevEventIndex,
-      totalBlocks: totalBlocks,
+      eventCounter: nextEventIndex,
+      blockCount: blockCount,
     };
 
     blockCounter++;

@@ -93,13 +93,14 @@ async function testTokens(
       endTimestamp,
       TICK_INTERVAL,
     )) {
-      const { block, blockCounter, eventCounter, totalBlocks } = generatedBlock;
+      const { block, blockCounter, eventCounter, blockCount } = generatedBlock;
       const time = formatDate(block.timestamp);
 
       const log = (msg: string) =>
         console.log(
           `[${i}/${tokens.length}][ERC${token.type}|${token.contract}]` +
-            `[E${eventCounter}/${events.length}][B${blockCounter}/${totalBlocks}] ${time} | ${msg}`,
+            `[E${eventCounter + 1}/${events.length}]` +
+            `[B${blockCounter + 1}/${blockCount}] ${time} | ${msg}`,
         );
 
       const t0 = performance.now();
