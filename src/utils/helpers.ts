@@ -227,9 +227,7 @@ export function normalizeMetadataUri(uri: string): string | null {
 
   const gatewayUrl = 'https://ipfs.io/ipfs/';
 
-  if (containsLink(uri)) {
-    return uri;
-  } else if (uri.indexOf('ipfs://') === 0) {
+  if (uri.indexOf('ipfs://') === 0) {
     return uri.replace('ipfs://', gatewayUrl);
   } else if (uri.indexOf('://') === 0) {
     return uri.replace('://', gatewayUrl);
@@ -239,6 +237,8 @@ export function normalizeMetadataUri(uri: string): string | null {
     return uri.replace('/ipfs/', gatewayUrl);
   } else if (isCid(uri)) {
     return gatewayUrl + uri;
+  } else if (containsLink(uri)) {
+    return uri;
   }
 
   Logger.info('Cannot recognize URI format: ' + uri);
