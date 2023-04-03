@@ -49,7 +49,6 @@ class TokenAnalyzer {
     this.memoizer = memoizer;
     this.transformer = new DataTransformer(storage);
     this.modules = [
-      new ObservationTimeModule(),
       new HighActivityModule(),
       new AirdropModule(),
       new LowActivityAfterAirdropModule(),
@@ -62,6 +61,7 @@ class TokenAnalyzer {
       new TooManyHoneyPotOwnersModule(honeyPotChecker),
       new HoneypotsDominanceModule(honeyPotChecker),
       new TokenImpersonationModule(new TokenProvider(tokenStorage)),
+      new ObservationTimeModule(),
     ];
   }
 
