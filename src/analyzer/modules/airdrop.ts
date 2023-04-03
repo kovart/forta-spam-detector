@@ -80,7 +80,7 @@ class AirdropModule extends AnalyzerModule {
     }
 
     // If we have exactly the same number of events, then we don't need to perform this again
-    await memo(AIRDROP_MODULE_KEY, [transferEvents.size], async () => {
+    const result = await memo(AIRDROP_MODULE_KEY, [transferEvents.size], async () => {
       for (const transferEvent of transferEvents) {
         const sender = transferEvent.transaction.from;
 
@@ -217,7 +217,12 @@ class AirdropModule extends AnalyzerModule {
           startTime: airdropStartTime,
         };
       }
+
+      return { detected, metadata };
     });
+
+    detected = result.detected;
+    metadata = result.metadata;
 
     context[AIRDROP_MODULE_KEY] = { detected, metadata };
 
