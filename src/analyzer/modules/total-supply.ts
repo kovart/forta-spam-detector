@@ -16,7 +16,7 @@ class Erc721FalseTotalSupplyModule extends AnalyzerModule {
   static Key = FALSE_TOTAL_SUPPLY_MODULE_KEY;
 
   async scan(params: ScanParams): Promise<ModuleScanReturn> {
-    const { token, context, storage, provider } = params;
+    const { token, context, storage, blockNumber, provider } = params;
 
     let detected = false;
     let metadata: Erc721FalseTotalSupplyModuleMetadata | undefined = undefined;
@@ -28,11 +28,13 @@ class Erc721FalseTotalSupplyModule extends AnalyzerModule {
     const contract = new ethers.Contract(token.address, erc721Iface, provider);
 
     try {
-      const totalSupply = ((await retry(() => contract.totalSupply())) as BigNumber).toNumber();
+      const totalSupply = (
+        (await retry(() => contract.totalSupply({ blockTag: blockNumber }))) as BigNumber
+      ).toNumber();
 
       const ownerByTokenId = new Map<string, string>();
       for (const event of storage.erc721TransferEventsByToken.get(token.address) || []) {
-        ownerByTokenId.set(event.tokenId, event.to);
+        ownerByTokenId.set(event.tokenId.toString(), event.to);
       }
 
       let actualTotalSupply = 0;
