@@ -32,8 +32,9 @@ class Erc721MultipleOwnersModule extends AnalyzerModule {
       const ownersByTokenId = new Map<string, string[]>();
 
       for (const event of transferEvents) {
-        let holders = ownersByTokenId.get(event.tokenId) || [];
-        ownersByTokenId.set(event.tokenId, holders);
+        const tokenId = event.tokenId.toString();
+        let holders = ownersByTokenId.get(tokenId) || [];
+        ownersByTokenId.set(tokenId, holders);
 
         // Remove the previous owner, but only once
         const previousOwnerIndex = holders.indexOf(event.from);
