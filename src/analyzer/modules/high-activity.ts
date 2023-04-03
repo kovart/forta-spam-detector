@@ -2,7 +2,7 @@ import { SimplifiedTransaction, TokenStandard } from '../../types';
 import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
 
 export const HIGH_ACTIVITY_MODULE_KEY = 'HighActivity';
-export const MIN_UNIQUE_SENDERS = 50;
+export const MIN_UNIQUE_SENDERS = 80;
 
 export type HighActivityModuleMetadata = {
   senders: string[];
