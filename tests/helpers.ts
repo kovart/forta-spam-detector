@@ -267,10 +267,11 @@ export function* generateBlocks(
 
   let blockCounter = 0;
   let prevEventIndex = 0;
+  let prevBlockNumber = startBlockNumber - 1;
   for (let timestamp = startTimestamp; timestamp <= endTimestamp; timestamp += interval) {
     const block: Block = {
       timestamp,
-      number: startBlockNumber + blockCounter,
+      number: prevBlockNumber + 1,
       events: [],
     };
 
@@ -282,6 +283,7 @@ export function* generateBlocks(
       block.events.push(event);
       prevEventIndex = i;
       block.number = event.blockNumber;
+      prevBlockNumber = block.number;
     }
 
     yield {
