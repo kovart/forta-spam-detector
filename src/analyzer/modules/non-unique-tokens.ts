@@ -41,7 +41,7 @@ class Erc721NonUniqueTokensModule extends AnalyzerModule {
 
     const tokenIdSet = new Set<string>();
     for (const event of storage.erc721TransferEventsByToken.get(token.address) || []) {
-      tokenIdSet.add(event.tokenId);
+      tokenIdSet.add(event.tokenId.toString());
     }
 
     if (tokenIdSet.size < MIN_NUMBER_OF_TOKENS) return;
