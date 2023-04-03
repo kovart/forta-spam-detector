@@ -190,7 +190,7 @@ class Memoizer {
   }
 
   protected get<P>(scopeKey: string, key: string) {
-    return this.scopeByKey.get(scopeKey)!.get(key) as P | undefined;
+    return this.scopeByKey.get(scopeKey)!.get(key)?.value as P | undefined;
   }
 
   protected set<P>(scopeKey: string, key: string, value: P, ttl = Infinity): void {
