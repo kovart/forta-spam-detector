@@ -72,7 +72,8 @@ class TooManyHoneyPotOwnersModule extends AnalyzerModule {
       let counter = 0;
       const receiverQueue = queue<string>(async (receiver, callback) => {
         Logger.debug(
-          `[${counter}/${receivers.length}] Testing address if it is a honeypot: ${receiver}`,
+          `[${counter + 1}/${receivers.length}] ` +
+            `Testing address if it is a honeypot: ${receiver}`,
         );
 
         try {

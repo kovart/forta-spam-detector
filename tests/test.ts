@@ -99,7 +99,7 @@ async function testTokens(
       const log = (msg: string) =>
         console.log(
           `[${i}/${tokens.length}][ERC${token.type}|${token.contract}]` +
-            `[E${eventCounter + 1}/${events.length}]` +
+            `[T${eventCounter + 1}/${events.length}]` +
             `[B${blockCounter + 1}/${blockCount}] ${time} | ${msg}`,
         );
 

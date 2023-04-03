@@ -89,7 +89,8 @@ class HoneyPotShareDominanceModule extends AnalyzerModule {
       const { account, balance } = task;
 
       Logger.debug(
-        `[${counter}/${dominantAccounts.length}] Testing address if it is a honeypot: ${account}`,
+        `[${counter + 1}/${dominantAccounts.length}] ` +
+          `Testing address if it is a honeypot: ${account}`,
       );
 
       try {
