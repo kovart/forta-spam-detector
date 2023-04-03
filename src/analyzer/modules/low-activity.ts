@@ -4,7 +4,7 @@ import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
 
 export const LOW_ACTIVITY_MODULE_KEY = 'LowActivityAfterAirdrop';
 export const MIN_AIRDROP_RECEIVERS = 100;
-export const MIN_ACTIVE_RECEIVERS = 5;
+export const MIN_ACTIVE_RECEIVERS = 6;
 export const DELAY_AFTER_AIRDROP = 14 * 24 * 60 * 60; // 14d
 
 export type LowActivityModuleMetadata = {
@@ -32,7 +32,7 @@ class LowActivityAfterAirdropModule extends AnalyzerModule {
       .metadata as HighActivityModuleMetadata;
 
     if (airdropMetadata.receivers.length < MIN_AIRDROP_RECEIVERS) return;
-    if (airdropMetadata.startTime + DELAY_AFTER_AIRDROP < timestamp) return;
+    if (timestamp - airdropMetadata.startTime <= DELAY_AFTER_AIRDROP) return;
 
     const senderSet = new Set(activityMetadata.senders);
     const activeReceivers = airdropMetadata.receivers.filter((r) => senderSet.has(r));

@@ -1,16 +1,19 @@
 import { ethers } from 'ethers';
-import { chunk } from 'lodash';
+import { chunk, shuffle } from 'lodash';
 import axios from 'axios';
 
+import Logger from '../../utils/logger';
 import { isBase64, normalizeMetadataUri, parseBase64, retry } from '../../utils/helpers';
+import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
 import { TokenStandard } from '../../types';
 import { erc721Iface } from '../../contants';
-import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
-import Logger from '../../utils/logger';
 
 export const NON_UNIQUE_TOKENS_MODULE_KEY = 'Erc721NonUniqueTokens';
 export const MIN_NUMBER_OF_TOKENS = 5;
 export const MIN_NUMBER_OF_DUPLICATE_TOKENS = 4;
+export const MAX_NUMBER_OF_TOKENS = 700;
+export const TOKEN_URI_CONCURRENCY = 6;
+export const METADATA_CONCURRENCY = 50;
 
 type DuplicatedItem = { tokenIds: string[]; uri?: string; metadata?: string };
 
@@ -33,18 +36,29 @@ class Erc721NonUniqueTokensModule extends AnalyzerModule {
     let detected = false;
     let metadata: NonUniqueTokensModuleMetadata | undefined = undefined;
 
-    const memo = memoizer.getScope(token.address);
-
     context[NON_UNIQUE_TOKENS_MODULE_KEY] = { detected, metadata };
 
-    if (token.type !== TokenStandard.Erc721) return;
+    const memo = memoizer.getScope(token.address);
 
-    const tokenIdSet = new Set<string>();
+    const isTokenURISupported = memo.get<boolean>('isTokenURISupported');
+
+    if (token.type !== TokenStandard.Erc721) return;
+    if (isTokenURISupported != null && !isTokenURISupported) return;
+
+    let tokenIdSet = new Set<string>();
     for (const event of storage.erc721TransferEventsByToken.get(token.address) || []) {
       tokenIdSet.add(event.tokenId.toString());
     }
 
     if (tokenIdSet.size < MIN_NUMBER_OF_TOKENS) return;
+    if (tokenIdSet.size > MAX_NUMBER_OF_TOKENS) {
+      tokenIdSet = memo('tokenIdSet', () => {
+        Logger.debug(
+          `Too many tokens to check: ${tokenIdSet.size}. Limiting to ${MAX_NUMBER_OF_TOKENS}.`,
+        );
+        return new Set(shuffle([...tokenIdSet]).slice(0, MAX_NUMBER_OF_TOKENS));
+      });
+    }
 
     const contract = new ethers.Contract(token.address, erc721Iface, provider);
 
@@ -55,16 +69,23 @@ class Erc721NonUniqueTokensModule extends AnalyzerModule {
     } catch (e) {
       Logger.info('ERC721 tokenURI() is not supported:', token.address);
       // tokenURI() not supported
+      memo.set('isTokenURISupported', false);
       return;
     }
 
+    memo.set('isTokenURISupported', true);
+
+    Logger.debug(`Fetching token URIs: ${tokenIdSet.size} items`);
+
     const tokenUriByTokenId = new Map<string, string>();
     // The token works well, so let's parallelize the requests
-    for (const batch of chunk([...tokenIdSet], 6)) {
+    for (const batch of chunk([...tokenIdSet], TOKEN_URI_CONCURRENCY)) {
       try {
-        const uris = await retry(() =>
-          Promise.all(
-            batch.map((tokenId) => memo('tokenURI', [tokenId], () => contract.tokenURI(tokenId))),
+        const uris = await Promise.all(
+          batch.map((tokenId) =>
+            memo('tokenURI', [tokenId], () =>
+              retry(() => contract.tokenURI(tokenId) as Promise<string>),
+            ),
           ),
         );
         uris.forEach((url, i) => tokenUriByTokenId.set(batch[i], url));
@@ -119,7 +140,9 @@ class Erc721NonUniqueTokensModule extends AnalyzerModule {
           // Filter out URI with null value after normalization
           .filter(([, uri]) => uri) as [string, string][];
 
-        for (const batch of chunk(entries, 5)) {
+        Logger.debug(`Fetching token metadata: ${tokenUriByTokenId.size} items`);
+
+        for (const batch of chunk(entries, METADATA_CONCURRENCY)) {
           try {
             const metadataArr = await Promise.all(
               batch.map(([, uri]) =>

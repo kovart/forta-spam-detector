@@ -86,7 +86,7 @@ class AirdropModule extends AnalyzerModule {
 
         if (token.type === TokenStandard.Erc20) {
           // Zero transfer phishing?
-          if ((transferEvent as Erc20TransferEvent).value === '0') continue;
+          if ((transferEvent as Erc20TransferEvent).value.toString() === '0') continue;
         }
 
         // Claim or exchange action?

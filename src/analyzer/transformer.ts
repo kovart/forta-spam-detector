@@ -2,13 +2,48 @@ import { ethers } from 'ethers';
 import BigNumber from 'bignumber.js';
 
 import DataStorage from '../storage';
-import { TokenContract, TokenStandard } from '../types';
+import { SimplifiedTransaction, TokenContract, TokenStandard } from '../types';
 
 const sum = (arr: (string | BigNumber)[]) =>
   arr.reduce((acc: BigNumber, curr) => acc.plus(curr), new BigNumber(0));
 
 class DataTransformer {
   constructor(private storage: DataStorage) {}
+
+  transactions(token: TokenContract) {
+    const transactionSet = new Set<SimplifiedTransaction>();
+
+    const directTransactions = this.storage.transactionsByToken.get(token.address) || [];
+    directTransactions.forEach((t) => transactionSet.add(t));
+
+    // Events in a token contract are not always triggered by transactions directly to the contract
+    if (token.type === TokenStandard.Erc20) {
+      const transferEvents = this.storage.erc20TransferEventsByToken.get(token.address) || [];
+      const approvalEvents = this.storage.erc20ApprovalEventsByToken.get(token.address) || [];
+      transferEvents.forEach((e) => transactionSet.add(e.transaction));
+      approvalEvents.forEach((e) => transactionSet.add(e.transaction));
+    } else if (token.type === TokenStandard.Erc721) {
+      const transferEvents = this.storage.erc721TransferEventsByToken.get(token.address) || [];
+      const approvalEvents = this.storage.erc721ApprovalEventsByToken.get(token.address) || [];
+      const approvalForAllEvents =
+        this.storage.erc721ApprovalForAllEventsByToken.get(token.address) || [];
+      transferEvents.forEach((e) => transactionSet.add(e.transaction));
+      approvalEvents.forEach((e) => transactionSet.add(e.transaction));
+      approvalForAllEvents.forEach((e) => transactionSet.add(e.transaction));
+    } else if (token.type === TokenStandard.Erc1155) {
+      const transferSingleEvents =
+        this.storage.erc1155TransferSingleEventsByToken.get(token.address) || [];
+      const transferBatchEvents =
+        this.storage.erc1155TransferBatchEventsByToken.get(token.address) || [];
+      const approvalForAllEvents =
+        this.storage.erc1155ApprovalForAllEventsByToken.get(token.address) || [];
+      transferSingleEvents.forEach((e) => transactionSet.add(e.transaction));
+      transferBatchEvents.forEach((e) => transactionSet.add(e.transaction));
+      approvalForAllEvents.forEach((e) => transactionSet.add(e.transaction));
+    }
+
+    return transactionSet;
+  }
 
   balanceByAccount(token: TokenContract) {
     const balanceByAccount = new Map<string, BigNumber>();
