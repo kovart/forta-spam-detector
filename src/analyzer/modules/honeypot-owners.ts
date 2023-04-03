@@ -3,12 +3,14 @@ import { queue } from 'async';
 
 import Logger from '../../utils/logger';
 import HoneyPotChecker, { HoneypotAnalysisMetadata } from '../../utils/honeypot';
-import { AIRDROP_MODULE_KEY, AirdropModuleMetadata } from './airdrop';
 import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
+import { AIRDROP_MODULE_KEY, AirdropModuleMetadata } from './airdrop';
 
 export const TOO_MANY_HONEY_POT_OWNERS_MODULE_KEY = 'TooManyHoneyPotOwners';
-export const HONEYPOT_THRESHOLD = 25;
+export const MIN_HONEYPOT_ACCOUNTS = 100;
+export const MIN_HONEYPOT_RATIO = 0.35;
 export const MAX_ACCOUNTS = 1000;
+export const MIN_ACCOUNTS = 10;
 export const CONCURRENCY = 20;
 
 type Honeypot = { address: string; metadata: HoneypotAnalysisMetadata };
@@ -52,6 +54,8 @@ class TooManyHoneyPotOwnersModule extends AnalyzerModule {
       balanceByAccount.delete(token.address);
 
       let receivers = airdropMetadata.receivers;
+
+      if (receivers.length < MIN_ACCOUNTS) return;
 
       // It takes a very long time to process all the accounts.
       // So, we will try to "cheat" and filter accounts with the highest balance.
@@ -99,11 +103,12 @@ class TooManyHoneyPotOwnersModule extends AnalyzerModule {
       if (!receiverQueue.idle()) {
         await receiverQueue.drain();
       }
-    }
 
-    if (honeypots.length >= HONEYPOT_THRESHOLD) {
-      detected = true;
-      metadata = { honeypots };
+      const honeypotRate = honeypots.length / receivers.length;
+      if (honeypots.length >= MIN_HONEYPOT_ACCOUNTS || honeypotRate >= MIN_HONEYPOT_RATIO) {
+        detected = true;
+        metadata = { honeypots };
+      }
     }
 
     context[TOO_MANY_HONEY_POT_OWNERS_MODULE_KEY] = { detected, metadata };
