@@ -217,22 +217,33 @@ class TokenProvider {
     // however CoinGecko returns just "Tether".
     // https://etherscan.io/address/0xdac17f958d2ee523a2206206994597c13d831ec7#readContract
 
-    const tokenCacheByHash = new Map<string, TokenRecord>(
-      (this.cache?.tokens || []).map((t) => [this.getTokenHash(t), t]),
-    );
+    const cacheEntries = (this.cache?.tokens || [])
+      .map((t) =>
+        Object.values(t.deployments).map((address) => [address, t] as [string, TokenRecord]),
+      )
+      .flat();
+    const tokenCacheByAddress = new Map<string, TokenRecord>(cacheEntries);
 
     // Get correct values for symbol() and name()
     let failedTokens = 0;
     const maxFailedTokens = 3;
     for (let i = 0; i < tokens.length; i++) {
       const token = tokens[i];
-      const tokenCache = tokenCacheByHash.get(this.getTokenHash(token));
+
+      let tokenCache: TokenRecord | undefined = undefined;
+
+      for (const address of Object.values(token.deployments)) {
+        tokenCache = tokenCacheByAddress.get(address);
+        if (tokenCache) break;
+      }
 
       const log = (msg: string) => Logger.debug(`[${i}/${tokens.length}] ${msg}`);
 
       if (tokenCache) {
         token.symbol = tokenCache.symbol;
         token.name = tokenCache.name;
+
+        log(`Using cache data`);
       } else {
         const deployment = Object.entries(token.deployments).find((v) => v[1]);
 
