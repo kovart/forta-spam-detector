@@ -34,15 +34,16 @@ class Erc721MultipleOwnersModule extends AnalyzerModule {
       for (const event of transferEvents) {
         const tokenId = event.tokenId.toString();
         let holders = ownersByTokenId.get(tokenId) || [];
-        ownersByTokenId.set(tokenId, holders);
 
         // Remove the previous owner, but only once
         const previousOwnerIndex = holders.indexOf(event.from);
         if (previousOwnerIndex > -1) {
-          holders = holders.splice(previousOwnerIndex, 1);
+          holders.splice(previousOwnerIndex, 1);
         }
+
         // add new owner
         holders.push(event.to);
+        ownersByTokenId.set(tokenId, holders);
       }
 
       const duplicatedOwnersByTokenId: { [tokenId: string]: string[] } = {};

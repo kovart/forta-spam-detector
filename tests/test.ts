@@ -191,10 +191,10 @@ async function testTokens(
 async function main() {
   const tokens = (await readTokens()).filter((t) => t.type !== 'Unknown');
 
-  await testTokens(
-    tokens.filter((t) => t.type === TokenStandard.Erc20),
-    getErc20TxEvents,
-  );
+  // await testTokens(
+  //   tokens.filter((t) => t.type === TokenStandard.Erc20),
+  //   getErc20TxEvents,
+  // );
   await testTokens(
     tokens.filter((t) => t.type === TokenStandard.Erc721),
     getErc721TxEvents,

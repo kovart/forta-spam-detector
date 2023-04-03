@@ -1,6 +1,6 @@
 import dayjs from 'dayjs';
 import duration from 'dayjs/plugin/duration';
-import { chunk } from 'lodash';
+import { chunk, groupBy } from 'lodash';
 import { createTransactionEvent, EventType, Log, Network, TransactionEvent } from 'forta-agent';
 
 import Database from './utils/database';
@@ -130,7 +130,7 @@ export async function getTxEvents(
       .join('. ')}`,
   );
 
-  const maps = eventList.map((e) => new Map<string, Set<(typeof e.events)[0]>>());
+  const eventMaps = eventList.map((e) => new Map<string, Set<(typeof e.events)[0]>>());
 
   const append = <P, K>(map: Map<K, Set<P>>, key: K, event: P) => {
     let eventSet = map.get(key);
@@ -142,7 +142,7 @@ export async function getTxEvents(
   };
 
   eventList.forEach((e, i) => {
-    e.events.forEach((e) => append(maps[i], e.transaction_id, e));
+    e.events.forEach((e) => append(eventMaps[i], e.transaction_id, e));
   });
 
   const sortedTransactions = [...transactionById.values()];
@@ -150,13 +150,15 @@ export async function getTxEvents(
 
   const txEvents: TransactionEvent[] = [];
   for (const tx of sortedTransactions) {
-    const eventSets = maps.map((m) => m.get(tx.transaction_id) || new Set());
+    const eventSets = eventMaps.map((m) => m.get(tx.transaction_id) || new Set());
 
-    const txEvent = createTxEvent(tx, [
-      ...[...eventSets]
-        .map((set, i) => [...set].map((e) => createLog(token.contract, tx, eventList[i].encode(e))))
-        .flat(),
-    ]);
+    const logs = [...eventSets]
+      .map((eventSet, i) =>
+        [...eventSet].map((e: any) => createLog(token.contract, tx, eventList[i].encode(e))),
+      )
+      .flat();
+
+    const txEvent = createTxEvent(tx, logs);
 
     txEvents.push(txEvent);
   }
@@ -168,7 +170,7 @@ export async function getErc20TxEvents(token: TokenRecord) {
   const transferEvents = await Database.all<any>(`
       SELECT *
       FROM (
-          SELECT from_a.address AS "from", to_a.address AS "to", e.value, e.transaction_id, address_a.address AS "contract"
+          SELECT e.event_id, from_a.address AS "from", to_a.address AS "to", e.value, e.transaction_id, address_a.address AS "contract"
           FROM erc_20_transfer_events e 
               JOIN addresses from_a ON e.from_id = from_a.address_id
               JOIN addresses to_a ON e.to_id = to_a.address_id
@@ -176,11 +178,12 @@ export async function getErc20TxEvents(token: TokenRecord) {
               JOIN addresses address_a ON contract_a.address_id = address_a.address_id
       ) AS e
       WHERE e.contract = "${token.contract}"
+      ORDER BY e.event_id ASC
     `);
   const approvalEvents = await Database.all<any>(`
       SELECT *
       FROM (
-          SELECT owner_a.address AS "owner", spender_a.address AS "spender", e.value, e.transaction_id, address_a.address AS "contract"
+          SELECT e.event_id, owner_a.address AS "owner", spender_a.address AS "spender", e.value, e.transaction_id, address_a.address AS "contract"
           FROM erc_20_approval_events e 
               JOIN addresses owner_a ON e.owner_id = owner_a.address_id
               JOIN addresses spender_a ON e.spender_id = spender_a.address_id
@@ -188,6 +191,7 @@ export async function getErc20TxEvents(token: TokenRecord) {
               JOIN addresses address_a ON contract_a.address_id = address_a.address_id
       ) AS e
       WHERE e.contract = "${token.contract}"
+      ORDER BY e.event_id ASC
     `);
 
   return getTxEvents(token, [
@@ -207,22 +211,28 @@ export async function getErc20TxEvents(token: TokenRecord) {
 }
 
 export async function getErc721TxEvents(token: TokenRecord) {
-  const transferEvents = await Database.all<any>(`
-      SELECT *
+  let transferEvents = await Database.all<any>(`
+      SELECT e.*, t.timestamp
       FROM (
-          SELECT from_a.address AS "from", to_a.address AS "to", e.transaction_id, e.token_id, address_a.address AS "contract"
-          FROM erc_721_transfer_events e 
-              JOIN addresses from_a ON e.from_id = from_a.address_id
-              JOIN addresses to_a ON e.to_id = to_a.address_id
-              JOIN contracts contract_a ON e.contract_id = contract_a.contract_id
-              JOIN addresses address_a ON contract_a.address_id = address_a.address_id
+        SELECT *
+        FROM (
+            SELECT e.event_id, from_a.address AS "from", to_a.address AS "to", e.transaction_id, e.token_id, address_a.address AS "contract"
+            FROM erc_721_transfer_events e 
+                JOIN addresses from_a ON e.from_id = from_a.address_id
+                JOIN addresses to_a ON e.to_id = to_a.address_id
+                JOIN contracts contract_a ON e.contract_id = contract_a.contract_id
+                JOIN addresses address_a ON contract_a.address_id = address_a.address_id
+        ) AS e
+        WHERE e.contract = "${token.contract}"
+        ORDER BY e.event_id ASC
       ) AS e
-      WHERE e.contract = "${token.contract}"
+      JOIN transactions t ON e.transaction_id = t.transaction_id 
     `);
+
   const approvalEvents = await Database.all<any>(`
       SELECT *
       FROM (
-          SELECT owner_a.address AS "owner", approved_a.address AS "approved", e.token_id, e.transaction_id, address_a.address AS "contract"
+          SELECT e.event_id, owner_a.address AS "owner", approved_a.address AS "approved", e.token_id, e.transaction_id, address_a.address AS "contract"
           FROM erc_721_approval_events e 
               JOIN addresses owner_a ON e.owner_id = owner_a.address_id
               JOIN addresses approved_a ON e.approved_id = approved_a.address_id
@@ -230,9 +240,55 @@ export async function getErc721TxEvents(token: TokenRecord) {
               JOIN addresses address_a ON contract_a.address_id = address_a.address_id
       ) AS e
       WHERE e.contract = "${token.contract}"
+      ORDER BY e.event_id ASC
     `);
 
   // approvalForAll table is empty
+
+  // TODO Update test data to remove this fix
+  // Unfortunately, when I fetched the data I missed to load the logIndex of events.
+  // Without this data, the order of events may conflict, for example when the owner sends a token that he does not own yet.
+  // This is a temporary fix for this issue.
+  const transferGroups = groupBy(transferEvents, (e) => e.timestamp);
+  for (const [timestamp, events] of Object.entries(transferGroups)) {
+    const sortedEvents: typeof events = [];
+
+    for (let i = 0; i < events.length; i++) {
+      const event = events[i];
+
+      // Check if the transaction has already been added to the result
+      if (sortedEvents.includes(event)) {
+        continue;
+      }
+
+      // Check if the person from whom the token is sent has already received the token
+      let index = sortedEvents.findIndex((e: any) => e.to === event.from);
+
+      // If the person from whom the token is sent has not yet received the token,
+      // move the token to the correct position in the result array
+      while (
+        index !== -1 &&
+        index < sortedEvents.length - 1 &&
+        sortedEvents[index + 1].from === event.to
+      ) {
+        index++;
+      }
+
+      // Insert the event at the correct position in the result array
+      sortedEvents.splice(index + 1, 0, event);
+    }
+
+    transferGroups[timestamp] = sortedEvents;
+  }
+
+  const timestamps = Object.keys(transferGroups);
+  timestamps.sort((a, b) => Number(a) - Number(b));
+
+  transferEvents = [];
+  for (const timestamp of timestamps) {
+    const events = transferGroups[timestamp];
+    transferEvents.push(...events);
+  }
 
   return getTxEvents(token, [
     {
