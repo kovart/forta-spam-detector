@@ -1,6 +1,5 @@
 import { chunk } from 'lodash';
 
-import Logger from '../../utils/logger';
 import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
 import {
   Erc1155TransferBatchEvent,
@@ -11,11 +10,33 @@ import {
   TokenStandard,
 } from '../../types';
 
+// This module detects airdrops by the following criteria:
+// 1. The person receiving the mint didn't initiate (no claim action)
+// 2. One sender with at least 50 unique receivers in a short interval of time (5 days)
+// 3. Or, one tx with a sender to at least 15 unique receivers
+// 4. Receivers are EOAs
+// ----------
+// Random airdrop:
+// https://etherscan.io/tx/0xd9c8cad2c21c7f0e4d1745a68052cb92990ae9f63cd9b6b1cf9c9153c4d936c3
+// Airdrop from sender's account:
+// https://etherscan.io/tx/0x2f81572ec479b15cc82014551c2af76734d362d39ad5136aa2693956654002a7
+// Airdrop with Sleep Mint:
+// https://etherscan.io/tx/0x2226964e13a42cd7099d72349de8258c39c7014940d28a835f8d135cc14c7b51
+// Airdrop via OpenSea:
+// https://etherscan.io/tx/0xbac082a0683cbfd2e8efafc68f40fc9d5a525d9d591e7db879dcf50a5afebbd0
+
+export type AirdropTransfer = {
+  timestamp: number;
+  receiver: string;
+};
+
 export type AirdropModuleMetadata = {
   senders: string[];
   receivers: string[];
   txHashes: string[];
+  transfers: AirdropTransfer[];
   startTime: number;
+  endTime: number;
 };
 
 export type AirdropModuleShortMetadata = {
@@ -26,25 +47,14 @@ export type AirdropModuleShortMetadata = {
   transactionCount: number;
   transactionShortList: string[];
   startTime: number;
+  endTime: number;
 };
 
 export const AIRDROP_MODULE_KEY = 'Airdrop';
-export const AIRDROP_RECEIVERS_THRESHOLD = 20;
-export const AIRDROP_WINDOW_TIME = 4 * 24 * 60 * 60; // 4d
-
-// Criteria:
-// 1. The person receiving the mint didn't initiate (no claim action)
-// 2. One sender with more than 20 unique receivers in a short interval of time (4 days)
-// 3. Receivers are EOAs
-// ----------
-// Random airdrop:
-// https://etherscan.io/tx/0xd9c8cad2c21c7f0e4d1745a68052cb92990ae9f63cd9b6b1cf9c9153c4d936c3
-// Airdrop from sender's account:
-// https://etherscan.io/tx/0x2f81572ec479b15cc82014551c2af76734d362d39ad5136aa2693956654002a7
-// Airdrop with Sleep Mint:
-// https://etherscan.io/tx/0x2226964e13a42cd7099d72349de8258c39c7014940d28a835f8d135cc14c7b51
-// Airdrop via OpenSea:
-// https://etherscan.io/tx/0xbac082a0683cbfd2e8efafc68f40fc9d5a525d9d591e7db879dcf50a5afebbd0
+export const MIN_RECEIVERS_PER_TX = 10;
+export const MIN_RECEIVERS_PER_SENDER = 50;
+export const AIRDROP_WINDOW = 5 * 24 * 60 * 60; // 5d
+export const CONCURRENCY = 4;
 
 class AirdropModule extends AnalyzerModule {
   static Key = AIRDROP_MODULE_KEY;
@@ -56,11 +66,6 @@ class AirdropModule extends AnalyzerModule {
     let metadata: AirdropModuleMetadata | undefined = undefined;
 
     const memo = memoizer.getScope(token.address);
-
-    const transfersBySender = new Map<
-      string,
-      Set<{ receiver: string; tx: SimplifiedTransaction }>
-    >();
 
     let transferEvents: Set<
       | Erc20TransferEvent
@@ -81,6 +86,11 @@ class AirdropModule extends AnalyzerModule {
 
     // If we have exactly the same number of events, then we don't need to perform this again
     const result = await memo(AIRDROP_MODULE_KEY, [transferEvents.size], async () => {
+      const transfersBySender = new Map<
+        string,
+        Set<{ receiver: string; tx: SimplifiedTransaction }>
+      >();
+
       for (const transferEvent of transferEvents) {
         const sender = transferEvent.transaction.from;
 
@@ -97,7 +107,6 @@ class AirdropModule extends AnalyzerModule {
           transferSet = new Set();
           transfersBySender.set(sender, transferSet);
         }
-
         transferSet.add({
           receiver: transferEvent.to,
           tx: transferEvent.transaction,
@@ -107,70 +116,115 @@ class AirdropModule extends AnalyzerModule {
       type AirdropData = {
         receivers: string[];
         txHashes: string[];
-        interval: [number, number];
+        startTime: number;
+        endTime: number;
       };
 
-      let t0 = performance.now();
       // Detect senders with signs of an airdrop
-      const airdropsBySender = new Map<string, AirdropData>();
-      let iterations = 0;
+      const airdropBySender = new Map<string, AirdropData>();
+      const airdropTransferSet = new Set<AirdropTransfer>();
       for (const [sender, transferSet] of transfersBySender) {
-        const transfers = [...transferSet];
+        let isAirdropDetected = false;
+        let airdropStartTime: number | undefined;
+        let airdropEndTime: number | undefined;
+
         const txHashSet = new Set<string>();
         const receiverSet = new Set<string>();
 
-        for (let startIndex = 0; startIndex < transfers.length; startIndex++) {
-          const startTransfer = transfers[startIndex];
+        // Detect airdrops with multiple receivers in one tx
+        const receiversByTx = new Map<SimplifiedTransaction, Set<string>>();
+        for (const transfer of transferSet) {
+          let set = receiversByTx.get(transfer.tx);
+          if (!set) {
+            set = new Set();
+            receiversByTx.set(transfer.tx, set);
+          }
+          set.add(transfer.receiver);
+        }
 
-          let detected = false;
-          let interval: [number, number];
+        for (const [tx, receivers] of receiversByTx) {
+          if (receivers.size >= MIN_RECEIVERS_PER_TX) {
+            isAirdropDetected = true;
+            airdropStartTime = Math.min(airdropStartTime ?? tx.timestamp, tx.timestamp);
+            airdropEndTime = Math.max(airdropEndTime ?? tx.timestamp, tx.timestamp);
+            txHashSet.add(tx.hash);
+            receivers.forEach((r) => {
+              airdropTransferSet.add({
+                receiver: r,
+                timestamp: tx.timestamp,
+              });
+              receiverSet.add(r);
+            });
+          }
+        }
 
-          receiverSet.clear();
-          txHashSet.clear();
+        // Do not check with another approach if airdrop is already detected.
+        if (!isAirdropDetected) {
+          // Detect airdrops with a window interval
+          const transfers = [...transferSet];
+          for (let startIndex = 0; startIndex < transfers.length; startIndex++) {
+            const startTransfer = transfers[startIndex];
 
-          for (let t = startIndex; t < transfers.length; t++) {
-            const endTransfer = transfers[t];
+            receiverSet.clear();
+            txHashSet.clear();
 
-            iterations++;
+            let endIndex = startIndex;
+            for (let t = startIndex; t < transfers.length; t++) {
+              let endTransfer = transfers[t];
+              airdropEndTime = endTransfer.tx.timestamp;
 
-            if (endTransfer.tx.timestamp - startTransfer.tx.timestamp > AIRDROP_WINDOW_TIME) break;
+              // Break if the window time is over,
+              // but continue if airdrop is already detected
+              if (
+                !isAirdropDetected &&
+                endTransfer.tx.timestamp - startTransfer.tx.timestamp > AIRDROP_WINDOW
+              ) {
+                break;
+              }
 
-            receiverSet.add(endTransfer.receiver);
-            txHashSet.add(endTransfer.tx.hash);
+              isAirdropDetected = receiverSet.size > MIN_RECEIVERS_PER_SENDER;
 
-            if (receiverSet.size > AIRDROP_RECEIVERS_THRESHOLD) {
-              detected = true;
-              interval = [startTransfer.tx.timestamp, endTransfer.tx.timestamp];
+              receiverSet.add(endTransfer.receiver);
+              txHashSet.add(endTransfer.tx.hash);
+
+              endIndex = t;
+            }
+
+            if (isAirdropDetected) {
+              for (let i = startIndex; i <= endIndex; i++) {
+                const transfer = transfers[i];
+                airdropTransferSet.add({
+                  timestamp: transfer.tx.timestamp,
+                  receiver: transfer.receiver,
+                });
+              }
               break;
             }
           }
+        }
 
-          if (detected) {
-            airdropsBySender.set(sender, {
-              interval: interval!,
-              receivers: [...receiverSet],
-              txHashes: [...txHashSet],
-            });
-            // Go to next sender
-            break;
-          }
+        if (isAirdropDetected) {
+          airdropBySender.set(sender, {
+            startTime: airdropStartTime!,
+            endTime: airdropEndTime!,
+            receivers: [...receiverSet],
+            txHashes: [...txHashSet],
+          });
         }
       }
-      Logger.trace(`Scanned for airdrops in ${performance.now() - t0}ms`);
 
-      t0 = performance.now();
       // Check if receivers are EOAs
-      for (const [sender, airdrop] of airdropsBySender) {
+      for (const [sender, airdrop] of airdropBySender) {
         const { receivers } = airdrop;
         const EOAs = [];
 
-        for (const batch of chunk(receivers, 4)) {
-          if (EOAs.length > AIRDROP_RECEIVERS_THRESHOLD) {
+        for (const batch of chunk(receivers, CONCURRENCY)) {
+          if (EOAs.length > MIN_RECEIVERS_PER_SENDER) {
             // This is enough to confirm the airdrop
             break;
           }
 
-          // Execute 4 queries in parallel.
+          // Execute queries in parallel.
           // If we use JsonRpcBatchProvider, this will help us complete the task faster
           const codes = await Promise.all(
             batch.map((receiver) => memo('getCode', [receiver], () => provider.getCode(receiver))),
@@ -181,40 +235,41 @@ class AirdropModule extends AnalyzerModule {
           }
         }
 
-        if (EOAs.length <= AIRDROP_RECEIVERS_THRESHOLD) {
-          airdropsBySender.delete(sender);
+        if (EOAs.length <= MIN_RECEIVERS_PER_SENDER) {
+          airdropBySender.delete(sender);
         }
       }
-      Logger.trace(`Checked for EOAs in ${performance.now() - t0}ms`);
 
       // Check if detected at least one airdrop
-      if (airdropsBySender.size > 0) {
+      if (airdropBySender.size > 0) {
         detected = true;
 
-        const receivers = new Set<string>();
-        const txHashes = new Set<string>();
+        const receiverSet = new Set<string>();
+        const txHashSet = new Set<string>();
 
         // Pushing all receivers of all transfers from senders
         // noticed engaging in the airdrop campaign
-        for (const sender of airdropsBySender.keys()) {
+        for (const sender of airdropBySender.keys()) {
           transfersBySender.get(sender)!.forEach((t) => {
-            receivers.add(t.receiver);
-            txHashes.add(t.tx.hash);
+            receiverSet.add(t.receiver);
+            txHashSet.add(t.tx.hash);
           });
         }
 
-        let airdropStartTime = Infinity;
-        for (const airdrop of airdropsBySender.values()) {
-          if (airdrop.interval[0] < airdropStartTime) {
-            airdropStartTime = airdrop.interval[0];
-          }
+        let airdropStartTime: number | undefined;
+        let airdropEndTime: number | undefined;
+        for (const airdrop of airdropBySender.values()) {
+          airdropStartTime = Math.min(airdropStartTime ?? airdrop.startTime, airdrop.startTime);
+          airdropEndTime = Math.max(airdropEndTime ?? airdrop.endTime, airdrop.endTime);
         }
 
         metadata = {
-          receivers: [...receivers],
-          senders: [...airdropsBySender.keys()],
-          txHashes: [...txHashes],
-          startTime: airdropStartTime,
+          transfers: [...airdropTransferSet],
+          receivers: [...receiverSet],
+          senders: [...airdropBySender.keys()],
+          txHashes: [...txHashSet],
+          startTime: airdropStartTime!,
+          endTime: airdropEndTime!,
         };
       }
 
@@ -238,6 +293,7 @@ class AirdropModule extends AnalyzerModule {
       transactionCount: metadata.txHashes.length,
       transactionShortList: metadata.txHashes.slice(0, 15),
       startTime: metadata.startTime,
+      endTime: metadata.endTime,
     };
   }
 }
