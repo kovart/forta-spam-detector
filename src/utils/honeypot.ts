@@ -12,58 +12,81 @@ const PUBLIC_ENS_PROVIDER = new ethers.providers.JsonRpcBatchProvider(
   PUBLIC_RPC_URLS_BY_NETWORK[Network.MAINNET][0],
 );
 
-export const HoneypotSet = new Set([
-  // vitalik.eth
-  '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045',
-  // Pranksy
-  '0xD387A6E4e84a6C86bd90C158C6028A58CC8Ac459',
-  // Cozomo de’ Medici
-  '0xCe90a7949bb78892F159F428D0dC23a8E3584d75',
-  // gmoney.eth
-  '0xf0D6999725115E3EAd3D927Eb3329D63AFAEC09b',
-  // Moonpay
-  '0xd75233704795206de38Cc58B77a1f660B5C60896',
-  // artchick.eth
-  '0x0b8F4C4E7626A91460dac057eB43e0de59d5b44F',
-  // pak.eth
-  '0x2Ce780D7c743A57791B835a9d6F998B15BBbA5a4',
-  // machibigbrother.eth
-  '0x020cA66C30beC2c4Fe3861a94E4DB4A498A35872',
-  // amir
-  '0xAB6cA2017548A170699890214bFd66583A0C1754',
-  // dingaling.eth
-  '0x54BE3a794282C030b15E43aE2bB182E14c409C5e',
-  // flur.eth
-  '0xB32B4350C25141e779D392C1DBe857b62b60B4c9',
-  // tim.eth
-  '0xeEE5Eb24E7A0EA53B75a1b9aD72e7D20562f4283',
-  // coco.eth
-  '0x721931508DF2764fD4F70C53Da646Cb8aEd16acE',
-  // coco.eth
-  '0x721931508DF2764fD4F70C53Da646Cb8aEd16acE',
-  // vombatus.eth
-  '0x38A4D889a1979133FbC1D58F970f0953E3715c26',
-  // vvd.eth
-  '0x0F0eAE91990140C560D4156DB4f00c854Dc8F09E',
-  // barthazian.eth
-  '0x6186290B28D511bFF971631c916244A9fC539cfE',
-  // fazebanks.eth
-  '0x7d4823262Bd2c6e4fa78872f2587DDA2A65828Ed',
-  // Steve Aoki
-  '0xe4bBCbFf51e61D0D95FcC5016609aC8354B177C4',
-  // jrnyclub.eth
-  '0x1b523DC90A79cF5ee5d095825e586e33780f7188',
-  // Gary Vaynerchuk
-  '0x5ea9681C3Ab9B5739810F8b91aE65EC47de62119',
-  // ʕ◕ᴥ◕ʔ.eth
-  '0x63a9dbCe75413036B2B778E670aaBd4493aAF9F3',
-  // redlioneye.eth
-  '0x0a690B298f84D12414F5c8dB7de1EcE5a4605877',
-  // farokh.eth
-  '0xc5F59709974262c4AFacc5386287820bDBC7eB3A',
+export const HoneypotSet = new Set(
+  [
+    // vitalik.eth
+    '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045',
+    // Pranksy
+    '0xD387A6E4e84a6C86bd90C158C6028A58CC8Ac459',
+    // Cozomo de’ Medici
+    '0xCe90a7949bb78892F159F428D0dC23a8E3584d75',
+    // gmoney.eth
+    '0xf0D6999725115E3EAd3D927Eb3329D63AFAEC09b',
+    // Moonpay
+    '0xd75233704795206de38Cc58B77a1f660B5C60896',
+    // artchick.eth
+    '0x0b8F4C4E7626A91460dac057eB43e0de59d5b44F',
+    // pak.eth
+    '0x2Ce780D7c743A57791B835a9d6F998B15BBbA5a4',
+    // machibigbrother.eth
+    '0x020cA66C30beC2c4Fe3861a94E4DB4A498A35872',
+    // amir
+    '0xAB6cA2017548A170699890214bFd66583A0C1754',
+    // dingaling.eth
+    '0x54BE3a794282C030b15E43aE2bB182E14c409C5e',
+    // flur.eth
+    '0xB32B4350C25141e779D392C1DBe857b62b60B4c9',
+    // tim.eth
+    '0xeEE5Eb24E7A0EA53B75a1b9aD72e7D20562f4283',
+    // coco.eth
+    '0x721931508DF2764fD4F70C53Da646Cb8aEd16acE',
+    // coco.eth
+    '0x721931508DF2764fD4F70C53Da646Cb8aEd16acE',
+    // vombatus.eth
+    '0x38A4D889a1979133FbC1D58F970f0953E3715c26',
+    // vvd.eth
+    '0x0F0eAE91990140C560D4156DB4f00c854Dc8F09E',
+    // barthazian.eth
+    '0x6186290B28D511bFF971631c916244A9fC539cfE',
+    // fazebanks.eth
+    '0x7d4823262Bd2c6e4fa78872f2587DDA2A65828Ed',
+    // Steve Aoki
+    '0xe4bBCbFf51e61D0D95FcC5016609aC8354B177C4',
+    // jrnyclub.eth
+    '0x1b523DC90A79cF5ee5d095825e586e33780f7188',
+    // Gary Vaynerchuk
+    '0x5ea9681C3Ab9B5739810F8b91aE65EC47de62119',
+    // ʕ◕ᴥ◕ʔ.eth
+    '0x63a9dbCe75413036B2B778E670aaBd4493aAF9F3',
+    // redlioneye.eth
+    '0x0a690B298f84D12414F5c8dB7de1EcE5a4605877',
+    // farokh.eth
+    '0xc5F59709974262c4AFacc5386287820bDBC7eB3A',
 
-  // TODO append honeypot list
-]);
+    // Binance
+    '0x3f5CE5FBFe3E9af3971dD833D26bA9b5C936f0bE',
+    // Bitrex
+    '0xFBb1b73C4f0BDa4f67dcA266ce6Ef42f520fBB98',
+    // Crypto.com
+    '0x6262998Ced04146fA42253a5C0AF90CA02dfd2A3',
+    // Coinbase 1
+    '0x71660c4005BA85c37ccec55d0C4493E66Fe775d3',
+    // Gate.io
+    '0x0D0707963952f2fBA59dD06f2b425ace40b492Fe',
+    // Amber Group
+    '0xE11970f2F3dE9d637Fb786f2d869F8FeA44195AC',
+    // Huobi 1
+    '0xaB5C66752a9e8167967685F1450532fB96d5d24f',
+    // FTX Exchange
+    '0x2FAF487A4414Fe77e2327F0bf4AE2a264a776AD2',
+    // BlockFi 6
+    '0x530e0A6993eA99ffc96615aF43f327225a5fe536',
+    // FTX US
+    '0x7abE0cE388281d2aCF297Cb089caef3819b13448',
+
+    // TODO append honeypot list
+  ].map((v) => v.toLowerCase()),
+);
 
 type EnsLeader = {
   ens: string; // e.g. "vitalik.eth"
@@ -77,6 +100,10 @@ export type HoneypotAnalysisMetadata = {
     detected: boolean;
   };
   HighBalance?: {
+    detected: boolean;
+    balance: string;
+  };
+  VeryHighBalance?: {
     detected: boolean;
     balance: string;
   };
@@ -192,6 +219,8 @@ class HoneyPotChecker {
     [Network.OPTIMISM]: ethers.utils.parseUnits('1.5'), // ETH
   };
 
+  static VERY_HIGH_MULTIPLIER = 10;
+
   constructor(private leaderboard: EnsLeaderBoard, private honeypotSet: Set<string>) {}
 
   async testAddress(
@@ -231,13 +260,18 @@ class HoneyPotChecker {
       throw new Error('Network is not supported yet: ' + network.chainId);
 
     metadata['HighBalance'] = {
-      detected: false,
+      detected: balance.gt(HoneyPotChecker.NETWORK_HIGH_BALANCE_THRESHOLDS[network.chainId]),
       balance: balance.toString(),
     };
 
-    if (balance.gt(HoneyPotChecker.NETWORK_HIGH_BALANCE_THRESHOLDS[network.chainId])) {
-      metadata['HighBalance']!.detected = true;
-    }
+    metadata['VeryHighBalance'] = {
+      detected: balance.gt(
+        HoneyPotChecker.NETWORK_HIGH_BALANCE_THRESHOLDS[network.chainId].mul(
+          HoneyPotChecker.VERY_HIGH_MULTIPLIER,
+        ),
+      ),
+      balance: balance.toString(),
+    };
 
     let ensProvider: ethers.providers.StaticJsonRpcProvider = provider;
     if (provider.network.chainId !== Network.MAINNET) {
@@ -266,8 +300,10 @@ class HoneyPotChecker {
 
     return {
       isHoneypot:
-        (metadata['HighBalance']!.detected && metadata['EnsRegistered']!.detected) ||
-        metadata['ManyTwitterFollowers']!.detected,
+        metadata['HardCodedAccount'].detected ||
+        metadata['VeryHighBalance']?.detected ||
+        (metadata['HighBalance']?.detected && metadata['EnsRegistered']?.detected) ||
+        metadata['ManyTwitterFollowers']?.detected,
       metadata: metadata,
     };
   }
