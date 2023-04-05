@@ -27,6 +27,8 @@ import HoneypotsDominanceModule from './modules/honeypot-dominance';
 import TokenImpersonationModule from './modules/token-impersonation';
 import LowActivityAfterAirdropModule from './modules/low-activity';
 import ObservationTimeModule from './modules/observation-time';
+import SilentMintModule from './modules/silent-mint';
+import TooMuchAirdropActivityModule from './modules/airdrop-activity';
 
 class TokenAnalyzer {
   private modules: AnalyzerModule[];
@@ -51,13 +53,15 @@ class TokenAnalyzer {
     this.modules = [
       new HighActivityModule(),
       new AirdropModule(),
+      new TooMuchAirdropActivityModule(),
       new LowActivityAfterAirdropModule(),
       new Erc721MultipleOwnersModule(),
       new Erc721NonUniqueTokensModule(),
       new Erc721FalseTotalSupplyModule(),
+      new SilentMintModule(),
+      new SleepMintModule(honeyPotChecker),
       new TooManyCreationsModule(),
       new PhishingMetadataModule(),
-      new SleepMintModule(),
       new TooManyHoneyPotOwnersModule(honeyPotChecker),
       new HoneypotsDominanceModule(honeyPotChecker),
       new TokenImpersonationModule(new TokenProvider(tokenStorage)),
@@ -130,7 +134,9 @@ class TokenAnalyzer {
     let isFinalized = false; // no longer need to monitor this token
 
     if (
-      [ObservationTimeModule.Key, HighActivityModule.Key].find((key) => analysis[key]?.detected)
+      [ObservationTimeModule, HighActivityModule, TooMuchAirdropActivityModule].find(
+        (Module) => analysis[Module.Key]?.detected,
+      )
     ) {
       isFinalized = true;
     }
@@ -138,17 +144,19 @@ class TokenAnalyzer {
     if (
       analysis[AirdropModule.Key]?.detected &&
       [
-        MultipleOwnersModule.Key,
-        Erc721FalseTotalSupplyModule.Key,
-        NonUniqueTokens.Key,
-        TooManyCreationsModule.Key,
-        TooManyHoneyPotOwnersModule.Key,
-        HoneypotsDominanceModule.Key,
-        SleepMintModule.Key,
-        PhishingMetadataModule.Key,
-        TokenImpersonationModule.Key,
-        LowActivityAfterAirdropModule.Key,
-      ].find((key) => analysis[key]?.detected)
+        MultipleOwnersModule,
+        Erc721FalseTotalSupplyModule,
+        NonUniqueTokens,
+        TooMuchAirdropActivityModule,
+        TooManyCreationsModule,
+        TooManyHoneyPotOwnersModule,
+        SilentMintModule,
+        HoneypotsDominanceModule,
+        SleepMintModule,
+        PhishingMetadataModule,
+        TokenImpersonationModule,
+        LowActivityAfterAirdropModule,
+      ].find((Module) => analysis[Module.Key]?.detected)
     ) {
       isSpam = true;
     }
@@ -165,24 +173,26 @@ class TokenAnalyzer {
     const currInterpretation = this.interpret(currAnalysis);
     const prevInterpretation = this.interpret(prevAnalysis);
 
-    const moduleKeys = [
-      ObservationTimeModule.Key,
-      HighActivityModule.Key,
-      AirdropModule.Key,
-      MultipleOwnersModule.Key,
-      Erc721FalseTotalSupplyModule.Key,
-      NonUniqueTokens.Key,
-      TooManyCreationsModule.Key,
-      TooManyHoneyPotOwnersModule.Key,
-      HoneypotsDominanceModule.Key,
-      SleepMintModule.Key,
-      PhishingMetadataModule.Key,
-      TokenImpersonationModule.Key,
-      LowActivityAfterAirdropModule.Key,
+    const modules = [
+      ObservationTimeModule,
+      HighActivityModule,
+      AirdropModule,
+      MultipleOwnersModule,
+      Erc721FalseTotalSupplyModule,
+      TooMuchAirdropActivityModule,
+      SilentMintModule,
+      SleepMintModule,
+      NonUniqueTokens,
+      TooManyCreationsModule,
+      TooManyHoneyPotOwnersModule,
+      HoneypotsDominanceModule,
+      PhishingMetadataModule,
+      TokenImpersonationModule,
+      LowActivityAfterAirdropModule,
     ];
 
-    const currResults = moduleKeys.map((key) => currAnalysis[key]?.detected);
-    const prevResults = moduleKeys.map((key) => prevAnalysis[key]?.detected);
+    const currResults = modules.map((Module) => currAnalysis[Module.Key]?.detected);
+    const prevResults = modules.map((Module) => prevAnalysis[Module.Key]?.detected);
 
     return {
       isUpdated: !isEqual(currResults, prevResults),
