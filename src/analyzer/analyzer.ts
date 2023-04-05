@@ -22,12 +22,11 @@ import Erc721FalseTotalSupplyModule from './modules/total-supply';
 import TooManyCreationsModule from './modules/many-creations';
 import TooManyHoneyPotOwnersModule from './modules/honeypot-owners';
 import PhishingMetadataModule from './modules/phishing-metadata';
-import SleepMintModule from './modules/sleep-mint';
+import SilentMintModule from './modules/silent-mint';
 import HoneypotsDominanceModule from './modules/honeypot-dominance';
 import TokenImpersonationModule from './modules/token-impersonation';
 import LowActivityAfterAirdropModule from './modules/low-activity';
 import ObservationTimeModule from './modules/observation-time';
-import SilentMintModule from './modules/silent-mint';
 import TooMuchAirdropActivityModule from './modules/airdrop-activity';
 
 class TokenAnalyzer {
@@ -59,7 +58,6 @@ class TokenAnalyzer {
       new Erc721NonUniqueTokensModule(),
       new Erc721FalseTotalSupplyModule(),
       new SilentMintModule(),
-      new SleepMintModule(honeyPotChecker),
       new TooManyCreationsModule(),
       new PhishingMetadataModule(),
       new TooManyHoneyPotOwnersModule(honeyPotChecker),
@@ -152,7 +150,6 @@ class TokenAnalyzer {
         TooManyHoneyPotOwnersModule,
         SilentMintModule,
         HoneypotsDominanceModule,
-        SleepMintModule,
         PhishingMetadataModule,
         TokenImpersonationModule,
         LowActivityAfterAirdropModule,
@@ -181,7 +178,6 @@ class TokenAnalyzer {
       Erc721FalseTotalSupplyModule,
       TooMuchAirdropActivityModule,
       SilentMintModule,
-      SleepMintModule,
       NonUniqueTokens,
       TooManyCreationsModule,
       TooManyHoneyPotOwnersModule,

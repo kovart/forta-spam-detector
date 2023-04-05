@@ -2,12 +2,12 @@ import { ethers } from 'ethers';
 import { shuffle } from 'lodash';
 import { queue } from 'async';
 
-import { SimplifiedTransaction, TokenEvent, TokenStandard } from '../../types';
-import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
-import { isBurnAddress } from '../../utils/helpers';
-import AirdropModule, { AirdropModuleMetadata } from './airdrop';
-import HoneyPotChecker from '../../utils/honeypot';
-import Logger from '../../utils/logger';
+import { SimplifiedTransaction, TokenEvent, TokenStandard } from '../../../types';
+import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../../types';
+import { isBurnAddress } from '../../../utils/helpers';
+import AirdropModule, { AirdropModuleMetadata } from '../airdrop';
+import HoneyPotChecker from '../../../utils/honeypot';
+import Logger from '../../../utils/logger';
 
 export const SLEEP_MINT_MODULE_KEY = 'SleepMint';
 export const SLEEP_MINT_RECEIVERS_THRESHOLD = 4;
