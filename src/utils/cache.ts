@@ -181,7 +181,7 @@ class Memoizer {
         })
         .catch((e) => {
           scope.set(hash, { value: e, thrown: true }, ttl);
-          return e;
+          return Promise.reject(e);
         }) as TResult;
     } catch (e) {
       scope.set(hash, { value: e, thrown: true }, ttl);
