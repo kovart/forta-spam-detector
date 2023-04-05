@@ -3,15 +3,19 @@ import { queue } from 'async';
 
 import Logger from '../../utils/logger';
 import HoneyPotChecker from '../../utils/honeypot';
+import AirdropModule, { AirdropModuleMetadata } from './airdrop';
 import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
+import { isBurnAddress } from '../../utils/helpers';
+
+// This module checks whether the share of honeypot accounts is unfairly large.
+// An example of a token that has unfair share:
+// https://etherscan.io/token/0x7de45d86199a2e4f9d8bf45bfd4a578886b48d3c#balances
+
+// Exception:
+// https://etherscan.io/token/0x5ca9a71b1d01849c0a95490cc00559717fcf0d1d#balances
 
 export const HONEY_POT_SHARE_MODULE_KEY = 'HoneypotShareDominance';
-export const MIN_TOTAL_ACCOUNTS = 30;
-export const DEVIATION_THRESHOLD = 0.2;
-export const MIN_DOMINANT_ACCOUNTS = 10;
-export const MAX_DOMINANT_ACCOUNTS = 50;
-export const MIN_HONEYPOT_ACCOUNTS = 10;
-export const MIN_HONEYPOT_DOMINANCE_RATE = 0.5;
+export const HONEYPOT_SHARE_THRESHOLD = 0.5;
 export const CONCURRENCY = 40;
 
 type HoneypotShare = {
@@ -22,14 +26,12 @@ type HoneypotShare = {
 export type HoneyPotShareModuleMetadata = {
   honeypots: HoneypotShare[];
   honeypotTotalShare: number;
-  honeypotDominanceRate: number;
 };
 
 export type HoneyPotShareModuleShortMetadata = {
   honeypotCount: number;
   honeypotShortList: HoneypotShare[];
   honeypotTotalShare: number;
-  honeypotDominanceRate: number;
 };
 
 class HoneyPotShareDominanceModule extends AnalyzerModule {
@@ -48,99 +50,98 @@ class HoneyPotShareDominanceModule extends AnalyzerModule {
     context[HONEY_POT_SHARE_MODULE_KEY] = { detected, metadata };
 
     const memo = memoizer.getScope(token.address);
+    const balanceByAccount = transformer.balanceByAccount(token);
 
-    // Use the cache, but clone it, since we will be modifying it
-    const balanceByAccount = new Map(
-      memo('balanceByAccount', [blockNumber], () => transformer.balanceByAccount(token)),
-    );
+    // Check if there are artifacts in the balances
+    if ([...balanceByAccount.values()].find((e) => e.isNegative())) {
+      return;
+    }
 
-    // Creators often allocate most of the tokens to themselves
+    const airdropMetadata = context[AirdropModule.Key].metadata as AirdropModuleMetadata;
+    const receiverSet = new Set(airdropMetadata.receivers);
+    const transactionSet = transformer.transactions(token);
+    const senderSet = new Set([...transactionSet].map((t) => t.from));
+
+    for (const receiver of receiverSet) {
+      if (isBurnAddress(receiver) || senderSet.has(receiver)) receiverSet.delete(receiver);
+    }
+
+    // Creators often allocate most of the tokens to themselves, so we will remove this share
+    receiverSet.delete(token.deployer);
+    receiverSet.delete(token.address);
     balanceByAccount.delete(token.deployer);
     balanceByAccount.delete(token.address);
-
-    if (balanceByAccount.size < MIN_TOTAL_ACCOUNTS) return;
 
     const balances = [...balanceByAccount.values()];
     const totalBalance = this.sum(balances);
 
-    const mean = this.sum(balances).div(balances.length);
-    const variance = balances
-      .reduce((acc, balance) => acc.plus(balance.minus(mean).pow(2)), new BigNumber(0))
-      .div(balances.length);
-    const stdDev = variance.sqrt();
+    type Account = {
+      address: string;
+      balance: BigNumber;
+    };
 
-    const isPreponderance = (balance: BigNumber) =>
-      balance.isGreaterThan(stdDev.multipliedBy(DEVIATION_THRESHOLD).plus(mean));
-
-    const dominantAccounts = [...balanceByAccount].filter(([, balance]) =>
-      isPreponderance(balance),
-    );
-
-    if (
-      dominantAccounts.length < MIN_DOMINANT_ACCOUNTS ||
-      dominantAccounts.length > MAX_DOMINANT_ACCOUNTS
-    )
-      return;
-
-    if (dominantAccounts.length > 0) {
-      Logger.debug(`Testing dominant accounts: ${dominantAccounts.length}`);
-    }
-
-    let counter = 0;
-    const accountQueue = queue<{ account: string; balance: BigNumber }>(async (task, callback) => {
-      const { account, balance } = task;
+    const honeypotReceivers: Account[] = [];
+    const honeypotQueue = queue<Account>(async (account, callback) => {
+      const { address } = account;
 
       try {
-        const result = await memo('honeypot', [account], () => {
-          Logger.trace(
-            `[${counter + 1}/${dominantAccounts.length}] ` +
-              `Testing address if it is a honeypot: ${account}`,
-          );
-          return this.honeypotChecker.testAddress(account, provider, blockNumber);
+        const { isHoneypot } = await memo('honeypot', [address], () => {
+          Logger.trace(`HoneyPot scanning: ${address}`);
+          return this.honeypotChecker.testAddress(address, provider, blockNumber);
         });
 
-        if (result.isHoneypot) {
-          dominantHoneypots.push([account, balance]);
+        if (isHoneypot) {
+          honeypotReceivers.push(account);
         }
 
-        counter++;
         callback();
       } catch (e: any) {
         Logger.error(e);
-        accountQueue.kill();
+        honeypotQueue.remove(() => true);
+        callback();
       }
     }, CONCURRENCY);
 
-    const dominantHoneypots: [string, BigNumber][] = [];
-    for (const entry of dominantAccounts) {
-      accountQueue.push({ account: entry[0], balance: entry[1] });
+    const balanceByReceiver: Account[] = [...receiverSet].map((r) => ({
+      address: r,
+      balance: balanceByAccount.get(r) || new BigNumber(0),
+    }));
+    balanceByReceiver.sort((a1, a2) => (a2.balance.isGreaterThan(a1.balance) ? 0 : -1));
+
+    // Push top 100 receivers by balance
+    for (const account of balanceByReceiver.slice(0, 100)) {
+      honeypotQueue.push(account);
     }
 
-    if (!accountQueue.idle()) {
-      await accountQueue.drain();
+    if (!honeypotQueue.idle()) {
+      await honeypotQueue.drain();
     }
 
-    if (dominantHoneypots.length < MIN_HONEYPOT_ACCOUNTS) return;
+    // Check total share percentage
+    const honeypotTotalShare = this.sum(honeypotReceivers.map((a) => a.balance))
+      .div(totalBalance)
+      .toNumber();
 
-    const dominanceRate = dominantHoneypots.length / dominantAccounts.length;
-
-    detected = dominanceRate >= MIN_HONEYPOT_DOMINANCE_RATE;
-    metadata = {
-      honeypots: dominantHoneypots.map(([account, balance]) => ({
-        address: account,
-        share: new BigNumber(balance).div(totalBalance).toNumber(),
-      })),
-      honeypotTotalShare: this.sum(dominantHoneypots.map((h) => h[1]))
-        .div(totalBalance)
-        .toNumber(),
-      honeypotDominanceRate: dominanceRate,
-    };
+    detected = honeypotTotalShare > HONEYPOT_SHARE_THRESHOLD;
+    if (detected) {
+      metadata = {
+        honeypots: honeypotReceivers.map((account) => ({
+          address: account.address,
+          share: new BigNumber(account.balance).div(totalBalance).toNumber(),
+        })),
+        honeypotTotalShare: honeypotTotalShare,
+      };
+    }
 
     context[HONEY_POT_SHARE_MODULE_KEY] = { detected, metadata };
   }
 
   private sum(arr: (string | BigNumber)[]) {
-    return arr.reduce((acc: BigNumber, curr) => acc.plus(curr), new BigNumber(0));
+    let total = new BigNumber(0);
+    for (const value of arr) {
+      total = total.plus(value);
+    }
+    return total;
   }
 
   simplifyMetadata(metadata: HoneyPotShareModuleMetadata): HoneyPotShareModuleShortMetadata {
@@ -151,7 +152,6 @@ class HoneyPotShareDominanceModule extends AnalyzerModule {
       honeypotCount: metadata.honeypots.length,
       honeypotShortList: sortedHoneyPotList.slice(0, 15),
       honeypotTotalShare: metadata.honeypotTotalShare,
-      honeypotDominanceRate: metadata.honeypotDominanceRate,
     };
   }
 }

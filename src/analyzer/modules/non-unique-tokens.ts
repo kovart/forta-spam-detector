@@ -1,6 +1,7 @@
+import axios from 'axios';
+import { queue } from 'async';
 import { ethers } from 'ethers';
 import { chunk, shuffle } from 'lodash';
-import axios from 'axios';
 
 import Logger from '../../utils/logger';
 import { isBase64, normalizeMetadataUri, parseBase64, retry } from '../../utils/helpers';
@@ -132,6 +133,8 @@ class Erc721NonUniqueTokensModule extends AnalyzerModule {
 
       // Fetch non Base64-encoded URI
       if (metadataByTokenId.size !== tokenUriByTokenId.size) {
+        if (memo.get('isMetadataProviderBroken')) return;
+
         const entries = [...tokenUriByTokenId]
           // Filter out already processed tokens
           .filter(([tokenId]) => !metadataByTokenId.has(tokenId))
@@ -140,24 +143,33 @@ class Erc721NonUniqueTokensModule extends AnalyzerModule {
           // Filter out URI with null value after normalization
           .filter(([, uri]) => uri) as [string, string][];
 
-        Logger.debug(`Fetching token metadata: ${tokenUriByTokenId.size} items`);
+        const metadataQueue = queue<{ tokenId: string; uri: string }>(
+          async ({ tokenId, uri }, callback) => {
+            try {
+              const metadata = await memo('axios.get', [uri], async () => {
+                const { data } = await retry(() => axios.get(uri));
+                return data;
+              });
 
-        for (const batch of chunk(entries, METADATA_CONCURRENCY)) {
-          try {
-            const metadataArr = await Promise.all(
-              batch.map(([, uri]) =>
-                memo('axios.get', [uri], async () => {
-                  const { data } = await retry(() => axios.get(uri), { wait: 30 * 1000 });
-                  return data;
-                }),
-              ),
-            );
-            metadataArr.forEach((metadata, i) => metadataByTokenId.set(entries[i][0], metadata));
-          } catch (e) {
-            // Backend error?
-            Logger.error(e);
-            return;
-          }
+              metadataByTokenId.set(tokenId, metadata);
+              callback();
+            } catch (e) {
+              Logger.error(e);
+              memo.set('isMetadataProviderBroken', true);
+              metadataQueue.remove((v) => true);
+              callback();
+            }
+          },
+          METADATA_CONCURRENCY,
+        );
+
+        Logger.debug(`Fetching token metadata: ${tokenUriByTokenId.size} items`);
+        for (const [tokenId, uri] of entries) {
+          metadataQueue.push({ tokenId, uri });
+        }
+
+        if (!metadataQueue.idle()) {
+          await metadataQueue.drain();
         }
       }
 

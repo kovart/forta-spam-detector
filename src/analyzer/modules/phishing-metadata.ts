@@ -3,8 +3,13 @@ import { ethers } from 'ethers';
 import { erc20Iface } from '../../contants';
 import { containsLink } from '../../utils/helpers';
 import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
+import AirdropModule, { AirdropModuleMetadata } from './airdrop';
+
+// This module analyzes the metadata of tokens for the presence of a link to a website.
+// If such a link is found, it may suggest a phishing attack, particularly in the case of a large airdrop.
 
 export const PHISHING_METADATA_MODULE_KEY = 'PhishingMetadata';
+export const MIN_RECEIVERS = 500;
 
 export type PhishingModuleMetadata = {
   name: string;
@@ -19,6 +24,12 @@ class PhishingMetadataModule extends AnalyzerModule {
 
     let detected = false;
     let metadata: PhishingModuleMetadata | undefined = undefined;
+
+    context[PHISHING_METADATA_MODULE_KEY] = { detected, metadata };
+
+    const airdropMetadata = context[AirdropModule.Key].metadata as AirdropModuleMetadata;
+
+    if (airdropMetadata.receivers.length < MIN_RECEIVERS) return;
 
     const memo = memoizer.getScope(token.address);
 

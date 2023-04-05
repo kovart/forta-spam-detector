@@ -1,27 +1,32 @@
-import BigNumber from 'bignumber.js';
 import { queue } from 'async';
 
 import Logger from '../../utils/logger';
 import HoneyPotChecker, { HoneypotAnalysisMetadata } from '../../utils/honeypot';
+import AirdropModule, { AirdropModuleMetadata } from './airdrop';
 import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
-import { AIRDROP_MODULE_KEY, AirdropModuleMetadata } from './airdrop';
+import { isBurnAddress } from '../../utils/helpers';
+
+// This module checks if a suspiciously large number of token holders are Honeypots,
+// i.e., popular addresses such as vitalik.eth.
 
 export const TOO_MANY_HONEY_POT_OWNERS_MODULE_KEY = 'TooManyHoneyPotOwners';
-export const MIN_HONEYPOT_ACCOUNTS = 100;
-export const MIN_HONEYPOT_RATIO = 0.35;
-export const MAX_ACCOUNTS = 1000;
-export const MIN_ACCOUNTS = 10;
-export const CONCURRENCY = 20;
+export const HONEYPOT_THRESHOLD_RATIO = 0.5;
+export const MAX_HOLDERS = 1500;
+export const CONCURRENCY = 30;
 
-type Honeypot = { address: string; metadata: HoneypotAnalysisMetadata };
+type HoneypotInfo = { address: string; metadata: HoneypotAnalysisMetadata };
 
 export type TooManyHoneyPotOwnersModuleMetadata = {
-  honeypots: Honeypot[];
+  honeypots: HoneypotInfo[];
+  honeypotRatio: number;
+  holderCount: number;
 };
 
 export type TooManyHoneyPotOwnersModuleShortMetadata = {
   honeypotCount: number;
-  honeypotShortList: Honeypot[];
+  honeypotShortList: HoneypotInfo[];
+  honeypotRatio: number;
+  holderCount: number;
 };
 
 class TooManyHoneyPotOwnersModule extends AnalyzerModule {
@@ -32,83 +37,70 @@ class TooManyHoneyPotOwnersModule extends AnalyzerModule {
   }
 
   async scan(params: ScanParams): Promise<ModuleScanReturn> {
-    const { token, context, provider, transformer, memoizer, blockNumber } = params;
+    const { token, context, provider, memoizer, transformer, blockNumber } = params;
 
     let detected = false;
     let metadata: TooManyHoneyPotOwnersModuleMetadata | undefined = undefined;
 
+    context[TOO_MANY_HONEY_POT_OWNERS_MODULE_KEY] = { detected, metadata };
+
     const memo = memoizer.getScope(token.address);
 
-    const airdropMetadata = context[AIRDROP_MODULE_KEY].metadata as AirdropModuleMetadata;
+    const airdropMetadata = context[AirdropModule.Key].metadata as AirdropModuleMetadata;
 
-    const honeypots: Honeypot[] = [];
+    let receiverSet = new Set(airdropMetadata.receivers);
+    const transactionSet = transformer.transactions(token);
+    const senderSet = new Set([...transactionSet].map((t) => t.from));
 
-    if (airdropMetadata) {
-      // Use the cache, but clone it, since we will be modifying it
-      const balanceByAccount = new Map(
-        memo('balanceByAccount', [blockNumber], () => transformer.balanceByAccount(token)),
-      );
+    // Creators often allocate tokens to themselves
+    receiverSet.delete(token.deployer);
+    receiverSet.delete(token.address);
 
-      // Creators often allocate most of the tokens to themselves
-      balanceByAccount.delete(token.deployer);
-      balanceByAccount.delete(token.address);
+    for (const receiver of receiverSet) {
+      // Delete all burn addresses and all receivers that interacted with the token
+      if (isBurnAddress(receiver) || senderSet.has(receiver)) {
+        receiverSet.delete(receiver);
+      }
+    }
 
-      let receivers = airdropMetadata.receivers;
+    if (receiverSet.size > MAX_HOLDERS) {
+      Logger.debug(`Too many token holders to check the number of honeypots: ${receiverSet.size}`);
+      return;
+    }
 
-      if (receivers.length < MIN_ACCOUNTS) return;
-
-      // It takes a very long time to process all the accounts.
-      // So, we will try to "cheat" and filter accounts with the highest balance.
-      if (receivers.length > MAX_ACCOUNTS) {
-        receivers.sort((r1, r2) => {
-          const balanceR1 = balanceByAccount.get(r1) || new BigNumber(0);
-          const balanceR2 = balanceByAccount.get(r2) || new BigNumber(0);
-          return balanceR1.isGreaterThan(balanceR2) ? 0 : -1;
+    const honeypots: HoneypotInfo[] = [];
+    const holderQueue = queue<string>(async (receiver, callback) => {
+      try {
+        const { isHoneypot, metadata } = await memo('honeypot', [receiver], () => {
+          Logger.debug(`HoneyPot scanning: ${receiver}`);
+          return this.honeypotChecker.testAddress(receiver, provider, blockNumber);
         });
 
-        receivers = receivers.slice(0, MAX_ACCOUNTS);
-      }
-
-      let counter = 0;
-      const receiverQueue = queue<string>(async (receiver, callback) => {
-        try {
-          const result = await memo('honeypot', [receiver], () => {
-            Logger.debug(
-              `[${counter + 1}/${receivers.length}] ` +
-                `Testing address if it is a honeypot: ${receiver}`,
-            );
-            return this.honeypotChecker.testAddress(receiver, provider, blockNumber);
-          });
-
-          if (result.isHoneypot) {
-            honeypots.push({ address: receiver, metadata: result.metadata });
-          }
-
-          counter++;
-          callback();
-        } catch (e: any) {
-          Logger.error(e);
-          receiverQueue.kill();
+        if (isHoneypot) {
+          honeypots.push({ address: receiver, metadata: metadata });
         }
-      }, CONCURRENCY);
 
-      for (let i = 0; i < receivers.length; i++) {
-        const receiver = receivers[i];
-
-        if (receiver === token.deployer || receiver === token.address) continue;
-
-        receiverQueue.push(receiver);
+        callback();
+      } catch (e: any) {
+        Logger.error(e);
+        holderQueue.remove(() => true);
+        callback();
       }
+    }, CONCURRENCY);
 
-      if (!receiverQueue.idle()) {
-        await receiverQueue.drain();
-      }
+    Logger.debug(`Fetching honeypot info for ${receiverSet.size} accounts...`);
+    for (const holder of receiverSet) {
+      holderQueue.push(holder);
+    }
 
-      const honeypotRate = honeypots.length / receivers.length;
-      if (honeypots.length >= MIN_HONEYPOT_ACCOUNTS || honeypotRate >= MIN_HONEYPOT_RATIO) {
-        detected = true;
-        metadata = { honeypots };
-      }
+    if (!holderQueue.idle()) {
+      await holderQueue.drain();
+    }
+
+    const honeypotRatio = honeypots.length / receiverSet.size;
+    detected = honeypotRatio >= HONEYPOT_THRESHOLD_RATIO;
+    if (detected) {
+      metadata = { honeypots, honeypotRatio, holderCount: receiverSet.size };
     }
 
     context[TOO_MANY_HONEY_POT_OWNERS_MODULE_KEY] = { detected, metadata };
@@ -118,8 +110,10 @@ class TooManyHoneyPotOwnersModule extends AnalyzerModule {
     metadata: TooManyHoneyPotOwnersModuleMetadata,
   ): TooManyHoneyPotOwnersModuleShortMetadata {
     return {
+      holderCount: metadata.holderCount,
       honeypotCount: metadata.honeypots.length,
       honeypotShortList: metadata.honeypots.slice(0, 15),
+      honeypotRatio: metadata.honeypotRatio,
     };
   }
 }

@@ -5,12 +5,17 @@ import { queue } from 'async';
 import Logger from './logger';
 import { CreatedContract, TokenStandard } from '../types';
 import {
+  BURN_ADDRESSES,
   erc1155Iface,
   erc165Iface,
   erc20Iface,
   erc721Iface,
   INTERFACE_ID_BY_TYPE,
 } from '../contants';
+
+export function isBurnAddress(address: string) {
+  return BURN_ADDRESSES.has(address.toLowerCase()) || address.indexOf('00000000000000') > -1;
+}
 
 export function findCreatedContracts(txEvent: TransactionEvent): CreatedContract[] {
   const createdContracts: CreatedContract[] = [];

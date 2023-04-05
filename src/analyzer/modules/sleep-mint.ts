@@ -1,25 +1,38 @@
 import { ethers } from 'ethers';
 import { shuffle } from 'lodash';
+import { queue } from 'async';
 
-import { TokenEvent, TokenStandard } from '../../types';
+import { SimplifiedTransaction, TokenEvent, TokenStandard } from '../../types';
 import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
+import { isBurnAddress } from '../../utils/helpers';
+import AirdropModule, { AirdropModuleMetadata } from './airdrop';
+import HoneyPotChecker from '../../utils/honeypot';
+import Logger from '../../utils/logger';
 
 export const SLEEP_MINT_MODULE_KEY = 'SleepMint';
+export const SLEEP_MINT_RECEIVERS_THRESHOLD = 4;
+export const CONCURRENCY = 30;
+
+// Exception:
+// https://etherscan.io/token/0xf6fd82dedbbe0ffadb5e1ecc2a283ab52b9ed2b0?a=0x0000000000000000000000000000000000000001
 
 type SleepMintInfo = {
-  owner: string;
-  spender: string;
+  from: string;
+  to: string;
+  sender: string;
+  txHash: string;
   isPassivelyApproved: boolean;
 };
 
 export type SleepMintModuleMetadata = {
-  sleepMintTxs: string[];
   sleepMints: SleepMintInfo[];
 };
 
 export type SleepMintModuleShortMetadata = {
   sleepMintCount: number;
   sleepMintShortList: SleepMintInfo[];
+  sleepMintReceiverCount: number;
+  sleepMintReceiverShortList: string[];
   sleepMintTxCount: number;
   sleepMintTxShortList: string[];
 };
@@ -27,15 +40,20 @@ export type SleepMintModuleShortMetadata = {
 class SleepMintModule extends AnalyzerModule {
   static Key = SLEEP_MINT_MODULE_KEY;
 
+  constructor(private honeypotChecker: HoneyPotChecker) {
+    super();
+  }
+
   async scan(params: ScanParams): Promise<ModuleScanReturn> {
-    const { token, storage, memoizer, provider, context } = params;
+    const { token, storage, memoizer, provider, blockNumber, context } = params;
 
     let detected = false;
     let metadata: SleepMintModuleMetadata | undefined = undefined;
 
-    context[SLEEP_MINT_MODULE_KEY] = { detected, metadata };
-
     const memo = memoizer.getScope(token.address);
+
+    const airdropMetadata = context[AirdropModule.Key].metadata as AirdropModuleMetadata;
+    const airdropTxHashes = airdropMetadata.txHashes;
 
     // Map owner -> spenders
     // A bit of a simplified structure, with no knowledge of a particular token or values.
@@ -74,47 +92,85 @@ class SleepMintModule extends AnalyzerModule {
       }
     }
 
-    const sleepMintTxSet = new Set<string>();
-    const sleepMintsByOwner = new Map<string, SleepMintInfo[]>();
+    const sleepMintSet = new Set<SleepMintInfo>();
+    const airdropTxHashSet = new Set(airdropTxHashes);
+
+    let transferEvents: Set<{ from: string; to: string; transaction: SimplifiedTransaction }> =
+      new Set();
+
     if (token.type === TokenStandard.Erc20) {
-      const transferEvents = storage.erc20TransferEventsByToken.get(token.address) || [];
-
-      for (const event of transferEvents) {
-        if (
-          event.from === ethers.constants.AddressZero ||
-          event.transaction.from === event.from ||
-          event.transaction.from === event.to ||
-          event.from === token.address
-        )
-          continue;
-
-        // Skip if transaction is legal
-        if (directApprovals.get(event.from)?.has(event.transaction.from)) continue;
-
-        const code = await memo('getCode', [event.from], () => provider.getCode(event.from));
-
-        // Contracts sometimes cause FP, such as in this transaction:
-        // https://etherscan.io/tx/0x5eb2f12136d80a45cace29b1dfccb4213b097444694cb23ed9960ed5bc6c89c7
-        if (code !== '0x') continue;
-
-        const isPassivelyApproved =
-          passiveApprovals.get(event.from)?.has(event.transaction.from) || false;
-
-        let mints = sleepMintsByOwner.get(event.from);
-        if (!mints) {
-          mints = [];
-          sleepMintsByOwner.set(event.to, mints);
-        }
-        mints.push({ owner: event.from, spender: event.to, isPassivelyApproved });
-        sleepMintTxSet.add(event.transaction.hash);
-      }
+      transferEvents = storage.erc20TransferEventsByToken.get(token.address) || new Set();
+    } else if (token.type === TokenStandard.Erc721) {
+      transferEvents = storage.erc721TransferEventsByToken.get(token.address) || new Set();
+    } else if (token.type === TokenStandard.Erc1155) {
+      transferEvents = storage.erc1155TransferSingleEventsByToken.get(token.address) || new Set();
+      storage.erc1155TransferBatchEventsByToken
+        .get(token.address)
+        ?.forEach((e) => transferEvents.add(e));
     }
 
-    if (sleepMintTxSet.size > 0) {
+    // TODO LIMIT
+
+    for (const event of transferEvents) {
+      if (
+        event.from === ethers.constants.AddressZero ||
+        event.transaction.from === event.from ||
+        event.transaction.from === event.to ||
+        event.from === token.address ||
+        isBurnAddress(event.to) ||
+        !airdropTxHashSet.has(event.transaction.hash)
+      ) {
+        continue;
+      }
+
+      // Skip if transaction is legal
+      if (directApprovals.get(event.from)?.has(event.transaction.from)) continue;
+
+      const isPassivelyApproved =
+        passiveApprovals.get(event.from)?.has(event.transaction.from) || false;
+
+      sleepMintSet.add({
+        from: event.from,
+        to: event.to,
+        sender: event.transaction.from,
+        txHash: event.transaction.hash,
+        isPassivelyApproved,
+      });
+    }
+
+    const honeypotQueue = queue<SleepMintInfo>(async (mint, callback) => {
+      try {
+        const owner = mint.from;
+
+        const { isHoneypot } = await memo('honeypot', [owner], () => {
+          Logger.debug(`HoneyPot scanning: ${owner}`);
+          return this.honeypotChecker.testAddress(owner, provider, blockNumber);
+        });
+
+        if (!isHoneypot) {
+          sleepMintSet.delete(mint);
+        }
+
+        callback();
+      } catch (e: any) {
+        Logger.error(e);
+        honeypotQueue.remove(() => true);
+        callback();
+      }
+    }, CONCURRENCY);
+
+    Logger.debug(`Fetching honeypot info for ${sleepMintSet.size} accounts...`);
+    honeypotQueue.push([...sleepMintSet]);
+
+    if (!honeypotQueue.idle()) {
+      await honeypotQueue.drain();
+    }
+
+    const sleepMintReceiverSet = new Set([...sleepMintSet].map((m) => m.to));
+    if (sleepMintReceiverSet.size > SLEEP_MINT_RECEIVERS_THRESHOLD) {
       detected = true;
       metadata = {
-        sleepMints: [...sleepMintsByOwner.values()].flat(),
-        sleepMintTxs: [...sleepMintTxSet],
+        sleepMints: [...sleepMintSet],
       };
     }
 
@@ -122,11 +178,16 @@ class SleepMintModule extends AnalyzerModule {
   }
 
   simplifyMetadata(metadata: SleepMintModuleMetadata): SleepMintModuleShortMetadata {
+    const sleepMintTxs = [...new Set(metadata.sleepMints.map((m) => m.txHash))];
+    const receivers = [...new Set(metadata.sleepMints.map((m) => m.to))];
+
     return {
       sleepMintCount: metadata.sleepMints.length,
       sleepMintShortList: shuffle(metadata.sleepMints).slice(0, 15),
-      sleepMintTxCount: metadata.sleepMintTxs.length,
-      sleepMintTxShortList: shuffle(metadata.sleepMintTxs).slice(0, 15),
+      sleepMintTxCount: sleepMintTxs.length,
+      sleepMintTxShortList: shuffle(sleepMintTxs).slice(0, 15),
+      sleepMintReceiverCount: receivers.length,
+      sleepMintReceiverShortList: receivers.slice(0, 15),
     };
   }
 }

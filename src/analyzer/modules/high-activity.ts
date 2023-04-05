@@ -1,14 +1,15 @@
 import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
 
 export const HIGH_ACTIVITY_MODULE_KEY = 'HighActivity';
-export const MIN_UNIQUE_SENDERS_TOTAL = 200;
-export const MIN_UNIQUE_SENDERS_IN_WINDOW_TIME = 50;
-export const WINDOW_TIME = 7 * 24 * 60 * 60; // 7d
+export const MIN_UNIQUE_SENDERS_TOTAL = 400;
+export const MIN_UNIQUE_SENDERS_IN_WINDOW = 150;
+export const WINDOW_PERIOD = 7 * 24 * 60 * 60; // 7d
 
 export type HighActivityModuleMetadata = {
   senders: string[];
   startTime: number;
   endTime: number;
+  windowPeriod: number;
   maxSenderCountInWindow: number;
 };
 
@@ -17,6 +18,7 @@ export type HighActivityModuleShortMetadata = {
   senderShortList: string[];
   startTime: number;
   endTime: number;
+  windowPeriod: number;
   maxSenderCountInWindow: number;
 };
 
@@ -24,7 +26,7 @@ class HighActivityModule extends AnalyzerModule {
   static Key = HIGH_ACTIVITY_MODULE_KEY;
 
   async scan(params: ScanParams): Promise<ModuleScanReturn> {
-    const { token, storage, transformer, context } = params;
+    const { token, storage, context } = params;
 
     let detected = false;
     let metadata: HighActivityModuleMetadata | undefined = undefined;
@@ -44,7 +46,7 @@ class HighActivityModule extends AnalyzerModule {
         for (let y = i; y < transactions.length; y++) {
           const endTransaction = transactions[y];
 
-          if (endTransaction.timestamp - startTransaction.timestamp > WINDOW_TIME) break;
+          if (endTransaction.timestamp - startTransaction.timestamp > WINDOW_PERIOD) break;
 
           senderSet.add(endTransaction.from);
         }
@@ -52,13 +54,14 @@ class HighActivityModule extends AnalyzerModule {
         maxSenderCountInWindow = Math.max(maxSenderCountInWindow, senderSet.size);
       }
 
-      detected = maxSenderCountInWindow >= MIN_UNIQUE_SENDERS_IN_WINDOW_TIME;
+      detected = maxSenderCountInWindow >= MIN_UNIQUE_SENDERS_IN_WINDOW;
     }
 
     metadata = {
       senders: [...senderSet],
       startTime: token.timestamp,
       endTime: params.timestamp,
+      windowPeriod: WINDOW_PERIOD,
       maxSenderCountInWindow: maxSenderCountInWindow,
     };
 
@@ -73,6 +76,7 @@ class HighActivityModule extends AnalyzerModule {
       senderShortList: metadata.senders.slice(0, 15),
       startTime: metadata.startTime,
       endTime: metadata.endTime,
+      windowPeriod: WINDOW_PERIOD,
       maxSenderCountInWindow: metadata.maxSenderCountInWindow,
     };
   }

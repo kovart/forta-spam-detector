@@ -69,7 +69,7 @@ class Erc721MultipleOwnersModule extends AnalyzerModule {
     Object.entries(metadata.ownersByTokenId)
       .slice(0, 15)
       .map(([tokenId, owners]) => {
-        duplicatedTokenShortMap[tokenId] = owners;
+        duplicatedTokenShortMap[tokenId] = owners.slice(0, 5);
       });
 
     return {

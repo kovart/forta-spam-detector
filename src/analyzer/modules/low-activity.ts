@@ -1,10 +1,9 @@
 import { AIRDROP_MODULE_KEY, AirdropModuleMetadata } from './airdrop';
-import { HIGH_ACTIVITY_MODULE_KEY, HighActivityModuleMetadata } from './high-activity';
 import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
 
 export const LOW_ACTIVITY_MODULE_KEY = 'LowActivityAfterAirdrop';
-export const MIN_AIRDROP_RECEIVERS = 100;
-export const MIN_ACTIVE_RECEIVERS = 6;
+export const MIN_AIRDROP_RECEIVERS = 1500;
+export const MIN_ACTIVE_RECEIVERS_RATE = 0.0025; // 0.25%
 export const DELAY_AFTER_AIRDROP = 14 * 24 * 60 * 60; // 14d
 
 export type LowActivityModuleMetadata = {
@@ -20,7 +19,7 @@ class LowActivityAfterAirdropModule extends AnalyzerModule {
   static Key = LOW_ACTIVITY_MODULE_KEY;
 
   async scan(params: ScanParams): Promise<ModuleScanReturn> {
-    const { timestamp, context } = params;
+    const { token, timestamp, transformer, context } = params;
 
     let detected = false;
     let metadata: LowActivityModuleMetadata | undefined = undefined;
@@ -28,16 +27,33 @@ class LowActivityAfterAirdropModule extends AnalyzerModule {
     context[LOW_ACTIVITY_MODULE_KEY] = { detected, metadata };
 
     const airdropMetadata = context[AIRDROP_MODULE_KEY].metadata as AirdropModuleMetadata;
-    const activityMetadata = context[HIGH_ACTIVITY_MODULE_KEY]
-      .metadata as HighActivityModuleMetadata;
 
-    if (airdropMetadata.receivers.length < MIN_AIRDROP_RECEIVERS) return;
-    if (timestamp - airdropMetadata.startTime <= DELAY_AFTER_AIRDROP) return;
+    const receiverSet = new Set<string>();
+    let minReceiversFulfilledAt: number = -1;
+    for (const transfer of airdropMetadata.transfers) {
+      receiverSet.add(transfer.receiver);
+      if (receiverSet.size >= MIN_AIRDROP_RECEIVERS) {
+        minReceiversFulfilledAt = transfer.timestamp;
+        break;
+      }
+    }
 
-    const senderSet = new Set(activityMetadata.senders);
+    if (minReceiversFulfilledAt === -1) return;
+    if (timestamp - minReceiversFulfilledAt <= DELAY_AFTER_AIRDROP) return;
+
+    const transactionSet = transformer.transactions(token);
+    const senderSet = new Set<string>();
+
+    transactionSet.forEach((t) => senderSet.add(t.from));
+
     const activeReceivers = airdropMetadata.receivers.filter((r) => senderSet.has(r));
 
-    if (activeReceivers.length >= MIN_ACTIVE_RECEIVERS) return;
+    if (
+      activeReceivers.length >=
+      Math.round(airdropMetadata.receivers.length * MIN_ACTIVE_RECEIVERS_RATE)
+    ) {
+      return;
+    }
 
     detected = true;
     metadata = { activeReceivers };
