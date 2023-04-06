@@ -169,6 +169,8 @@ class TokenProvider {
       });
     }
 
+    await this.updateMetadata(mergedTokens);
+
     return mergedTokens;
   }
 
@@ -213,6 +215,40 @@ class TokenProvider {
       });
     }
 
+    await this.updateMetadata(tokens);
+
+    return tokens;
+  }
+
+  async fetchTokenMetadata(address: string, network: Network) {
+    const rpcUrls = PUBLIC_RPC_URLS_BY_NETWORK[network];
+
+    if (!rpcUrls) throw new Error(`No RPC urls for network: ${network}`);
+
+    for (const rpcUrl of rpcUrls) {
+      Logger.debug(`Fetching metadata with the following RPC url (${Network[network]}): ${rpcUrl}`);
+
+      const provider = new ethers.providers.StaticJsonRpcProvider(rpcUrl);
+      const contract = new ethers.Contract(address, erc20Iface, provider);
+
+      try {
+        const symbol: string = await retry(() => contract.symbol());
+        const name: string = await retry(() => contract.name());
+
+        return { symbol, name };
+      } catch (e) {
+        Logger.error('Cannot read token metadata');
+        Logger.error(e);
+        // ignore, use the next rpc url
+      }
+    }
+
+    throw new Error(
+      `Cannot fetch token metadata using the following RPC urls: ${rpcUrls.join(', ')}`,
+    );
+  }
+
+  async updateMetadata(tokens: TokenRecord[]) {
     // Unfortunately, CoinGecko returns not quite correct names of tokens.
     // For example the contract of the "Tether" token returns "Tether USD" when you call name() function,
     // however CoinGecko returns just "Tether".
@@ -263,7 +299,7 @@ class TokenProvider {
           log(
             `Token metadata updated. Before: ${token.name} (${token.symbol}). After: ${meta.name} (${meta.symbol}).`,
           );
-          token.symbol = meta.symbol.toLowerCase();
+          token.symbol = meta.symbol;
           token.name = meta.name;
           failedTokens = 0;
         } catch (e) {
@@ -281,38 +317,6 @@ class TokenProvider {
         }
       }
     }
-
-    return tokens;
-  }
-
-  async fetchTokenMetadata(address: string, network: Network) {
-    const rpcUrls = PUBLIC_RPC_URLS_BY_NETWORK[network];
-
-    if (!rpcUrls) throw new Error(`No RPC urls for network: ${network}`);
-
-    for (const rpcUrl of rpcUrls) {
-      Logger.debug(
-        `Fetching metadata with the following RPC url (${Network[network]}): ${rpcUrls}`,
-      );
-
-      const provider = new ethers.providers.StaticJsonRpcProvider(rpcUrl);
-      const contract = new ethers.Contract(address, erc20Iface, provider);
-
-      try {
-        const symbol: string = await retry(() => contract.symbol());
-        const name: string = await retry(() => contract.name());
-
-        return { symbol, name };
-      } catch (e) {
-        Logger.error('Cannot read token metadata');
-        Logger.error(e);
-        // ignore, use the next rpc url
-      }
-    }
-
-    throw new Error(
-      `Cannot fetch token metadata using the following RPC urls: ${rpcUrls.join(', ')}`,
-    );
   }
 
   getTokenHash(t: { name: string; symbol: string }) {
