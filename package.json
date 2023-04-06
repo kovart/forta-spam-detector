@@ -2,7 +2,7 @@
   "name": "spam-detector",
   "version": "0.0.1",
   "description": "Detects spam tokens using multiple indicators",
-  "repository": "https://github.com/kovart/forta-spam-bot",
+  "repository": "https://github.com/kovart/forta-spam-detector",
   "chainIds": [
     1
   ],
