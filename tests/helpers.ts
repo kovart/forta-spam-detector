@@ -1,3 +1,4 @@
+import { ethers } from 'ethers';
 import dayjs from 'dayjs';
 import duration from 'dayjs/plugin/duration';
 import { chunk, groupBy } from 'lodash';
@@ -7,12 +8,15 @@ import Database from './utils/database';
 import { SimplifiedTransaction, TokenStandard } from '../src/types';
 import { getTestTokenStorage, TokenRecord } from './utils/storages';
 import {
+  Erc1155ApprovalForAllEvent,
+  Erc1155TransferBatchEvent,
+  Erc1155TransferSingleEvent,
   Erc20ApprovalEvent,
   Erc20TransferEvent,
   Erc721ApprovalEvent,
   Erc721TransferEvent,
 } from './scripts/types';
-import { erc20Iface, erc721Iface } from '../src/contants';
+import { erc1155Iface, erc20Iface, erc721Iface } from '../src/contants';
 
 dayjs.extend(duration);
 
@@ -302,6 +306,95 @@ export async function getErc721TxEvents(token: TokenRecord) {
       events: approvalEvents,
       encode: (e: Erc721ApprovalEvent) =>
         erc721Iface.encodeEventLog('Approval', [e.owner, e.approved, e.token_id]),
+    },
+  ]);
+}
+
+export async function getErc1155TxEvents(token: TokenRecord) {
+  const transferSingleEvents = await Database.all<any>(`
+      SELECT e.event_id, e.transaction_id, e.token_id, e.value, e."contract", operator_a.address AS "operator", from_a.address AS "from", to_a.address AS "to" 
+      FROM (
+          SELECT *, address_a.address AS "contract"
+          FROM erc_1155_transfer_single_events e
+          JOIN contracts contract_a ON e.contract_id = contract_a.contract_id
+          JOIN addresses address_a ON contract_a.address_id = address_a.address_id
+          WHERE address_a.address = "${token.contract}"
+          ORDER BY e.event_id ASC
+      ) AS e
+      JOIN addresses operator_a ON e.from_id = from_a.address_id
+      JOIN addresses from_a ON e.from_id = from_a.address_id
+      JOIN addresses to_a ON e.to_id = to_a.address_id
+      LIMIT 200000
+    `);
+
+  const transferBatchEvents = await Database.all<any>(`
+    SELECT e.event_id, e."contract", operator_a.address AS "operator", from_a.address AS "from", to_a.address AS "to", e.transaction_id, e.token_ids, e.token_values
+    FROM (
+        SELECT *, address_a.address AS "contract"
+        FROM erc_1155_transfer_batch_events e 
+        JOIN contracts contract_a ON e.contract_id = contract_a.contract_id
+        JOIN addresses address_a ON contract_a.address_id = address_a.address_id
+        WHERE address_a.address = "${token.contract}"
+        ORDER BY e.event_id ASC
+    ) AS e
+    JOIN addresses operator_a ON e.from_id = from_a.address_id
+    JOIN addresses from_a ON e.from_id = from_a.address_id
+    JOIN addresses to_a ON e.to_id = to_a.address_id
+    LIMIT 200000
+  `);
+
+  const approvalForAllEvents = await Database.all<any>(`
+    SELECT e.event_id, owner_a.address AS "owner", operator_a.address AS "operator",  e.transaction_id, e.approved, e.contract
+    FROM (
+        SELECT *, address_a.address AS "contract"
+        FROM erc_1155_approval_for_all_events e 
+        JOIN contracts contract_a ON e.contract_id = contract_a.contract_id
+        JOIN addresses address_a ON contract_a.address_id = address_a.address_id
+        WHERE address_a.address = "${token.contract}"
+        ORDER BY e.event_id ASC
+    ) AS e
+    JOIN addresses operator_a ON e.operator_id = operator_a.address_id
+    JOIN addresses owner_a ON e.owner_id = owner_a.address_id
+    LIMIT 200000
+  `);
+
+  const normalizeAddress = (addr: string) =>
+    addr === 'null' ? ethers.constants.AddressZero : addr;
+
+  return getTxEvents(token, [
+    {
+      name: 'TransferSingle',
+      events: transferSingleEvents,
+      encode: (e: Erc1155TransferSingleEvent) =>
+        erc1155Iface.encodeEventLog('TransferSingle', [
+          normalizeAddress(e.operator),
+          normalizeAddress(e.from),
+          normalizeAddress(e.to),
+          e.token_id,
+          e.value,
+        ]),
+    },
+    {
+      name: 'TransferBatch',
+      events: transferBatchEvents,
+      encode: (e: Erc1155TransferBatchEvent) =>
+        erc1155Iface.encodeEventLog('TransferBatch', [
+          normalizeAddress(e.operator),
+          normalizeAddress(e.from),
+          normalizeAddress(e.to),
+          e.token_ids.split(','),
+          e.token_values.split(','),
+        ]),
+    },
+    {
+      name: 'ApprovalForAll',
+      events: approvalForAllEvents,
+      encode: (e: Erc1155ApprovalForAllEvent) =>
+        erc1155Iface.encodeEventLog('ApprovalForAll', [
+          normalizeAddress(e.owner),
+          normalizeAddress(e.operator),
+          e.approved,
+        ]),
     },
   ]);
 }

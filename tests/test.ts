@@ -13,12 +13,15 @@ import { PUBLIC_RPC_URLS_BY_NETWORK } from '../src/contants';
 import {
   formatDate,
   generateBlocks,
+  getErc1155TxEvents,
   getErc20TxEvents,
   getErc721TxEvents,
   readTokens,
 } from './helpers';
 
 dotenv.config();
+
+Logger.level = 'debug';
 
 const TICK_INTERVAL = 12 * 60 * 60; // 12h
 const OBSERVATION_TIME = 4 * 31 * 24 * 60 * 60; // 4 months
@@ -99,23 +102,16 @@ async function testTokens(
       const log = (msg: string) =>
         console.log(
           `[${i}/${tokens.length}][ERC${token.type}|${token.contract}]` +
-            `[T${eventCounter + 1}/${events.length}]` +
-            `[B${blockCounter + 1}/${blockCount}] ${time} | ${msg}`,
+            `[T${eventCounter}/${events.length}]` +
+            `[B${blockCounter}/${blockCount}] ${time} | ${msg}`,
         );
-
-      const t0 = performance.now();
 
       for (const event of block.events) {
         detector.handleTxEvent(event);
       }
 
       detector.tick(block.timestamp, block.number);
-
-      const t1 = performance.now();
-      Logger.debug(`Block handled in ${t1 - t0}ms`);
       await detector.wait();
-      Logger.debug(`Waiting ${performance.now() - t0}ms`);
-
       const analyses = detector.releaseAnalyses();
 
       if (analyses.length === 0) {
@@ -133,10 +129,13 @@ async function testTokens(
       const { result } = analyses[0];
       const { isSpam, isFinalized } = result.interpret();
 
-      if (result.analysis[AirdropModule.Key]?.detected) {
+      if (airdropDetectedAt === -1 && result.analysis[AirdropModule.Key]?.detected) {
         isAirdropDetected = true;
         airdropDetectedAt = block.timestamp;
-        log(`Airdrop detected`);
+      }
+
+      if (spamDetectedAt === -1 && isSpam) {
+        spamDetectedAt = block.timestamp;
       }
 
       if (isSpamDetected && !isSpam) {
@@ -145,17 +144,15 @@ async function testTokens(
         isAssessmentChanged = true;
       }
 
-      if (isSpam) {
-        spamDetectedAt = block.timestamp;
-
-        if (!isSpamDetected) {
-          log(`Spam detected`);
-        }
-      }
-
       isSpamDetected = isSpam;
 
-      log(`Spam: ${isSpam} (${token.spam}) | Airdrop: ${isAirdropDetected} (${token.airdrop}).`);
+      const format = (str: string | boolean, good: boolean) =>
+        `${good ? '\u001b[32m' : '\u001b[31m'}${String(str).toUpperCase()}\u001b[0m`;
+
+      log(
+        `Spam: ${format(isSpam, isSpam == token.spam)}, ` +
+          `Airdrop: ${String(isAirdropDetected).toUpperCase()}`,
+      );
 
       if (isFinalized) {
         finalizedAt = block.timestamp;
@@ -191,13 +188,17 @@ async function testTokens(
 async function main() {
   const tokens = (await readTokens()).filter((t) => t.type !== 'Unknown');
 
-  // await testTokens(
-  //   tokens.filter((t) => t.type === TokenStandard.Erc20),
-  //   getErc20TxEvents,
-  // );
+  await testTokens(
+    tokens.filter((t) => t.type === TokenStandard.Erc20),
+    getErc20TxEvents,
+  );
   await testTokens(
     tokens.filter((t) => t.type === TokenStandard.Erc721),
     getErc721TxEvents,
+  );
+  await testTokens(
+    tokens.filter((t) => t.type === TokenStandard.Erc1155),
+    getErc1155TxEvents,
   );
 }
 
