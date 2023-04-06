@@ -15,12 +15,11 @@ import { findCreatedContracts, identifyTokenInterface } from './utils/helpers';
 import { createSpamNewFinding, createSpamRemoveFinding, createSpamUpdateFinding } from './findings';
 import { SpamDetector } from './detector';
 import { DataContainer } from './types';
+import { IS_DEBUG, IS_DEVELOPMENT } from './contants';
 
 dotenv.config();
 dayjs.extend(duration);
 
-const IS_DEBUG = process.env.debug === '1';
-const IS_DEVELOPMENT = process.env.NODE_ENV !== 'production';
 const TICK_INTERVAL = 15 * 60; // 15m
 
 const data = {} as DataContainer;

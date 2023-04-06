@@ -5,6 +5,7 @@ import HoneyPotChecker, { HoneypotAnalysisMetadata } from '../../utils/honeypot'
 import AirdropModule, { AirdropModuleMetadata } from './airdrop';
 import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
 import { isBurnAddress } from '../../utils/helpers';
+import { IS_DEVELOPMENT } from '../../contants';
 
 // This module checks if a suspiciously large number of token holders are Honeypots,
 // i.e., popular addresses such as vitalik.eth.
@@ -12,7 +13,7 @@ import { isBurnAddress } from '../../utils/helpers';
 export const TOO_MANY_HONEY_POT_OWNERS_MODULE_KEY = 'TooManyHoneyPotOwners';
 export const HONEYPOT_THRESHOLD_RATIO = 0.5;
 export const MAX_HOLDERS = 1500;
-export const CONCURRENCY = 30;
+export const CONCURRENCY = IS_DEVELOPMENT ? 40 : 3;
 
 type HoneypotInfo = { address: string; metadata: HoneypotAnalysisMetadata };
 

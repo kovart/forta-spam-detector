@@ -7,14 +7,14 @@ import Logger from '../../utils/logger';
 import { isBase64, normalizeMetadataUri, parseBase64, retry } from '../../utils/helpers';
 import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
 import { TokenStandard } from '../../types';
-import { erc721Iface } from '../../contants';
+import { erc721Iface, IS_DEVELOPMENT } from '../../contants';
 
 export const NON_UNIQUE_TOKENS_MODULE_KEY = 'Erc721NonUniqueTokens';
 export const MIN_NUMBER_OF_TOKENS = 5;
 export const MIN_NUMBER_OF_DUPLICATE_TOKENS = 4;
 export const MAX_NUMBER_OF_TOKENS = 700;
-export const TOKEN_URI_CONCURRENCY = 6;
-export const METADATA_CONCURRENCY = 50;
+export const TOKEN_URI_CONCURRENCY = IS_DEVELOPMENT ? 6 : 4;
+export const METADATA_CONCURRENCY = IS_DEVELOPMENT ? 50 : 25;
 
 type DuplicatedItem = { tokenIds: string[]; uri?: string; metadata?: string };
 
