@@ -11,6 +11,7 @@
     "start": "npm run start:dev",
     "start:dev": "nodemon --watch src --watch forta.config.json -e js,ts,json  --exec \"npm run build && forta-agent run\"",
     "start:prod": "forta-agent run --prod",
+    "start:docker": "docker run --rm -it $(docker build -q .)",
     "pino": "tail -f logs/agent.log",
     "test": "ts-node ./tests/test.ts",
     "test:stats": "ts-node ./tests/stats.ts",
