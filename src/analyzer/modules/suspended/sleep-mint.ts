@@ -13,9 +13,6 @@ export const SLEEP_MINT_MODULE_KEY = 'SleepMint';
 export const SLEEP_MINT_RECEIVERS_THRESHOLD = 4;
 export const CONCURRENCY = 30;
 
-// Exception:
-// https://etherscan.io/token/0xf6fd82dedbbe0ffadb5e1ecc2a283ab52b9ed2b0?a=0x0000000000000000000000000000000000000001
-
 type SleepMintInfo = {
   from: string;
   to: string;

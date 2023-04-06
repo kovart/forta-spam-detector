@@ -70,10 +70,12 @@ class TokenAnalyzer {
   private async scan(token: TokenContract, timestamp: number, blockNumber: number) {
     Logger.debug(`Scanning token: ${token.address}`);
 
+    const scanStartTime = performance.now();
+
     const privateContext: AnalysisContext = {};
     const publicContext: AnalysisContext = {};
     for (const module of this.modules) {
-      const t0 = performance.now();
+      const moduleStartTime = performance.now();
       const result = await module.scan({
         token,
         timestamp,
@@ -84,8 +86,7 @@ class TokenAnalyzer {
         transformer: this.transformer,
         provider: this.provider,
       });
-      const t1 = performance.now();
-      Logger.debug(`Module ${module.key} executed in ${t1 - t0}ms`);
+      Logger.debug(`Module ${module.key} executed in ${performance.now() - moduleStartTime}ms`);
 
       publicContext[module.key] = {
         detected: privateContext[module.key].detected,
@@ -96,6 +97,8 @@ class TokenAnalyzer {
 
       if (result?.interrupt) break;
     }
+
+    Logger.info(`Token ${token.address} scanned in ${performance.now() - scanStartTime}ms`);
 
     return publicContext;
   }

@@ -1,15 +1,15 @@
 import pino from 'pino';
 import path from 'path';
 
-import { DATA_PATH } from '../contants';
+import { DATA_PATH, IS_DEVELOPMENT } from '../contants';
 
 const LOG_FILE_PATH = path.resolve(DATA_PATH, '../logs/agent.log');
 
 const transport = pino.transport({
   target: 'pino-pretty',
   options: {
-    colorize: true,
-    destination: LOG_FILE_PATH,
+    colorize: IS_DEVELOPMENT,
+    destination: IS_DEVELOPMENT ? LOG_FILE_PATH : undefined,
   },
 });
 

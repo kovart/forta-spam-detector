@@ -1,4 +1,5 @@
 import {
+  BlockEvent,
   Finding,
   getEthersBatchProvider,
   HandleBlock,
@@ -19,8 +20,9 @@ import { IS_DEBUG, IS_DEVELOPMENT } from './contants';
 
 dotenv.config();
 dayjs.extend(duration);
+Logger.level = IS_DEVELOPMENT ? 'info' : 'debug';
 
-const TICK_INTERVAL = 15 * 60; // 15m
+const TICK_INTERVAL = 4 * 60 * 60; // 4h
 
 const data = {} as DataContainer;
 const provideInitialize = (
@@ -92,8 +94,8 @@ const provideHandleTransaction = (data: DataContainer): HandleTransaction => {
 };
 
 const provideHandleBlock = (data: DataContainer): HandleBlock =>
-  async function handleBlock() {
-    data.detector.logStats();
+  async function handleBlock(blockEvent: BlockEvent) {
+    if (blockEvent.blockNumber % 100 == 0) data.detector.logStats();
     return [];
   };
 

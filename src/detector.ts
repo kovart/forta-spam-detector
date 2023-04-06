@@ -112,7 +112,7 @@ export class SpamDetector {
   }
 
   public logStats() {
-    Logger.debug(
+    Logger.info(
       [
         `Tokens: ${this.storage.tokenByAddress.size}`,
         `Finished: ${[...this.taskByToken.values()].filter((t) => t.finishedAt).length}`,
