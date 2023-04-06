@@ -2,9 +2,9 @@ import { AIRDROP_MODULE_KEY, AirdropModuleMetadata } from './airdrop';
 import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
 
 export const LOW_ACTIVITY_MODULE_KEY = 'LowActivityAfterAirdrop';
-export const MIN_AIRDROP_RECEIVERS = 1500;
+export const MIN_AIRDROP_RECEIVERS = 200;
 export const MIN_ACTIVE_RECEIVERS_RATE = 0.0025; // 0.25%
-export const DELAY_AFTER_AIRDROP = 14 * 24 * 60 * 60; // 14d
+export const DELAY_AFTER_AIRDROP = 20 * 24 * 60 * 60; // 20d
 
 export type LowActivityModuleMetadata = {
   activeReceivers: string[];
