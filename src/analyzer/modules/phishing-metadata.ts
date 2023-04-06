@@ -1,15 +1,21 @@
 import { ethers } from 'ethers';
 
 import { erc20Iface } from '../../contants';
-import { containsLink } from '../../utils/helpers';
+import { containsLink, retry } from '../../utils/helpers';
 import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
-import AirdropModule, { AirdropModuleMetadata } from './airdrop';
+import { normalizeText } from '../../utils/normalizer';
 
 // This module analyzes the metadata of tokens for the presence of a link to a website.
 // If such a link is found, it may suggest a phishing attack, particularly in the case of a large airdrop.
 
 export const PHISHING_METADATA_MODULE_KEY = 'PhishingMetadata';
-export const MIN_RECEIVERS = 500;
+export const PHISHING_KEYWORDS = ['visit', 'claim', 'activate', 'reward', 'free', 'mint'];
+export const PHISHING_PATTERNS = [
+  // $ 3000
+  /\$\s*\d+/,
+  // $ aave.site
+  /\$\s+(http(s)?:\/\/.)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)/,
+];
 
 export type PhishingModuleMetadata = {
   name: string;
@@ -25,12 +31,6 @@ class PhishingMetadataModule extends AnalyzerModule {
     let detected = false;
     let metadata: PhishingModuleMetadata | undefined = undefined;
 
-    context[PHISHING_METADATA_MODULE_KEY] = { detected, metadata };
-
-    const airdropMetadata = context[AirdropModule.Key].metadata as AirdropModuleMetadata;
-
-    if (airdropMetadata.receivers.length < MIN_RECEIVERS) return;
-
     const memo = memoizer.getScope(token.address);
 
     const contract = new ethers.Contract(token.address, erc20Iface, provider);
@@ -39,19 +39,32 @@ class PhishingMetadataModule extends AnalyzerModule {
     let name: string = '';
 
     try {
-      symbol = await memo('symbol', () => contract.symbol());
+      symbol = await memo('symbol', () => retry(() => contract.symbol()));
     } catch {
       // not implemented
     }
 
     try {
-      name = await memo('name', () => contract.name());
+      name = await memo('name', () => retry(() => contract.name()));
     } catch {
       // not implemented
     }
 
-    if (containsLink(name) || containsLink(symbol)) {
-      detected = true;
+    if ([name, symbol].find(containsLink)) {
+      for (const word of [name, symbol].join(' ').split(' ').map(normalizeText)) {
+        if (PHISHING_KEYWORDS.includes(word)) {
+          detected = true;
+          break;
+        }
+      }
+
+      if (!detected) {
+        for (const text of [name, symbol]) {
+          detected = !!PHISHING_PATTERNS.find((pattern) => pattern.test(text));
+          if (detected) break;
+        }
+      }
+
       metadata = {
         name,
         symbol,
