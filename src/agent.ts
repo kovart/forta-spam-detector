@@ -70,12 +70,12 @@ const provideHandleTransaction = (data: DataContainer): HandleTransaction => {
       const { isSpam, isFinalized } = currentResult.interpret();
       const { isUpdated, isChanged } = currentResult.compare(previousAnalysis);
 
-      if (!isSpam && isChanged) {
-        findings.push(createSpamRemoveFinding(token, currentResult.analysis));
+      if (isSpam && !previousAnalysis) {
+        findings.push(createSpamNewFinding(token, currentResult.analysis));
       } else if (isSpam && isUpdated) {
         findings.push(createSpamUpdateFinding(token, currentResult.analysis, previousAnalysis!));
-      } else if (isSpam) {
-        findings.push(createSpamNewFinding(token, currentResult.analysis));
+      } else if (!isSpam && isChanged) {
+        findings.push(createSpamRemoveFinding(token, currentResult.analysis));
       }
 
       if (isFinalized) {
