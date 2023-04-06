@@ -1,10 +1,14 @@
 node_modules
 dist
 forta.config.json
-.env
+
 .idea
 .vscode
+
 logs
 research
-tests
+tests/data/test-*
+
+.env
+events.db
 README.md
