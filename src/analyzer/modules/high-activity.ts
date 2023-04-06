@@ -2,7 +2,7 @@ import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
 
 export const HIGH_ACTIVITY_MODULE_KEY = 'HighActivity';
 export const MIN_UNIQUE_SENDERS_TOTAL = 400;
-export const MIN_UNIQUE_SENDERS_IN_WINDOW = 150;
+export const MIN_UNIQUE_SENDERS_IN_WINDOW = 120;
 export const WINDOW_PERIOD = 7 * 24 * 60 * 60; // 7d
 
 export type HighActivityModuleMetadata = {
