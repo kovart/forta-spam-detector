@@ -25,6 +25,7 @@ Logger.level = IS_DEVELOPMENT ? 'info' : 'debug';
 const TICK_INTERVAL = 4 * 60 * 60; // 4h
 
 const data = {} as DataContainer;
+
 const provideInitialize = (
   data: DataContainer,
   isDevelopment: boolean,
