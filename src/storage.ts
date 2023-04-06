@@ -1,4 +1,4 @@
-import { BigNumber } from 'ethers';
+import { BigNumber as EtherBigNumber } from 'ethers';
 import { TransactionEvent } from 'forta-agent';
 
 import {
@@ -75,7 +75,7 @@ class DataStorage {
           appendEvent(contractAddress, this.erc20TransferEventsByToken, {
             from: from.toLowerCase(),
             to: to.toLowerCase(),
-            value: value.toString(),
+            value: BigInt(value.toString()),
             transaction: transaction,
           });
         } else if (parsedErc20Log.name === 'Approval') {
@@ -83,7 +83,7 @@ class DataStorage {
           appendEvent(contractAddress, this.erc20ApprovalEventsByToken, {
             owner: owner.toLowerCase(),
             spender: spender.toLowerCase(),
-            value: value.toString(),
+            value: BigInt(value.toString()),
             transaction: transaction,
           });
         }
@@ -136,7 +136,7 @@ class DataStorage {
             from: from.toLowerCase(),
             to: to.toLowerCase(),
             tokenId: tokenId,
-            value: value.toString(),
+            value: BigInt(value.toString()),
             transaction: transaction,
           });
         } else if (parsedErc1155Log.name === 'TransferBatch') {
@@ -145,8 +145,8 @@ class DataStorage {
             operator: operator.toLowerCase(),
             from: from.toLowerCase(),
             to: to.toLowerCase(),
-            ids: ids.map((id: BigNumber) => id.toString()),
-            values: parsedErc1155Log.args[4].map((v: BigNumber) => v.toString()),
+            ids: ids.map((id: EtherBigNumber) => id.toString()),
+            values: parsedErc1155Log.args[4].map((v: EtherBigNumber) => BigInt(v.toString())),
             transaction: transaction,
           });
         } else if (parsedErc1155Log.name === 'ApprovalForAll') {

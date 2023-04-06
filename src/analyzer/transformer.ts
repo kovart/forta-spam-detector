@@ -19,12 +19,12 @@ class DataTransformer {
       for (const event of transferEvents) {
         if (event.from !== ethers.constants.AddressZero) {
           let fromBalance = balanceByAccount.get(event.from) || new BigNumber(0);
-          fromBalance = fromBalance.minus(event.value);
+          fromBalance = fromBalance.minus(event.value.toString());
           balanceByAccount.set(event.from, fromBalance);
         }
         if (event.to !== ethers.constants.AddressZero) {
           let toBalance = balanceByAccount.get(event.to) || new BigNumber(0);
-          toBalance = toBalance.plus(event.value);
+          toBalance = toBalance.plus(event.value.toString());
           balanceByAccount.set(event.to, toBalance);
         }
       }
@@ -52,12 +52,12 @@ class DataTransformer {
       for (const event of transferSingleEvents) {
         if (event.from !== ethers.constants.AddressZero) {
           let fromBalance = balanceByAccount.get(event.from) || new BigNumber(0);
-          fromBalance = fromBalance.minus(event.value);
+          fromBalance = fromBalance.minus(event.value.toString());
           balanceByAccount.set(event.from, fromBalance);
         }
         if (event.to !== ethers.constants.AddressZero) {
           let toBalance = balanceByAccount.get(event.to) || new BigNumber(0);
-          toBalance = toBalance.plus(event.value);
+          toBalance = toBalance.plus(event.value.toString());
           balanceByAccount.set(event.to, toBalance);
         }
       }
@@ -65,12 +65,12 @@ class DataTransformer {
       for (const event of transferBatchEvents) {
         if (event.from !== ethers.constants.AddressZero) {
           let fromBalance = balanceByAccount.get(event.from) || new BigNumber(0);
-          fromBalance = fromBalance.minus(sum(event.values));
+          fromBalance = fromBalance.minus(sum(event.values.map((v) => v.toString())));
           balanceByAccount.set(event.from, fromBalance);
         }
         if (event.to !== ethers.constants.AddressZero) {
           let toBalance = balanceByAccount.get(event.to) || new BigNumber(0);
-          toBalance = toBalance.plus(sum(event.values));
+          toBalance = toBalance.plus(sum(event.values.map((v) => v.toString())));
           balanceByAccount.set(event.to, toBalance);
         }
       }

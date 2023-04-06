@@ -47,13 +47,13 @@ export type TokenEvent = {
 export type Erc20TransferEvent = TokenEvent & {
   from: string;
   to: string;
-  value: string;
+  value: BigInt;
 };
 
 export type Erc20ApprovalEvent = TokenEvent & {
   owner: string;
   spender: string;
-  value: string;
+  value: BigInt;
 };
 
 export type Erc721TransferEvent = TokenEvent & {
@@ -79,7 +79,7 @@ export type Erc1155TransferSingleEvent = TokenEvent & {
   from: string;
   to: string;
   tokenId: string;
-  value: string;
+  value: BigInt;
 };
 
 export type Erc1155TransferBatchEvent = TokenEvent & {
@@ -87,7 +87,7 @@ export type Erc1155TransferBatchEvent = TokenEvent & {
   from: string;
   to: string;
   ids: string[];
-  values: string[];
+  values: BigInt[];
 };
 
 export type Erc1155ApprovalForAllEvent = TokenEvent & {

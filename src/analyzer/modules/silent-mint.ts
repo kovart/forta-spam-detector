@@ -1,6 +1,3 @@
-import BigNumber from 'bignumber.js';
-import { ethers } from 'ethers';
-
 import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
 import { TokenStandard } from '../../types';
 
@@ -27,7 +24,7 @@ class SilentMintModule extends AnalyzerModule {
   static Key = SILENT_MINT_MODULE_KEY;
 
   async scan(params: ScanParams): Promise<ModuleScanReturn> {
-    const { token, context, storage } = params;
+    const { token, context, transformer } = params;
 
     let detected = false;
     let metadata: SilentMintMetadata | undefined = undefined;
@@ -36,20 +33,7 @@ class SilentMintModule extends AnalyzerModule {
 
     if (token.type !== TokenStandard.Erc20) return;
 
-    const balanceByAccount = new Map<string, BigNumber>();
-
-    for (const event of storage.erc20TransferEventsByToken.get(token.address) || []) {
-      if (event.from !== ethers.constants.AddressZero) {
-        let fromBalance = balanceByAccount.get(event.from) || new BigNumber(0);
-        fromBalance = fromBalance.minus(event.value);
-        balanceByAccount.set(event.from, fromBalance);
-      }
-      if (event.to !== ethers.constants.AddressZero) {
-        let toBalance = balanceByAccount.get(event.to) || new BigNumber(0);
-        toBalance = toBalance.plus(event.value);
-        balanceByAccount.set(event.to, toBalance);
-      }
-    }
+    const balanceByAccount = transformer.balanceByAccount(token);
 
     const negativeBalanceAccounts: Account[] = [];
     for (const [address, balance] of balanceByAccount) {
