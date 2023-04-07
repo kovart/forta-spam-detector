@@ -81,7 +81,7 @@ export function createSpamUpdateFinding(
       `The ERC-${token.type} token (${formatShortAddress(token.address)}) ` +
       `shows signs of spam token behavior. ` +
       `Indicators: ${formatTriggeredModules(currAnalysis)}.` +
-      (addedModules.length > 0 ? ` Added: ${addedModules.join(', ')}.` : '') +
+      (addedModules.length > 0 ? ` New: ${addedModules.join(', ')}.` : '') +
       (removedModules.length > 0 ? ` Removed: ${removedModules.join(', ')}.` : ''),
     type: FindingType.Suspicious,
     severity: FindingSeverity.Low,
@@ -90,7 +90,7 @@ export function createSpamUpdateFinding(
     metadata: {
       tokenAddress: token.address,
       tokenStandard: `ERC-${token.type}`,
-      tokenDeployerAddress: token.deployer,
+      tokenDeployer: token.deployer,
       analysis: JSON.stringify(currAnalysis),
     },
   });
@@ -127,7 +127,7 @@ export function createSpamRemoveFinding(token: TokenContract, currAnalysis: Anal
     metadata: {
       tokenAddress: token.address,
       tokenStandard: `ERC-${token.type}`,
-      tokenDeployerAddress: token.deployer,
+      tokenDeployer: token.deployer,
       analysis: JSON.stringify(currAnalysis),
     },
   });
