@@ -11,4 +11,3 @@ tests/data/test-*
 
 .env
 events.db
-README.md
