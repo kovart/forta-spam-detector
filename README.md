@@ -25,11 +25,11 @@ an update alert to indicate the changes.
 If there is a change that alters the evaluation, such as when the bot no longer identifies the token as spam, it will
 publish an alert instructing Forta Protocol to remove the labels that identify it as spam.
 
-## 🕵️‍♀️ Indicators
+## 🕵️‍♀️ Modules
 
 Here is a table containing all the indicator modules utilized in the project.
 
-|       | Module       | Description |
+|       | Indicator    | Description |
 |:-----:|:-------------|:------------|
 | 🪂 | Airdrop | A passive airdrop with no claim by the recipient of the mint (or transfer). The airdrop analysis considers the number of unique recipients, both within a single transaction and across multiple transactions during a specified time period. |
 | 🔇 | LowActivityAfterAirdrop | A very few of the accounts that received a token had any interaction with the token after a massive distribution of the token. This behavior often indicates that the value of the token is low. |
