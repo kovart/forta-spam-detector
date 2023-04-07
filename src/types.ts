@@ -1,13 +1,12 @@
 import { providers } from 'ethers';
 
 import { SpamDetector } from './detector';
-
-import { AnalysisContext } from './analyzer/types';
+import { AnalysisResult } from './analyzer/types';
 
 export type DataContainer = {
   provider: providers.JsonRpcProvider;
   detector: SpamDetector;
-  analysisByToken: Map<TokenContract, AnalysisContext>;
+  analysisByToken: Map<TokenContract, AnalysisResult>;
   isInitialized: boolean;
   isDevelopment: boolean;
   isDebug: boolean;

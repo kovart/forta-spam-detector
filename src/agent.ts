@@ -66,23 +66,27 @@ const provideHandleTransaction = (data: DataContainer): HandleTransaction => {
 
     const analyses = data.detector.releaseAnalyses();
     for (const { token, result: currentResult } of analyses) {
-      const previousAnalysis = data.analysisByToken.get(token);
+      const previousResult = data.analysisByToken.get(token);
 
       const { isSpam, isFinalized } = currentResult.interpret();
-      const { isUpdated, isChanged } = currentResult.compare(previousAnalysis);
+      const { isUpdated } = currentResult.compare(previousResult?.analysis);
 
-      if (isSpam && !previousAnalysis) {
+      const wasSpam = previousResult?.interpret().isSpam || false;
+
+      if (isSpam && !wasSpam) {
         findings.push(createSpamNewFinding(token, currentResult.analysis));
       } else if (isSpam && isUpdated) {
-        findings.push(createSpamUpdateFinding(token, currentResult.analysis, previousAnalysis!));
-      } else if (!isSpam && isChanged) {
+        findings.push(
+          createSpamUpdateFinding(token, currentResult.analysis, previousResult!.analysis),
+        );
+      } else if (!isSpam && wasSpam) {
         findings.push(createSpamRemoveFinding(token, currentResult.analysis));
       }
 
       if (isFinalized) {
         data.analysisByToken.delete(token);
       } else {
-        data.analysisByToken.set(token, currentResult.analysis);
+        data.analysisByToken.set(token, currentResult);
       }
 
       if (findings.length > 0) {
