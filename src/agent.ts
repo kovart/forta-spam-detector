@@ -1,5 +1,4 @@
 import {
-  BlockEvent,
   Finding,
   getEthersBatchProvider,
   HandleBlock,
@@ -42,33 +41,8 @@ const provideInitialize = (data: DataContainer, isDevelopment: boolean): Initial
   };
 };
 
-const provideHandleTransaction = (data: DataContainer): HandleTransaction => {
-  return async function handleTransaction(txEvent: TransactionEvent) {
-    const createdContracts = findCreatedContracts(txEvent);
-
-    if (createdContracts.length > 0) {
-      Logger.debug(`Found ${createdContracts.length} created contracts in tx: ${txEvent.hash}`);
-    }
-
-    for (const contract of createdContracts) {
-      const type = await identifyTokenInterface(contract.address, data.provider);
-
-      if (type) {
-        if (IS_DEBUG && DEBUG_TARGET_TOKEN !== contract.address) continue;
-
-        Logger.debug(`Found token contract (ERC${type}): ${contract.address}`);
-        data.detector.addTokenToWatchList(type, contract);
-      }
-    }
-
-    data.detector.handleTxEvent(txEvent);
-
-    data.detector.tick(txEvent.timestamp, txEvent.blockNumber);
-
-    if (IS_DEBUG && txEvent.blockNumber % 10 === 0) {
-      await data.detector.wait();
-    }
-
+const provideHandleBlock = (data: DataContainer): HandleBlock => {
+  return async function handleBlock(blockEvent) {
     const findings: Finding[] = [];
 
     const analyses = data.detector.releaseAnalyses();
@@ -95,27 +69,44 @@ const provideHandleTransaction = (data: DataContainer): HandleTransaction => {
       } else {
         data.analysisByToken.set(token, currentResult);
       }
-
-      if (findings.length > 0) {
-        Logger.debug('Findings', findings);
-      }
     }
 
-    if (IS_DEBUG && findings.length > 0) {
-      console.warn(findings);
+    data.detector.tick(blockEvent.block.timestamp, blockEvent.blockNumber);
 
-      throw new Error('Stop');
+    if (IS_DEBUG && blockEvent.blockNumber % 10 === 0) {
+      await data.detector.wait();
     }
+
+    if (blockEvent.blockNumber % 100 == 0) data.detector.logStats();
 
     return findings;
   };
 };
 
-const provideHandleBlock = (data: DataContainer): HandleBlock =>
-  async function handleBlock(blockEvent: BlockEvent) {
-    if (blockEvent.blockNumber % 100 == 0) data.detector.logStats();
+const provideHandleTransaction = (data: DataContainer): HandleTransaction => {
+  return async function handleTransaction(txEvent: TransactionEvent) {
+    const createdContracts = findCreatedContracts(txEvent);
+
+    if (createdContracts.length > 0) {
+      Logger.debug(`Found ${createdContracts.length} created contracts in tx: ${txEvent.hash}`);
+    }
+
+    for (const contract of createdContracts) {
+      const type = await identifyTokenInterface(contract.address, data.provider);
+
+      if (type) {
+        if (IS_DEBUG && DEBUG_TARGET_TOKEN !== contract.address) continue;
+
+        Logger.debug(`Found token contract (ERC${type}): ${contract.address}`);
+        data.detector.addTokenToWatchList(type, contract);
+      }
+    }
+
+    data.detector.handleTxEvent(txEvent);
+
     return [];
   };
+};
 
 export default {
   initialize: provideInitialize(data, IS_DEVELOPMENT),
