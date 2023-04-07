@@ -6,7 +6,7 @@ import HoneyPotChecker from '../../utils/honeypot';
 import AirdropModule, { AirdropModuleMetadata } from './airdrop';
 import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
 import { isBurnAddress } from '../../utils/helpers';
-import { IS_DEVELOPMENT } from '../../contants';
+import { PROVIDER_CONCURRENCY } from '../../contants';
 
 // This module checks whether the share of honeypot accounts is unfairly large.
 // An example of a token that has unfair share:
@@ -17,7 +17,6 @@ import { IS_DEVELOPMENT } from '../../contants';
 
 export const HONEY_POT_SHARE_MODULE_KEY = 'HoneypotShareDominance';
 export const HONEYPOT_SHARE_THRESHOLD = 0.5;
-export const CONCURRENCY = IS_DEVELOPMENT ? 40 : 3;
 
 type HoneypotShare = {
   address: string;
@@ -101,7 +100,7 @@ class HoneyPotShareDominanceModule extends AnalyzerModule {
         honeypotQueue.remove(() => true);
         callback();
       }
-    }, CONCURRENCY);
+    }, PROVIDER_CONCURRENCY);
 
     const balanceByReceiver: Account[] = [...receiverSet].map((r) => ({
       address: r,

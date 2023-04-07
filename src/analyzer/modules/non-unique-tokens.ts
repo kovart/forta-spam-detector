@@ -7,14 +7,12 @@ import Logger from '../../utils/logger';
 import { isBase64, normalizeMetadataUri, parseBase64, retry } from '../../utils/helpers';
 import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
 import { TokenStandard } from '../../types';
-import { erc721Iface, IS_DEVELOPMENT } from '../../contants';
+import { erc721Iface, FETCH_CONCURRENCY, PROVIDER_CONCURRENCY } from '../../contants';
 
 export const NON_UNIQUE_TOKENS_MODULE_KEY = 'Erc721NonUniqueTokens';
 export const MIN_NUMBER_OF_TOKENS = 5;
 export const MIN_NUMBER_OF_DUPLICATE_TOKENS = 4;
 export const MAX_NUMBER_OF_TOKENS = 700;
-export const TOKEN_URI_CONCURRENCY = IS_DEVELOPMENT ? 6 : 4;
-export const METADATA_CONCURRENCY = IS_DEVELOPMENT ? 50 : 25;
 
 type DuplicatedItem = { tokenIds: string[]; uri?: string; metadata?: string };
 
@@ -80,7 +78,7 @@ class Erc721NonUniqueTokensModule extends AnalyzerModule {
 
     const tokenUriByTokenId = new Map<string, string>();
     // The token works well, so let's parallelize the requests
-    for (const batch of chunk([...tokenIdSet], TOKEN_URI_CONCURRENCY)) {
+    for (const batch of chunk([...tokenIdSet], PROVIDER_CONCURRENCY)) {
       try {
         const uris = await Promise.all(
           batch.map((tokenId) =>
@@ -160,7 +158,7 @@ class Erc721NonUniqueTokensModule extends AnalyzerModule {
               callback();
             }
           },
-          METADATA_CONCURRENCY,
+          FETCH_CONCURRENCY,
         );
 
         Logger.debug(`Fetching token metadata: ${tokenUriByTokenId.size} items`);

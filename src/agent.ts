@@ -16,26 +16,26 @@ import { findCreatedContracts, identifyTokenInterface } from './utils/helpers';
 import { createSpamNewFinding, createSpamRemoveFinding, createSpamUpdateFinding } from './findings';
 import { SpamDetector } from './detector';
 import { DataContainer } from './types';
-import { IS_DEBUG, IS_DEVELOPMENT } from './contants';
+import { IS_DEVELOPMENT, IS_DEBUG, DEBUG_TARGET_TOKEN } from './contants';
 
 dotenv.config();
 dayjs.extend(duration);
-Logger.level = IS_DEVELOPMENT ? 'info' : 'debug';
+Logger.level = IS_DEVELOPMENT ? 'debug' : 'info';
 
-const TICK_INTERVAL = 4 * 60 * 60; // 4h
+let TICK_INTERVAL = 4 * 60 * 60; // 4h
+
+if (IS_DEBUG) {
+  Logger.debug(`Debug mode enabled. Target contract: ${DEBUG_TARGET_TOKEN}`);
+  TICK_INTERVAL = 0;
+}
 
 const data = {} as DataContainer;
 
-const provideInitialize = (
-  data: DataContainer,
-  isDevelopment: boolean,
-  isDebug: boolean,
-): Initialize => {
+const provideInitialize = (data: DataContainer, isDevelopment: boolean): Initialize => {
   return async function initialize() {
     const provider = getEthersBatchProvider();
 
     data.provider = provider;
-    data.isDebug = isDebug;
     data.isDevelopment = isDevelopment;
     data.detector = new SpamDetector(provider, TICK_INTERVAL);
     data.analysisByToken = new Map();
@@ -52,7 +52,10 @@ const provideHandleTransaction = (data: DataContainer): HandleTransaction => {
 
     for (const contract of createdContracts) {
       const type = await identifyTokenInterface(contract.address, data.provider);
+
       if (type) {
+        if (IS_DEBUG && DEBUG_TARGET_TOKEN !== contract.address) continue;
+
         Logger.debug(`Found token contract (ERC${type}): ${contract.address}`);
         data.detector.addTokenToWatchList(type, contract);
       }
@@ -61,6 +64,10 @@ const provideHandleTransaction = (data: DataContainer): HandleTransaction => {
     data.detector.handleTxEvent(txEvent);
 
     data.detector.tick(txEvent.timestamp, txEvent.blockNumber);
+
+    if (IS_DEBUG && txEvent.blockNumber % 10 === 0) {
+      await data.detector.wait();
+    }
 
     const findings: Finding[] = [];
 
@@ -94,6 +101,12 @@ const provideHandleTransaction = (data: DataContainer): HandleTransaction => {
       }
     }
 
+    if (IS_DEBUG && findings.length > 0) {
+      console.warn(findings);
+
+      throw new Error('Stop');
+    }
+
     return findings;
   };
 };
@@ -105,7 +118,7 @@ const provideHandleBlock = (data: DataContainer): HandleBlock =>
   };
 
 export default {
-  initialize: provideInitialize(data, IS_DEVELOPMENT, IS_DEBUG),
+  initialize: provideInitialize(data, IS_DEVELOPMENT),
   handleTransaction: provideHandleTransaction(data),
   handleBlock: provideHandleBlock(data),
 };

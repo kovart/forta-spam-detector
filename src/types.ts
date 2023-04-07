@@ -9,7 +9,6 @@ export type DataContainer = {
   analysisByToken: Map<TokenContract, AnalysisResult>;
   isInitialized: boolean;
   isDevelopment: boolean;
-  isDebug: boolean;
 };
 
 export enum TokenStandard {

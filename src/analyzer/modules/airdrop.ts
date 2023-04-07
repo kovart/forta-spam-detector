@@ -9,7 +9,7 @@ import {
   SimplifiedTransaction,
   TokenStandard,
 } from '../../types';
-import { IS_DEVELOPMENT } from '../../contants';
+import { PROVIDER_CONCURRENCY } from '../../contants';
 
 // This module detects airdrops by the following criteria:
 // 1. The person receiving the mint didn't initiate (no claim action)
@@ -55,7 +55,6 @@ export const AIRDROP_MODULE_KEY = 'Airdrop';
 export const MIN_RECEIVERS_PER_TX = 10;
 export const MIN_RECEIVERS_PER_SENDER = 50;
 export const AIRDROP_WINDOW = 5 * 24 * 60 * 60; // 5d
-export const GET_CODE_CONCURRENCY = IS_DEVELOPMENT ? 10 : 4;
 
 class AirdropModule extends AnalyzerModule {
   static Key = AIRDROP_MODULE_KEY;
@@ -219,7 +218,7 @@ class AirdropModule extends AnalyzerModule {
         const { receivers } = airdrop;
         const EOAs = [];
 
-        for (const batch of chunk(receivers, GET_CODE_CONCURRENCY)) {
+        for (const batch of chunk(receivers, PROVIDER_CONCURRENCY)) {
           if (EOAs.length > MIN_RECEIVERS_PER_SENDER) {
             // This is enough to confirm the airdrop
             break;

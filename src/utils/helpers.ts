@@ -57,10 +57,12 @@ export function findCreatedContracts(txEvent: TransactionEvent): CreatedContract
   if (!txEvent.to && txEvent.traces.length === 0) {
     createdContracts.push({
       deployer: sender,
-      address: ethers.utils.getContractAddress({
-        from: txEvent.from,
-        nonce: txEvent.transaction.nonce,
-      }),
+      address: ethers.utils
+        .getContractAddress({
+          from: txEvent.from,
+          nonce: txEvent.transaction.nonce,
+        })
+        .toLowerCase(),
       blockNumber: txEvent.blockNumber,
       timestamp: txEvent.timestamp,
     });

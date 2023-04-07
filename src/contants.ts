@@ -13,8 +13,11 @@ export const erc20Iface = new utils.Interface(Erc20Abi);
 export const erc721Iface = new utils.Interface(Erc721Abi);
 export const erc1155Iface = new utils.Interface(Erc1155Abi);
 
-export const IS_DEBUG = process.env.debug === '1';
+export const IS_DEBUG = process.env.DEBUG === '1';
 export const IS_DEVELOPMENT = process.env.NODE_ENV !== 'production';
+export const DEBUG_TARGET_TOKEN = (process.env.TARGET_TOKEN || '').toLowerCase();
+export const PROVIDER_CONCURRENCY = IS_DEVELOPMENT ? 40 : 2;
+export const FETCH_CONCURRENCY = IS_DEVELOPMENT ? 50 : 25;
 
 export const DATA_PATH = path.resolve(__dirname, '../data');
 
