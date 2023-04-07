@@ -37,7 +37,7 @@ Here is a table containing all the indicator modules utilized in the project.
 | 📈 | HighActivity | The activity level of a token and determines when it meets the criteria to be classified as a good token. |
 | 🍯 | HoneyPotShareDominance | A significant portion of the tokens in the airdrop were distributed to accounts that are Honeypot, indicating an unwarranted airdrop. |
 | 🐝 | TooManyHoneyPotOwners | The significant presence of Honeypots, such as Binance, Pranksy, vitalik.eth, among the token holders, which is a strong indication of unwarranted airdrops. |
-| 🐣 | TooManyCreations | A token creator generated a vast quantity of unique tokens within a brief timeframe, a conduct commonly associated with spammy behavior. |
+| 🗑️ | TooManyCreations | A token creator generated a vast quantity of unique tokens within a brief timeframe, a conduct commonly associated with spammy behavior. |
 | 🚫 | Erc721MultipleOwners | A single token in the ERC-721 collection has been transferred to multiple owners indicating fraudulent transfers. This action constitutes a direct violation of the ERC-721 standard. |
 | 🚫 | Erc721NonUniqueTokens | An ERC-721 NFT collection contains numerous duplicate tokens indicating fraudulent behaviour. |
 | 🚫 | Erc721FalseTotalSupply | A token contract lies about its token supply, as there is a substantial difference between the value obtained by running totalSupply() on the contract and the actual number of tokens in circulation. |
