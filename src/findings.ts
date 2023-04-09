@@ -4,13 +4,23 @@ import { EntityType, Finding, FindingSeverity, FindingType, Label } from 'forta-
 import { TokenContract } from './types';
 import { AnalysisContext } from './analyzer/types';
 import ObservationTimeModule from './analyzer/modules/observation-time';
+import TokenImpersonation, {
+  TokenImpersonationModuleMetadata,
+} from './analyzer/modules/token-impersonation';
 
 const BASE_ALERT_ID = 'SPAM-TOKEN';
 const NEW_ALERT_ID = `${BASE_ALERT_ID}-NEW`;
 const UPDATE_ALERT_ID = `${BASE_ALERT_ID}-UPDATE`;
 const REMOVE_ALERT_ID = `${BASE_ALERT_ID}-REMOVE`;
 
-const formatShortAddress = (addr: string) => `${addr.slice(0, 6)}..${addr.slice(-4)}`;
+const formatToken = (address: string, analysis: AnalysisContext) => {
+  const tokenImpersonationMetadata = analysis[TokenImpersonation.Key]
+    ?.metadata as TokenImpersonationModuleMetadata;
+  const name = tokenImpersonationMetadata?.name;
+  const symbol = tokenImpersonationMetadata?.symbol;
+
+  return [name && name, symbol && `(${symbol})`, address].filter((v) => v).join(' ');
+};
 
 const formatTriggeredModules = (analysis: AnalysisContext) => {
   const modules = Object.entries(analysis)
@@ -42,7 +52,7 @@ export function createSpamNewFinding(token: TokenContract, analysis: AnalysisCon
     alertId: NEW_ALERT_ID,
     name: 'Spam Token',
     description:
-      `The ERC-${token.type} token (${formatShortAddress(token.address)}) ` +
+      `The ERC-${token.type} token ${formatToken(token.address, analysis)} ` +
       `shows signs of spam token behavior. Indicators: ${formatTriggeredModules(analysis)}.`,
     type: FindingType.Suspicious,
     severity: FindingSeverity.Low,
@@ -78,7 +88,7 @@ export function createSpamUpdateFinding(
     alertId: UPDATE_ALERT_ID,
     name: 'Spam Token (Update)',
     description:
-      `The ERC-${token.type} token (${formatShortAddress(token.address)}) ` +
+      `The ERC-${token.type} token ${formatToken(token.address, currAnalysis)} ` +
       `shows signs of spam token behavior. ` +
       `Indicators: ${formatTriggeredModules(currAnalysis)}.` +
       (addedModules.length > 0 ? ` New: ${addedModules.join(', ')}.` : '') +
@@ -118,7 +128,7 @@ export function createSpamRemoveFinding(token: TokenContract, currAnalysis: Anal
     alertId: REMOVE_ALERT_ID,
     name: 'Spam Token (Remove)',
     description:
-      `The ERC-${token.type} token (${formatShortAddress(token.address)}) ` +
+      `The ERC-${token.type} token ${formatToken(token.address, currAnalysis)} ` +
       `no longer shows signs of spam token behavior.`,
     type: FindingType.Info,
     severity: FindingSeverity.Info,

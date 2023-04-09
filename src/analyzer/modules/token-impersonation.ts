@@ -8,8 +8,8 @@ import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
 export const TOKEN_IMPERSONATION_MODULE_KEY = 'TokenImpersonation';
 
 export type TokenImpersonationModuleMetadata = {
-  name: string;
-  symbol: string;
+  name: string | undefined;
+  symbol: string | undefined;
   type: TokenStandard;
   impersonatedToken?: TokenRecord;
 };
@@ -42,28 +42,31 @@ class TokenImpersonationModule extends AnalyzerModule {
       // not implemented metadata
     }
 
-    if (!symbol || !name) return;
+    metadata = {
+      symbol,
+      name,
+      type: token.type,
+    };
 
-    try {
-      const tokens = await this.tokenProvider.getList();
-      const tokensByHash = new Map(tokens.map((t) => [this.tokenProvider.getTokenHash(t), t]));
-      const existingToken = tokensByHash.get(this.tokenProvider.getTokenHash({ name, symbol }));
+    if (symbol && name) {
+      try {
+        const tokens = await this.tokenProvider.getList();
+        const tokensByHash = new Map(tokens.map((t) => [this.tokenProvider.getTokenHash(t), t]));
+        const existingToken = tokensByHash.get(this.tokenProvider.getTokenHash({ name, symbol }));
 
-      // If the same token exists and its address does not match the current token.
-      detected =
-        !!existingToken &&
-        !Object.entries(existingToken.deployments).find((e) => e[1].toLowerCase() == token.address);
-      metadata = {
-        symbol,
-        name,
-        type: token.type,
-      };
+        // If the same token exists and its address does not match the current token.
+        detected =
+          !!existingToken &&
+          !Object.entries(existingToken.deployments).find(
+            (e) => e[1].toLowerCase() == token.address,
+          );
 
-      if (detected) {
-        metadata.impersonatedToken = existingToken;
+        if (detected) {
+          metadata.impersonatedToken = existingToken;
+        }
+      } catch (e) {
+        console.error(e);
       }
-    } catch (e) {
-      console.error(e);
     }
 
     context[TOKEN_IMPERSONATION_MODULE_KEY] = { detected, metadata };
