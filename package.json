@@ -1,11 +1,23 @@
 {
   "name": "spam-detector",
-  "version": "0.0.1",
-  "description": "Detects spam tokens using multiple indicators",
+  "version": "0.0.2",
+  "description": "The bot is equipped with advanced algorithms that analyze multiple indicators to detect spam tokens",
   "repository": "https://github.com/kovart/forta-spam-detector",
   "chainIds": [
-    1
+    1,
+    56,
+    137,
+    42161,
+    10,
+    250,
+    43114
   ],
+  "chainSettings": {
+    "default": {
+      "shards": 3,
+      "target": 2
+    }
+  },
   "scripts": {
     "build": "tsc",
     "start": "npm run start:dev",
