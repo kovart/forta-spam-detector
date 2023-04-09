@@ -42,16 +42,18 @@
     "keyfile": "forta-agent keyfile"
   },
   "dependencies": {
+    "@logtail/pino": "^0.4.0",
+    "@sentry/node": "^7.47.0",
     "async": "^3.2.4",
     "async-mutex": "^0.4.0",
     "bignumber.js": "^9.1.1",
     "dayjs": "^1.11.7",
+    "dotenv": "^16.0.3",
     "fast-csv": "^4.3.6",
     "forta-agent": "^0.1.26",
     "forta-bot-analytics": "^0.0.4",
     "lodash": "^4.17.21",
     "pino": "^8.11.0",
-    "dotenv": "^16.0.3",
     "pino-pretty": "^10.0.0"
   },
   "devDependencies": {

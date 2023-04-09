@@ -82,7 +82,7 @@ class TooManyHoneyPotOwnersModule extends AnalyzerModule {
 
         callback();
       } catch (e: any) {
-        Logger.error(e);
+        Logger.error('holderQueue error', e);
         holderQueue.remove(() => true);
         callback();
       }

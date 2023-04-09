@@ -2,4 +2,3 @@ node_modules
 dist
 tests
 forta.config.json
-.env

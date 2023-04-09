@@ -237,8 +237,7 @@ class TokenProvider {
 
         return { symbol, name };
       } catch (e) {
-        Logger.error('Cannot read token metadata');
-        Logger.error(e);
+        Logger.error('Cannot read token metadata', e);
         // ignore, use the next rpc url
       }
     }
@@ -285,8 +284,9 @@ class TokenProvider {
         const deployment = Object.entries(token.deployments).find((v) => v[1]);
 
         if (!deployment) {
-          Logger.error(`Cannot find deployed contract for token ${token.name} (${token.symbol})`);
-          Logger.error(token.deployments);
+          Logger.error(`Cannot find deployed contract for token ${token.name} (${token.symbol})`, {
+            tokenDeployments: token.deployments,
+          });
           continue;
         }
 
@@ -312,7 +312,7 @@ class TokenProvider {
             // Some tokens return metadata in a slightly different standard.
             // For example, this token returns bytes instead of strings, which causes an error when retrieving this data:
             // https://etherscan.io/address/0x0d88ed6e74bbfd96b831231638b66c05571e824f#readContract
-            Logger.error('Skip token');
+            Logger.warn('Skip token');
           }
         }
       }

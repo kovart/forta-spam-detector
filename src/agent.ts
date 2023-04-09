@@ -8,7 +8,6 @@ import {
 } from 'forta-agent';
 import dayjs from 'dayjs';
 import duration from 'dayjs/plugin/duration';
-import dotenv from 'dotenv';
 
 import Logger from './utils/logger';
 import { findCreatedContracts, identifyTokenInterface } from './utils/helpers';
@@ -17,9 +16,8 @@ import { SpamDetector } from './detector';
 import { DataContainer } from './types';
 import { IS_DEVELOPMENT, IS_DEBUG, DEBUG_TARGET_TOKEN } from './contants';
 
-dotenv.config();
 dayjs.extend(duration);
-Logger.level = IS_DEVELOPMENT ? 'debug' : 'info';
+Logger.level = 'debug';
 
 let TICK_INTERVAL = 4 * 60 * 60; // 4h
 

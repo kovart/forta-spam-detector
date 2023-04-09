@@ -18,6 +18,7 @@ import {
   getErc721TxEvents,
   readTokens,
 } from './helpers';
+import { PROVIDER_RPC_URL } from './scripts/contants';
 
 dotenv.config();
 
@@ -26,7 +27,7 @@ Logger.level = 'debug';
 const TICK_INTERVAL = 12 * 60 * 60; // 12h
 const OBSERVATION_TIME = 4 * 31 * 24 * 60 * 60; // 4 months
 const NETWORK = Network.MAINNET;
-const RPC_URL = process.env.PROVIDER_RPC_URL || PUBLIC_RPC_URLS_BY_NETWORK[NETWORK][0];
+const RPC_URL = PROVIDER_RPC_URL || PUBLIC_RPC_URLS_BY_NETWORK[NETWORK][0];
 
 console.log(`RPC URL: ${RPC_URL}`);
 

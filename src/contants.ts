@@ -1,6 +1,11 @@
 import path from 'path';
 import { utils } from 'ethers';
 import { Network } from 'forta-agent';
+import dotenv from 'dotenv';
+
+dotenv.config({
+  path: path.resolve(__dirname, '../.env.public'),
+});
 
 import Erc20Abi from './abi/erc20.json';
 import Erc165Abi from './abi/erc165.json';
@@ -18,6 +23,8 @@ export const IS_DEVELOPMENT = process.env.NODE_ENV !== 'production';
 export const DEBUG_TARGET_TOKEN = (process.env.TARGET_TOKEN || '').toLowerCase();
 export const PROVIDER_CONCURRENCY = IS_DEVELOPMENT ? 40 : 2;
 export const FETCH_CONCURRENCY = IS_DEVELOPMENT ? 50 : 25;
+
+export const LOGTAIL_TOKEN = process.env.LOGTAIL_TOKEN;
 
 export const DATA_PATH = path.resolve(__dirname, '../data');
 

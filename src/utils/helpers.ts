@@ -212,8 +212,7 @@ export async function retry<T>(
       return await fn();
     } catch (e: any) {
       // eslint-disable-next-line no-console
-      Logger.error(`Attempt (${attempt}/${attempts}):`);
-      Logger.error(e);
+      Logger.error(`Attempt (${attempt}/${attempts}):`, e);
       if (attempt >= attempts) {
         throw e;
       }

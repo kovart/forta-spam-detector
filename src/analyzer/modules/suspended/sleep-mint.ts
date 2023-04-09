@@ -150,7 +150,7 @@ class SleepMintModule extends AnalyzerModule {
 
         callback();
       } catch (e: any) {
-        Logger.error(e);
+        Logger.error('honeypotQueue error', e);
         honeypotQueue.remove(() => true);
         callback();
       }

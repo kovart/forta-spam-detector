@@ -9,5 +9,6 @@ logs
 research
 tests/data/test-*
 
-.env
+.env.private
+.env.public
 events.db
