@@ -99,7 +99,7 @@ class TokenProvider {
         await this.fetch();
       } catch (e) {
         if (this.cache) {
-          Logger.error('Caught fetch error. Fallback to the cached version', e);
+          Logger.error('Caught fetch error. Fallback to the cached version', { error: e });
           return this.cache.tokens;
         }
 
@@ -237,7 +237,7 @@ class TokenProvider {
 
         return { symbol, name };
       } catch (e) {
-        Logger.error('Cannot read token metadata', e);
+        Logger.error('Cannot read token metadata', { error: e });
         // ignore, use the next rpc url
       }
     }

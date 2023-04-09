@@ -14,7 +14,7 @@ WORKDIR /app
 COPY --from=builder /app/dist ./src
 COPY .env.public .
 COPY package*.json ./
-COPY data ./
+COPY data ./data
 COPY LICENSE ./
 RUN npm ci --production
 CMD sh -c "source .env.public && npm run start:prod"
