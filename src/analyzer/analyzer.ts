@@ -98,7 +98,7 @@ class TokenAnalyzer {
       if (result?.interrupt) break;
     }
 
-    Logger.info(`Token ${token.address} scanned in ${performance.now() - scanStartTime}ms`);
+    Logger.debug(`Token ${token.address} scanned in ${performance.now() - scanStartTime}ms`);
 
     return publicContext;
   }
