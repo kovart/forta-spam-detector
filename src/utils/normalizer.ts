@@ -145,6 +145,7 @@ export const INVISIBLE_UNICODE_CHARACTERS = new Set([
 
 export function normalizeText(text: string): string {
   const nameChars = Array.from(text.toLowerCase());
+  const isUpperChars = Array.from(text).map((c) => /[A-Z]/.test(c));
 
   // remap cyrillic glyphs with their ASCII representation
   nameChars.forEach((char, i) => {
@@ -174,5 +175,10 @@ export function normalizeText(text: string): string {
   });
 
   // combine normalized name (char[] -> string)
-  return nameChars.join('');
+  return nameChars
+    .map((c, i) => {
+      const isUpper = isUpperChars[i];
+      return isUpper ? c.toUpperCase() : c;
+    })
+    .join('');
 }

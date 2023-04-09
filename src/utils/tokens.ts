@@ -320,7 +320,7 @@ class TokenProvider {
   }
 
   getTokenHash(t: { name: string; symbol: string }) {
-    return `${normalizeText(t.name || '')} (${normalizeText(t.symbol || '')})`;
+    return `${normalizeText(t.name || '')} (${normalizeText((t.symbol || '').toLowerCase())})`;
   }
 }
 
