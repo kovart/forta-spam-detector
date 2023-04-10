@@ -28,6 +28,7 @@ import TokenImpersonationModule from './modules/token-impersonation';
 import LowActivityAfterAirdropModule from './modules/low-activity';
 import ObservationTimeModule from './modules/observation-time';
 import TooMuchAirdropActivityModule from './modules/airdrop-activity';
+import SleepMintModule from './modules/sleep-mint';
 
 class TokenAnalyzer {
   private modules: AnalyzerModule[];
@@ -58,6 +59,7 @@ class TokenAnalyzer {
       new Erc721NonUniqueTokensModule(),
       new Erc721FalseTotalSupplyModule(),
       new SilentMintModule(),
+      new SleepMintModule(),
       new TooManyCreationsModule(),
       new PhishingMetadataModule(),
       new TooManyHoneyPotOwnersModule(honeyPotChecker),
@@ -142,6 +144,8 @@ class TokenAnalyzer {
       isFinalized = true;
     }
 
+    // The evaluation does not use silent and sleep mint modules because of FPs,
+    // but they are displayed in the presence of other features
     if (
       analysis[AirdropModule.Key]?.detected &&
       [
@@ -151,7 +155,6 @@ class TokenAnalyzer {
         TooMuchAirdropActivityModule,
         TooManyCreationsModule,
         TooManyHoneyPotOwnersModule,
-        SilentMintModule,
         HoneypotsDominanceModule,
         PhishingMetadataModule,
         TokenImpersonationModule,
@@ -181,6 +184,7 @@ class TokenAnalyzer {
       Erc721FalseTotalSupplyModule,
       TooMuchAirdropActivityModule,
       SilentMintModule,
+      SleepMintModule,
       NonUniqueTokens,
       TooManyCreationsModule,
       TooManyHoneyPotOwnersModule,

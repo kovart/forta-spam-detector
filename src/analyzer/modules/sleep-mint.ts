@@ -1,24 +1,19 @@
 import { ethers } from 'ethers';
 import { shuffle } from 'lodash';
-import { queue } from 'async';
 
-import { SimplifiedTransaction, TokenEvent, TokenStandard } from '../../../types';
-import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../../types';
-import { isBurnAddress } from '../../../utils/helpers';
-import AirdropModule, { AirdropModuleMetadata } from '../airdrop';
-import HoneyPotChecker from '../../../utils/honeypot';
-import Logger from '../../../utils/logger';
+import { SimplifiedTransaction, TokenEvent, TokenStandard } from '../../types';
+import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
+import { isBurnAddress } from '../../utils/helpers';
+import AirdropModule, { AirdropModuleMetadata } from './airdrop';
 
 export const SLEEP_MINT_MODULE_KEY = 'SleepMint';
 export const SLEEP_MINT_RECEIVERS_THRESHOLD = 4;
-export const CONCURRENCY = 30;
 
 type SleepMintInfo = {
   from: string;
   to: string;
   sender: string;
   txHash: string;
-  isPassivelyApproved: boolean;
 };
 
 export type SleepMintModuleMetadata = {
@@ -37,17 +32,11 @@ export type SleepMintModuleShortMetadata = {
 class SleepMintModule extends AnalyzerModule {
   static Key = SLEEP_MINT_MODULE_KEY;
 
-  constructor(private honeypotChecker: HoneyPotChecker) {
-    super();
-  }
-
   async scan(params: ScanParams): Promise<ModuleScanReturn> {
-    const { token, storage, memoizer, provider, blockNumber, context } = params;
+    const { token, storage, context } = params;
 
     let detected = false;
     let metadata: SleepMintModuleMetadata | undefined = undefined;
-
-    const memo = memoizer.getScope(token.address);
 
     const airdropMetadata = context[AirdropModule.Key].metadata as AirdropModuleMetadata;
     const airdropTxHashes = airdropMetadata.txHashes;
@@ -106,8 +95,6 @@ class SleepMintModule extends AnalyzerModule {
         ?.forEach((e) => transferEvents.add(e));
     }
 
-    // TODO LIMIT
-
     for (const event of transferEvents) {
       if (
         event.from === ethers.constants.AddressZero ||
@@ -123,44 +110,12 @@ class SleepMintModule extends AnalyzerModule {
       // Skip if transaction is legal
       if (directApprovals.get(event.from)?.has(event.transaction.from)) continue;
 
-      const isPassivelyApproved =
-        passiveApprovals.get(event.from)?.has(event.transaction.from) || false;
-
       sleepMintSet.add({
         from: event.from,
         to: event.to,
         sender: event.transaction.from,
         txHash: event.transaction.hash,
-        isPassivelyApproved,
       });
-    }
-
-    const honeypotQueue = queue<SleepMintInfo>(async (mint, callback) => {
-      try {
-        const owner = mint.from;
-
-        const { isHoneypot } = await memo('honeypot', [owner], () => {
-          Logger.debug(`HoneyPot scanning: ${owner}`);
-          return this.honeypotChecker.testAddress(owner, provider, blockNumber);
-        });
-
-        if (!isHoneypot) {
-          sleepMintSet.delete(mint);
-        }
-
-        callback();
-      } catch (e: any) {
-        Logger.error('honeypotQueue error', { error: e });
-        honeypotQueue.remove(() => true);
-        callback();
-      }
-    }, CONCURRENCY);
-
-    Logger.debug(`Fetching honeypot info for ${sleepMintSet.size} accounts...`);
-    honeypotQueue.push([...sleepMintSet]);
-
-    if (!honeypotQueue.idle()) {
-      await honeypotQueue.drain();
     }
 
     const sleepMintReceiverSet = new Set([...sleepMintSet].map((m) => m.to));

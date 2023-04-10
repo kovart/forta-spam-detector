@@ -17,7 +17,7 @@ import { DataContainer } from './types';
 import { IS_DEVELOPMENT, IS_DEBUG, DEBUG_TARGET_TOKEN } from './contants';
 
 dayjs.extend(duration);
-Logger.level = 'debug';
+Logger.level = 'info';
 
 let TICK_INTERVAL = 4 * 60 * 60; // 4h
 
