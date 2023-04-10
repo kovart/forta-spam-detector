@@ -29,23 +29,23 @@ publish an alert instructing Forta Protocol to remove the labels that identify i
 
 Here is a table containing all the indicator modules utilized in the project.
 
-| Name                        | Description                                                                                                                                                                                                                                                                                  |
-|:----------------------------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Airdrop**                 | A passive airdrop with no claim by the recipient of the mint (or transfer). The airdrop indicator considers the number of unique recipients, both within a single transaction and across multiple transactions during a specified time period.                                               |
-| **LowActivityAfterAirdrop** | A very few of the accounts that received a token had any interaction with the token after a massive distribution of the token. This behavior often indicates that the value of the token is low.                                                                                             |
-| **TooMuchAirdropActivity**  | There is a redundancy in the massiveness and duration of an airdrop. For instance, an airdrop that lasts for several months and affects many accounts, given the low token activity, is likely indicative of spam.                                                                           |
-| **HighActivity**            | The activity level of a token meets the criteria to be classified as a good token.                                                                                                                                                                                                           |
-| **HoneyPotShareDominance**  | A significant portion of the tokens in the airdrop were distributed to accounts that are Honeypot, indicating an unwarranted airdrop.                                                                                                                                                        |
-| **TooManyHoneyPotOwners**   | The significant presence of Honeypots, such as Binance, Pranksy, vitalik.eth, among the token holders, which is a strong indication of unwarranted airdrops.                                                                                                                                 |
-| **TooManyCreations**        | A token creator generated a vast quantity of unique tokens within a brief timeframe, a conduct commonly associated with spammy behavior.                                                                                                                                                     |
-| **Erc721MultipleOwners**    | A single token in the ERC-721 collection has been transferred to multiple owners indicating fraudulent transfers. This action constitutes a direct violation of the ERC-721 standard.                                                                                                        |
-| **Erc721NonUniqueTokens**   | An ERC-721 NFT collection contains numerous duplicate tokens indicating fraudulent behaviour.                                                                                                                                                                                                |
-| **Erc721FalseTotalSupply**  | A token contract lies about its token supply, as there is a substantial difference between the value obtained by running totalSupply() on the contract and the actual number of tokens in circulation.                                                                                       |
-| **SilentMint**              | An account has somehow managed to spend more tokens than they possess. This may indicate an inadequately operating token contract that fails to emit Transfer events upon the mint of new tokens.                                                                                            |
-| **SleepMint**               | As part of the airdrop, a fraudulent technique is used to create events supposedly about the transfers of tokens from some well-known account, such as Binance, OpenSea or accounts like vitalik.eth. _Unfortunately, this module is temporarily disabled due to False Positives._           |
-| **PhishingMetadata**        | The metadata of an airdropped token features a link to a website, and the token employs deceitful tactics to lure users to follow the link. These tactics include the use of keywords like "claim," "reward," and "activate," as well as incorporating an alleged token price into its name. |
-| **TokenImpersonation**      | The metadata of the airdropped token replicates the name and symbol of an existing token identically.                                                                                                                                                                                        |
-| **ObservationTimeIsOver**   | The token's observation period is over, indicating the completion of the token evaluation.                                                                                                                                                                                                   |
+| Name                        | Description                                                                                                                                                                                                                                                                                     |
+|:----------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Airdrop**                 | A passive airdrop with no claim by the recipient of the mint (or transfer). The airdrop indicator considers the number of unique recipients, both within a single transaction and across multiple transactions during a specified time period.                                                  |
+| **LowActivityAfterAirdrop** | A very few of the accounts that received a token had any interaction with the token after a massive distribution of the token. This behavior often indicates that the value of the token is low.                                                                                                |
+| **TooMuchAirdropActivity**  | There is a redundancy in the massiveness and duration of an airdrop. For instance, an airdrop that lasts for several months and affects many accounts, given the low token activity, is likely indicative of spam.                                                                              |
+| **HighActivity**            | The activity level of a token meets the criteria to be classified as a good token.                                                                                                                                                                                                              |
+| **HoneyPotShareDominance**  | A significant portion of the tokens in the airdrop were distributed to accounts that are Honeypot, indicating an unwarranted airdrop.                                                                                                                                                           |
+| **TooManyHoneyPotOwners**   | The significant presence of Honeypots, such as Binance, Pranksy, vitalik.eth, among the token holders, which is a strong indication of unwarranted airdrops.                                                                                                                                    |
+| **TooManyCreations**        | A token creator generated a vast quantity of unique tokens within a brief timeframe, a conduct commonly associated with spammy behavior.                                                                                                                                                        |
+| **Erc721MultipleOwners**    | A single token in the ERC-721 collection has been transferred to multiple owners indicating fraudulent transfers. This action constitutes a direct violation of the ERC-721 standard.                                                                                                           |
+| **Erc721NonUniqueTokens**   | An ERC-721 NFT collection contains numerous duplicate tokens indicating fraudulent behaviour.                                                                                                                                                                                                   |
+| **Erc721FalseTotalSupply**  | A token contract lies about its token supply, as there is a substantial difference between the value obtained by running totalSupply() on the contract and the actual number of tokens in circulation.                                                                                          |
+| **SilentMint**              | An account has somehow managed to spend more tokens than they possess. This may indicate an inadequately operating token contract that fails to emit Transfer events upon the mint of new tokens.                                                                                               |
+| **SleepMint**               | As part of the airdrop, a fraudulent technique is used to create events supposedly about the transfers of tokens from some well-known account, such as Binance, OpenSea or accounts like vitalik.eth.                                                                                           |
+| **PhishingMetadata**        | The metadata of an airdropped token contains a link to a website, and the token uses deceptive techniques to lure users to follow the link. These techniques include the use of keywords like "claim," "reward," and "activate," as well as incorporating an alleged token price into its name. |
+| **TokenImpersonation**      | The metadata of the airdropped token replicates the name and symbol of an existing token identically.                                                                                                                                                                                           |
+| **ObservationTimeIsOver**   | The token's observation period is over, indicating the completion of the token evaluation.                                                                                                                                                                                                      |
 
 ## Supported Standards
 
@@ -66,7 +66,6 @@ Here is a table containing all the indicator modules utilized in the project.
 ## 🚨 Alerts
 
 - SPAM-TOKEN-NEW
-
     - Fired when a sufficient number of indicators are triggered, indicating the detection of a spam token
     - Severity: "low"
     - Type: "suspicious"
@@ -78,7 +77,6 @@ Here is a table containing all the indicator modules utilized in the project.
 
 
 - SPAM-TOKEN-UPDATE
-
     - Fired when new indicators of spam are detected, or when the previously identified signs of spam become irrelevant
     - Severity: "low"
     - Type: "suspicious"
@@ -175,7 +173,6 @@ spam token, while the second alert will update the analysis as one more indicato
   }
 }
 ```
-
 
 ## 📜 License
 
