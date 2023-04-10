@@ -211,7 +211,7 @@ export class EnsLeaderBoard {
 class HoneyPotChecker {
   static NETWORK_HIGH_BALANCE_THRESHOLDS: { [network: string]: BigNumber } = {
     [Network.MAINNET]: ethers.utils.parseUnits('1.5'),
-    [Network.BSC]: ethers.utils.parseUnits('6', 8),
+    [Network.BSC]: ethers.utils.parseUnits('6'),
     [Network.POLYGON]: ethers.utils.parseUnits('2000'),
     [Network.FANTOM]: ethers.utils.parseUnits('4600'),
     [Network.ARBITRUM]: ethers.utils.parseUnits('1.5'), // ETH
