@@ -24,6 +24,7 @@ let TICK_INTERVAL = 4 * 60 * 60; // 4h
 if (IS_DEBUG) {
   Logger.debug(`Debug mode enabled. Target contract: ${DEBUG_TARGET_TOKEN}`);
   TICK_INTERVAL = 0;
+  Logger.level = 'debug';
 }
 
 const data = {} as DataContainer;
@@ -69,13 +70,19 @@ const provideHandleBlock = (data: DataContainer): HandleBlock => {
       }
     }
 
-    data.detector.tick(blockEvent.block.timestamp, blockEvent.blockNumber);
+    // handleBlock() is executed before handleTransaction() is executed
+    if (data.previousBlock) {
+      // We pass to the tick information about the block in which there were previous transactions collected in the storage
+      data.detector.tick(data.previousBlock.timestamp, data.previousBlock.number);
 
-    if (IS_DEBUG && blockEvent.blockNumber % 10 === 0) {
-      await data.detector.wait();
+      if (IS_DEBUG && blockEvent.blockNumber % 10 === 0) {
+        await data.detector.wait();
+      }
+
+      if (blockEvent.blockNumber % 10 == 0) data.detector.logStats();
     }
 
-    if (blockEvent.blockNumber % 10 == 0) data.detector.logStats();
+    data.previousBlock = blockEvent.block;
 
     return findings;
   };

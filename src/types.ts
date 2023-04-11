@@ -1,3 +1,4 @@
+import { Block } from 'forta-agent';
 import { providers } from 'ethers';
 
 import { SpamDetector } from './detector';
@@ -7,6 +8,7 @@ export type DataContainer = {
   provider: providers.JsonRpcProvider;
   detector: SpamDetector;
   analysisByToken: Map<TokenContract, AnalysisResult>;
+  previousBlock: Block;
   isInitialized: boolean;
   isDevelopment: boolean;
 };

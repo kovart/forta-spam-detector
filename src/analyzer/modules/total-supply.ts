@@ -45,6 +45,9 @@ class Erc721FalseTotalSupplyModule extends AnalyzerModule {
 
         const ownerByTokenId = new Map<string, string>();
         for (const event of transferEvents) {
+          // ignore events of newer blocks
+          if (event.transaction.blockNumber > blockNumber) continue;
+
           ownerByTokenId.set(event.tokenId.toString(), event.to);
         }
 
