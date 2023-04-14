@@ -7,7 +7,7 @@ import duration from 'dayjs/plugin/duration';
 import {
   COINGECKO_PLATFORM_ID_BY_NETWORK,
   NETWORK_BY_COINGECKO_PLATFORM_ID,
-} from '../../src/utils/tokens';
+} from '../../../src/utils/tokens';
 
 dotenv.config({
   path: path.resolve(__dirname, '../.env.private'),

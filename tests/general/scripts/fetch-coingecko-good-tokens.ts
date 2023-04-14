@@ -7,7 +7,7 @@ import {
   COINGECKO_PLATFORM_ID_BY_NETWORK,
   CoinGeckoCoin,
   CoinGeckoNft,
-} from '../../src/utils/tokens';
+} from '../../../src/utils/tokens';
 
 // https://www.coingecko.com/en/api/documentation
 const NFTS_API_URL = 'https://api.coingecko.com/api/v3/nfts/list';

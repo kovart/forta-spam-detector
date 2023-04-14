@@ -10,9 +10,9 @@ import {
   getTokenStorage,
   TokenRecord,
 } from '../utils/storages';
-import { TokenStandard } from '../../src/types';
+import { TokenStandard } from '../../../src/types';
 import { getEventsFilterString } from './utils';
-import { JsonStorage } from '../../src/utils/storage';
+import { JsonStorage } from '../../../src/utils/storage';
 
 // https://dune.com/queries/2211595
 const CONTRACTS_QUERY_ID = 2211595;

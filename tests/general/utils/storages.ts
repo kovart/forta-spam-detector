@@ -1,10 +1,10 @@
 import { Network } from 'forta-agent';
 
-import { CsvStorage } from '../../src/utils/storage';
-import { TokenStandard } from '../../src/types';
+import { CsvStorage } from '../../../src/utils/storage';
+import { TokenStandard } from '../../../src/types';
 import { PATH_CONFIGS } from '../scripts/contants';
 import { TokenTestResult } from '../test';
-import { AnalysisContext } from '../../src/analyzer/types';
+import { AnalysisContext } from '../../../src/analyzer/types';
 
 export type BaseSpamToken = { contract: string };
 

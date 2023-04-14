@@ -7,7 +7,8 @@ forta.config.json
 
 logs
 research
-tests/data/test-*
+tests/specific
+tests/general/data/test-*
 
 .env.private
 .env.public

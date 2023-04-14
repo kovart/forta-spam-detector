@@ -14,7 +14,7 @@ import {
   Erc721ApprovalForAllEvent,
   Erc721TransferEvent,
 } from '../scripts/types';
-import { TokenStandard } from '../../src/types';
+import { TokenStandard } from '../../../src/types';
 
 const MAX_COMPOUND_SELECT = 500;
 

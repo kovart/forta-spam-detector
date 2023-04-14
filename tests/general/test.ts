@@ -2,14 +2,14 @@ import { ethers } from 'ethers';
 import { Network, TransactionEvent } from 'forta-agent';
 import dotenv from 'dotenv';
 
-import Logger from '../src/utils/logger';
-import AirdropModule from '../src/analyzer/modules/airdrop';
+import Logger from '../../src/utils/logger';
+import AirdropModule from '../../src/analyzer/modules/airdrop';
 import { getTestMetadataStorage, getTestResultStorage, TokenRecord } from './utils/storages';
-import { TokenContract, TokenStandard } from '../src/types';
-import { AnalysisContext } from '../src/analyzer/types';
-import { SpamDetector } from '../src/detector';
+import { TokenContract, TokenStandard } from '../../src/types';
+import { AnalysisContext } from '../../src/analyzer/types';
+import { SpamDetector } from '../../src/detector';
 import { delay } from './utils/utils';
-import { PUBLIC_RPC_URLS_BY_NETWORK } from '../src/contants';
+import { PUBLIC_RPC_URLS_BY_NETWORK } from '../../src/contants';
 import {
   formatDate,
   generateBlocks,

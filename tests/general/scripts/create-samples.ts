@@ -2,7 +2,7 @@ import { shuffle } from 'lodash';
 import { Network } from 'forta-agent';
 import lodash from 'lodash';
 
-import { TokenStandard } from '../../src/types';
+import { TokenStandard } from '../../../src/types';
 import { getTestTokenStorage, getTokenStorage, TokenRecord } from '../utils/storages';
 import { TARGET_NETWORKS } from './contants';
 

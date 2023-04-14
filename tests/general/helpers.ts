@@ -5,7 +5,7 @@ import { chunk, groupBy } from 'lodash';
 import { createTransactionEvent, EventType, Log, Network, TransactionEvent } from 'forta-agent';
 
 import Database from './utils/database';
-import { SimplifiedTransaction, TokenStandard } from '../src/types';
+import { SimplifiedTransaction, TokenStandard } from '../../src/types';
 import { getTestTokenStorage, TokenRecord } from './utils/storages';
 import {
   Erc1155ApprovalForAllEvent,
@@ -16,7 +16,7 @@ import {
   Erc721ApprovalEvent,
   Erc721TransferEvent,
 } from './scripts/types';
-import { erc1155Iface, erc20Iface, erc721Iface } from '../src/contants';
+import { erc1155Iface, erc20Iface, erc721Iface } from '../../src/contants';
 
 dayjs.extend(duration);
 
