@@ -11,7 +11,6 @@ import { SpamDetector } from '../../src/detector';
 import { delay } from './utils/utils';
 import { PUBLIC_RPC_URLS_BY_NETWORK } from '../../src/contants';
 import {
-  formatDate,
   generateBlocks,
   getErc1155TxEvents,
   getErc20TxEvents,
@@ -19,6 +18,7 @@ import {
   readTokens,
 } from './helpers';
 import { PROVIDER_RPC_URL } from './scripts/contants';
+import { formatDate } from '../helpers';
 
 dotenv.config();
 

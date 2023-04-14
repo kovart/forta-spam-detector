@@ -24,11 +24,6 @@ const MAX_NUMBER_OF_INLINE_VALUES = 999;
 
 const getTxHash = (tx: SimplifiedTransaction) => `0x${tx.hash}${tx.blockNumber}${tx.timestamp}`;
 
-export const formatDate = (timestamp: number) => dayjs.unix(timestamp).format('DD-MM-YYYY HH:mm');
-
-export const formatDuration = (timestamp: number) =>
-  dayjs.duration(timestamp, 'second').format('DD[d] HH[h]:mm[m]:ss[s]');
-
 function createLog(
   address: string,
   tx: SimplifiedTransaction,

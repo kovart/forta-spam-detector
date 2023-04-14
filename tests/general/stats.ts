@@ -1,7 +1,7 @@
 import { TokenTestResult } from './test';
 import { getTestResultStorage } from './utils/storages';
-import { formatDuration } from './helpers';
 import { TokenStandard } from '../../src/types';
+import { formatDuration } from '../helpers';
 
 function log(title: string, tokens: TokenTestResult[]) {
   let truePositives: number = 0;

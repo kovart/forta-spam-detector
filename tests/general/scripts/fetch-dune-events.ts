@@ -4,13 +4,14 @@ import { Dune } from 'dune-ts';
 
 import { providersQueue, ProvidersQueueResult } from '../../../src/utils/helpers';
 import { getTestTokenStorage, TokenRecord } from '../utils/storages';
-import { DUNE_NETWORK_BY_NETWORK, DUNE_USERS, PATH_CONFIGS, TARGET_NETWORKS } from './contants';
+import { DUNE_USERS, PATH_CONFIGS, TARGET_NETWORKS } from './contants';
 import { TokenStandard } from '../../../src/types';
 import { JsonStorage } from '../../../src/utils/storage';
 import { getDune } from '../utils/dune';
 import { getEventsFilterString } from './utils';
 import { DuneEvent } from './types';
 import Database from '../utils/database';
+import { DUNE_NETWORK_BY_NETWORK } from '../../constants';
 
 type EventFetchProgress = {
   [tokenInterface: number]: {

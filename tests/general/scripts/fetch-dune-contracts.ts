@@ -2,7 +2,7 @@ import { chunk, shuffle } from 'lodash';
 import { Network } from 'forta-agent';
 
 import { queryDune } from '../utils/dune';
-import { DUNE_NETWORK_BY_NETWORK, PATH_CONFIGS, TARGET_NETWORKS } from './contants';
+import { PATH_CONFIGS, TARGET_NETWORKS } from './contants';
 import {
   getAlchemySpamTokenStorage,
   getCoingeckoGoodTokenStorage,
@@ -13,6 +13,7 @@ import {
 import { TokenStandard } from '../../../src/types';
 import { getEventsFilterString } from './utils';
 import { JsonStorage } from '../../../src/utils/storage';
+import { DUNE_NETWORK_BY_NETWORK } from '../../constants';
 
 // https://dune.com/queries/2211595
 const CONTRACTS_QUERY_ID = 2211595;
