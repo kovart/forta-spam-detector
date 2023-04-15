@@ -36,7 +36,7 @@ class Erc721FalseTotalSupplyModule extends AnalyzerModule {
       try {
         const contract = new ethers.Contract(token.address, erc721Iface, provider);
 
-        const totalSupply = await retry(async () => {
+        const declaredTotalSupply = await retry(async () => {
           const totalSupply = (await contract.totalSupply({ blockTag: blockNumber })) as BigNumber;
           return totalSupply.toNumber();
         });
@@ -57,13 +57,16 @@ class Erc721FalseTotalSupplyModule extends AnalyzerModule {
           actualTotalSupply++;
         }
 
-        if (actualTotalSupply === totalSupply) return;
-
-        detected = true;
         metadata = {
-          declaredTotalSupply: totalSupply,
+          declaredTotalSupply: declaredTotalSupply,
           actualTotalSupply: actualTotalSupply,
         };
+
+        // Sometimes, tokens can show total supply more than this bot was able to capture.
+        // This can be due to missing some transactions or bad configuration of the token.
+        // Therefore, to avoid FPs, we only detect an obvious lie when we find more tokens than the contract claims.
+
+        detected = actualTotalSupply > declaredTotalSupply;
       } catch {
         // not supported
         memo.set('isTotalSupplyImplemented', false);
