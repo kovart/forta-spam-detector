@@ -70,7 +70,7 @@ const provideHandleBlock = (data: DataContainer): HandleBlock => {
       }
     }
 
-    // handleBlock() is executed before handleTransaction() is executed
+    // handleBlock() is executed before handleTransaction()
     if (data.previousBlock) {
       // We pass to the tick information about the block in which there were previous transactions collected in the storage
       data.detector.tick(data.previousBlock.timestamp, data.previousBlock.number);
