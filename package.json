@@ -24,7 +24,6 @@
     "start:dev": "nodemon --watch src --watch forta.config.json -e js,ts,json  --exec \"npm run build && forta-agent run\"",
     "start:prod": "forta-agent run --prod",
     "start:docker": "docker run --rm -it $(docker build -q .)",
-    "debug": "DEBUG=1 TARGET_TOKEN=\"0x2895f043fe58b360783f44f7f0b819a69502f01b\" npm run range 27307118..27315876",
     "pino": "tail -f logs/agent.log",
     "test": "ts-node ./tests/test.ts",
     "test:stats": "ts-node ./tests/stats.ts",
