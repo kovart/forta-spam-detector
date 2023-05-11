@@ -33,6 +33,7 @@ export type TokenContract = CreatedContract & {
 export type SimplifiedTransaction = {
   from: string;
   to: string | null;
+  sighash: string;
   timestamp: number;
   blockNumber: number;
   hash: string;
@@ -40,6 +41,7 @@ export type SimplifiedTransaction = {
 
 export type TokenEvent = {
   transaction: SimplifiedTransaction;
+  contract: string;
 };
 
 export type Erc20TransferEvent = TokenEvent & {
