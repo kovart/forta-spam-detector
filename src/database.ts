@@ -39,6 +39,8 @@ export class SqlDatabase {
   }
 
   async initialize(): Promise<void> {
+    this.db.run(`PRAGMA foreign_keys = ON`);
+
     this.db.run(`CREATE TABLE IF NOT EXISTS addresses (
       address_id INTEGER PRIMARY KEY AUTOINCREMENT,
       address VARCHAR(42) UNIQUE NOT NULL
@@ -180,6 +182,10 @@ export class SqlDatabase {
       FOREIGN KEY (owner_id) REFERENCES addresses (address_id) ON UPDATE CASCADE ON DELETE CASCADE,
       FOREIGN KEY (operator_id) REFERENCES addresses (address_id) ON UPDATE CASCADE ON DELETE CASCADE
     )`);
+  }
+
+  async getAddresses(): Promise<{ address: string }[]> {
+    return await this.all<TokenContract[]>(`SELECT address FROM addresses`);
   }
 
   async getTokens(): Promise<TokenContract[]> {
@@ -689,14 +695,14 @@ export class SqlDatabase {
     );
 
     const eventTables = [
-      'erc20_transfer_events',
-      'erc20_approval_events',
-      'erc721_transfer_events',
-      'erc721_approval_events',
-      'erc721_approval_for_all_events',
-      'erc1155_transfer_single_events',
-      'erc1155_transfer_batch_events',
-      'erc1155_approval_for_all_events',
+      'erc_20_transfer_events',
+      'erc_20_approval_events',
+      'erc_721_transfer_events',
+      'erc_721_approval_events',
+      'erc_721_approval_for_all_events',
+      'erc_1155_transfer_single_events',
+      'erc_1155_transfer_batch_events',
+      'erc_1155_approval_for_all_events',
     ];
 
     // clear transactions
@@ -716,13 +722,14 @@ export class SqlDatabase {
 
     const tablesWithAddresses = [
       { name: 'transactions', columns: ['from_id', 'to_id'] },
-      { name: 'erc20_transfer_events', columns: ['from_id', 'to_id'] },
-      { name: 'erc20_approval_events', columns: ['owner_id', 'spender_id'] },
-      { name: 'erc721_transfer_events', columns: ['from_id', 'to_id'] },
-      { name: 'erc721_approval_events', columns: ['owner_id', 'approved_id'] },
-      { name: 'erc721_approval_for_all_events', columns: ['owner_id', 'operator_id'] },
-      { name: 'erc1155_transfer_single_events', columns: ['operator_id', 'from_id', 'to_id'] },
-      { name: 'erc1155_transfer_batch_events', columns: ['operator_id', 'from_id', 'to_id'] },
+      { name: 'contracts', columns: ['address_id', 'deployer_id'] },
+      { name: 'erc_20_transfer_events', columns: ['from_id', 'to_id'] },
+      { name: 'erc_20_approval_events', columns: ['owner_id', 'spender_id'] },
+      { name: 'erc_721_transfer_events', columns: ['from_id', 'to_id'] },
+      { name: 'erc_721_approval_events', columns: ['owner_id', 'approved_id'] },
+      { name: 'erc_721_approval_for_all_events', columns: ['owner_id', 'operator_id'] },
+      { name: 'erc_1155_transfer_single_events', columns: ['operator_id', 'from_id', 'to_id'] },
+      { name: 'erc_1155_transfer_batch_events', columns: ['operator_id', 'from_id', 'to_id'] },
     ];
 
     // clear addresses
@@ -743,6 +750,12 @@ export class SqlDatabase {
 
   close(cb: ((err: Error | null) => void) | undefined) {
     this.db.close(cb);
+  }
+
+  async wait() {
+    return new Promise((res) => {
+      this.db.wait(res);
+    });
   }
 
   private async run(query: string, ...params: any[]): Promise<void> {
