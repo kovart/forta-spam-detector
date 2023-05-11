@@ -4,8 +4,8 @@ import { TransactionEvent } from 'forta-agent';
 
 import Memoizer from './utils/cache';
 import DataStorage from './storage';
-import Logger from './utils/logger';
 import TokenAnalyzer from './analyzer/analyzer';
+import Logger from './utils/logger';
 import { CreatedContract, TokenContract, TokenStandard } from './types';
 import { AnalysisResult, AnalyzerTask } from './analyzer/types';
 
@@ -18,27 +18,35 @@ export class SpamDetector {
   private taskByToken: Map<TokenContract, AnalyzerTask>;
   private analysisByToken: Map<TokenContract, AnalysisResult>;
 
-  constructor(provider: ethers.providers.StaticJsonRpcProvider, tickInterval: number) {
+  constructor(
+    provider: ethers.providers.StaticJsonRpcProvider,
+    storage: DataStorage,
+    tickInterval: number,
+  ) {
     this.tickInterval = tickInterval;
 
+    this.storage = storage;
     this.memoizer = new Memoizer();
-    this.storage = new DataStorage();
     this.analyzer = new TokenAnalyzer(provider, this.storage, this.memoizer);
     this.queue = queue(this.handleTask.bind(this), 1);
     this.analysisByToken = new Map();
     this.taskByToken = new Map();
   }
 
+  async initialize() {
+    await this.storage.initialize();
+  }
+
   addTokenToWatchList(type: TokenStandard, contract: CreatedContract) {
-    this.storage.tokenByAddress.set(contract.address, { type, ...contract });
+    this.storage.addToken({ type, ...contract });
   }
 
   handleTxEvent(txEvent: TransactionEvent) {
-    this.storage.add(txEvent);
+    return this.storage.handleTx(txEvent);
   }
 
   tick(timestamp: number, blockNumber: number) {
-    for (const token of this.storage.tokenByAddress.values()) {
+    for (const token of this.storage.getTokens()) {
       // Should be released before we start analyzing it again
       if (this.analysisByToken.has(token)) continue;
 
@@ -71,7 +79,7 @@ export class SpamDetector {
       Logger.debug(`Task completed in ${performance.now() - t0}ms`);
 
       // check if it is still needed
-      if (!this.storage.tokenByAddress.has(task.token.address)) {
+      if (!this.storage.hasToken(task.token.address)) {
         return callback();
       }
 
@@ -107,7 +115,7 @@ export class SpamDetector {
   }
 
   deleteToken(token: TokenContract) {
-    this.storage.delete(token.address);
+    this.storage.deleteToken(token.address);
     this.memoizer.deleteScope(token.address);
     this.taskByToken.delete(token);
     this.analysisByToken.delete(token);
@@ -116,7 +124,7 @@ export class SpamDetector {
   public logStats() {
     Logger.info(
       [
-        `Tokens: ${this.storage.tokenByAddress.size}`,
+        `Tokens: ${this.storage.getTokens().length}`,
         `Finished: ${[...this.taskByToken.values()].filter((t) => t.finishedAt).length}`,
         `Queue: ${this.queue.running()}`,
         `Memory: ${Math.round(((process.memoryUsage().heapUsed / 1024 / 1024) * 100) / 100)}Mb`,

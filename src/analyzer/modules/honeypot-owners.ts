@@ -49,7 +49,7 @@ class TooManyHoneyPotOwnersModule extends AnalyzerModule {
     const airdropMetadata = context[AirdropModule.Key].metadata as AirdropModuleMetadata;
 
     let receiverSet = new Set(airdropMetadata.receivers);
-    const transactionSet = transformer.transactions(token);
+    const transactionSet = await transformer.transactions(token);
     const senderSet = new Set([...transactionSet].map((t) => t.from));
 
     // Creators often allocate tokens to themselves

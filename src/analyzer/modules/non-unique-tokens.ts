@@ -45,7 +45,7 @@ class Erc721NonUniqueTokensModule extends AnalyzerModule {
     if (isTokenURISupported != null && !isTokenURISupported) return;
 
     let tokenIdSet = new Set<string>();
-    for (const event of storage.erc721TransferEventsByToken.get(token.address) || []) {
+    for (const event of await storage.getErc721TransferEvents(token.address)) {
       tokenIdSet.add(event.tokenId.toString());
     }
 

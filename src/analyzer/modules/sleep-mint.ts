@@ -51,18 +51,15 @@ class SleepMintModule extends AnalyzerModule {
     const allApprovalEvents: (TokenEvent & { owner: string; spender: string })[] = [];
 
     if (token.type === TokenStandard.Erc20) {
-      allApprovalEvents.push(...(storage.erc20ApprovalEventsByToken.get(token.address) || []));
+      allApprovalEvents.push(...(await storage.getErc20ApprovalEvents(token.address)));
     } else if (token.type === TokenStandard.Erc721) {
-      const approvalEvents = storage.erc721ApprovalEventsByToken.get(token.address) || new Set();
-      const approvalForAllEvents =
-        storage.erc721ApprovalForAllEventsByToken.get(token.address) || new Set();
+      const approvalEvents = await storage.getErc721ApprovalEvents(token.address);
+      const approvalForAllEvents = await storage.getErc721ApprovalForAllEvents(token.address);
 
       approvalEvents.forEach((e) => allApprovalEvents.push({ ...e, spender: e.approved }));
       approvalForAllEvents.forEach((e) => allApprovalEvents.push({ ...e, spender: e.operator }));
     } else if (token.type === TokenStandard.Erc1155) {
-      const approvalForAllEvents =
-        storage.erc1155ApprovalForAllEventsByToken.get(token.address) || [];
-
+      const approvalForAllEvents = await storage.getErc1155ApprovalForAllEvents(token.address);
       approvalForAllEvents.forEach((e) => allApprovalEvents.push({ ...e, spender: e.operator }));
     }
 
@@ -81,18 +78,17 @@ class SleepMintModule extends AnalyzerModule {
     const sleepMintSet = new Set<SleepMintInfo>();
     const airdropTxHashSet = new Set(airdropTxHashes);
 
-    let transferEvents: Set<{ from: string; to: string; transaction: SimplifiedTransaction }> =
-      new Set();
+    let transferEvents: { from: string; to: string; transaction: SimplifiedTransaction }[] = [];
 
     if (token.type === TokenStandard.Erc20) {
-      transferEvents = storage.erc20TransferEventsByToken.get(token.address) || new Set();
+      transferEvents = await storage.getErc20TransferEvents(token.address);
     } else if (token.type === TokenStandard.Erc721) {
-      transferEvents = storage.erc721TransferEventsByToken.get(token.address) || new Set();
+      transferEvents = await storage.getErc721TransferEvents(token.address);
     } else if (token.type === TokenStandard.Erc1155) {
-      transferEvents = storage.erc1155TransferSingleEventsByToken.get(token.address) || new Set();
-      storage.erc1155TransferBatchEventsByToken
-        .get(token.address)
-        ?.forEach((e) => transferEvents.add(e));
+      transferEvents = await storage.getErc1155TransferSingleEvents(token.address);
+      for (const event of await storage.getErc1155TransferBatchEvents(token.address)) {
+        transferEvents.push(event);
+      }
     }
 
     for (const event of transferEvents) {

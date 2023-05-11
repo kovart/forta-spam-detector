@@ -5,6 +5,7 @@ forta.config.json
 .idea
 .vscode
 
+db
 logs
 research
 tests/general/data/test-*

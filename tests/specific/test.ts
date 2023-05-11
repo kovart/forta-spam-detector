@@ -7,6 +7,8 @@ import { Token } from './types';
 import { getBlocks } from './utils';
 import { TokenStandard } from '../../src/types';
 import { formatDate } from '../helpers';
+import SqlDatabase from '../../src/database';
+import DataStorage from '../../src/storage';
 
 const TICK_INTERVAL = 4 * 60 * 60; // 4h
 
@@ -17,7 +19,9 @@ async function testToken(token: Token, isSpam: boolean) {
 
   const blockEvents = await getBlocks(token);
 
-  const detector = new SpamDetector(provider, TICK_INTERVAL);
+  const detector = new SpamDetector(provider, new DataStorage(new SqlDatabase()), TICK_INTERVAL);
+
+  await detector.initialize();
 
   detector.addTokenToWatchList(token.type, {
     address: token.address,
@@ -33,7 +37,7 @@ async function testToken(token: Token, isSpam: boolean) {
     const txEvents = block.txEvents;
 
     for (const txEvent of txEvents) {
-      detector.handleTxEvent(txEvent);
+      await detector.handleTxEvent(txEvent);
     }
 
     detector.tick(block.timestamp, block.number);

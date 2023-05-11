@@ -23,7 +23,7 @@ export type TokenInsertEvent<T extends TokenEvent> = Omit<T, 'transaction'> & {
 const wrapNull = (v: any) => (v == null ? 'NULL' : v);
 const unwrapNull = (v: any) => (v === 'NULL' ? null : v);
 
-export class SqlDatabase {
+class SqlDatabase {
   private db: sqlite3.Database;
 
   constructor(filename = ':memory:') {
@@ -785,3 +785,5 @@ export class SqlDatabase {
     });
   }
 }
+
+export default SqlDatabase;

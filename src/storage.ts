@@ -1,90 +1,71 @@
 import { BigNumber as EtherBigNumber } from 'ethers';
 import { TransactionEvent } from 'forta-agent';
 
-import {
-  Erc1155ApprovalForAllEvent,
-  Erc1155TransferBatchEvent,
-  Erc1155TransferSingleEvent,
-  Erc20ApprovalEvent,
-  Erc20TransferEvent,
-  Erc721ApprovalEvent,
-  Erc721ApprovalForAllEvent,
-  Erc721TransferEvent,
-  SimplifiedTransaction,
-  TokenContract,
-  TokenEvent,
-} from './types';
+import SqlDatabase from './database';
+import { SimplifiedTransaction, TokenContract } from './types';
 import { erc1155Iface, erc20Iface, erc721Iface } from './contants';
 
 class DataStorage {
-  public tokenByAddress = new Map<string, TokenContract>();
-  public transactionsByToken = new Map<string, Set<SimplifiedTransaction>>();
-  public erc20TransferEventsByToken = new Map<string, Set<Erc20TransferEvent>>();
-  public erc20ApprovalEventsByToken = new Map<string, Set<Erc20ApprovalEvent>>();
-  public erc721TransferEventsByToken = new Map<string, Set<Erc721TransferEvent>>();
-  public erc721ApprovalEventsByToken = new Map<string, Set<Erc721ApprovalEvent>>();
-  public erc721ApprovalForAllEventsByToken = new Map<string, Set<Erc721ApprovalForAllEvent>>();
-  public erc1155TransferSingleEventsByToken = new Map<string, Set<Erc1155TransferSingleEvent>>();
-  public erc1155TransferBatchEventsByToken = new Map<string, Set<Erc1155TransferBatchEvent>>();
-  public erc1155ApprovalForAllEventsByToken = new Map<string, Set<Erc1155ApprovalForAllEvent>>();
+  private tokenByAddress = new Map<string, TokenContract>();
 
-  constructor() {}
+  constructor(public db: SqlDatabase) {}
 
-  add(txEvent: TransactionEvent) {
+  async initialize() {
+    await this.db.initialize();
+
+    const tokens = await this.db.getTokens();
+
+    for (const token of tokens) {
+      this.tokenByAddress.set(token.address, token);
+    }
+  }
+
+  addToken(token: TokenContract) {
+    this.tokenByAddress.set(token.address, token);
+    this.db.addToken(token);
+  }
+
+  async handleTx(txEvent: TransactionEvent) {
     const transaction: SimplifiedTransaction = {
       hash: txEvent.hash,
       from: txEvent.from,
       to: txEvent.to,
+      sighash: txEvent.transaction.data.slice(0, 10),
       blockNumber: txEvent.blockNumber,
       timestamp: txEvent.timestamp,
     };
 
-    const appendTransaction = (tokenAddr: string) => {
-      let transactionSet = this.transactionsByToken.get(tokenAddr);
-      if (!transactionSet) {
-        transactionSet = new Set();
-        this.transactionsByToken.set(tokenAddr, transactionSet);
-      }
-      transactionSet.add(transaction);
-    };
-
-    const appendEvent = <P extends TokenEvent>(key: string, map: Map<string, Set<P>>, event: P) => {
-      let eventSet = map.get(key);
-      if (!eventSet) {
-        eventSet = new Set();
-        map.set(key, eventSet);
-      }
-      eventSet.add(event);
-    };
-
     const logs = txEvent.logs.filter((l) => this.tokenByAddress.has(l.address.toLowerCase()));
 
-    if (txEvent.to && this.tokenByAddress.has(txEvent.to.toLowerCase())) {
-      appendTransaction(txEvent.to.toLowerCase());
+    // Check if there is any trace of the monitoring tokens
+    if (!(txEvent.to && this.tokenByAddress.has(txEvent.to.toLowerCase())) && logs.length === 0) {
+      return;
     }
+
+    const transactionId = await this.db.addTransaction(transaction);
 
     for (const log of logs) {
       const contractAddress = log.address.toLowerCase();
-
-      appendTransaction(contractAddress);
 
       try {
         const parsedErc20Log = erc20Iface.parseLog(log);
         if (parsedErc20Log.name === 'Transfer') {
           const { from, to, value } = parsedErc20Log.args;
-          appendEvent(contractAddress, this.erc20TransferEventsByToken, {
+          this.db.addErc20TransferEvent({
             from: from.toLowerCase(),
             to: to.toLowerCase(),
             value: BigInt(value.toString()),
-            transaction: transaction,
+            contract: contractAddress,
+            transaction_id: transactionId,
           });
         } else if (parsedErc20Log.name === 'Approval') {
           const { owner, spender, value } = parsedErc20Log.args;
-          appendEvent(contractAddress, this.erc20ApprovalEventsByToken, {
+          this.db.addErc20ApprovalEvent({
             owner: owner.toLowerCase(),
             spender: spender.toLowerCase(),
             value: BigInt(value.toString()),
-            transaction: transaction,
+            transaction_id: transactionId,
+            contract: contractAddress,
           });
         }
         continue;
@@ -97,27 +78,30 @@ class DataStorage {
 
         if (parsedErc721Log.name === 'Transfer') {
           const { from, to, tokenId } = parsedErc721Log.args;
-          appendEvent(contractAddress, this.erc721TransferEventsByToken, {
+          this.db.addErc721TransferEvent({
             from: from.toLowerCase(),
             to: to.toLowerCase(),
             tokenId: tokenId,
-            transaction: transaction,
+            contract: contractAddress,
+            transaction_id: transactionId,
           });
         } else if (parsedErc721Log.name === 'Approval') {
           const { owner, approved, tokenId } = parsedErc721Log.args;
-          appendEvent(contractAddress, this.erc721ApprovalEventsByToken, {
+          this.db.addErc721ApprovalEvent({
             owner: owner.toLowerCase(),
             approved: approved.toLowerCase(),
             tokenId: tokenId,
-            transaction: transaction,
+            transaction_id: transactionId,
+            contract: contractAddress,
           });
         } else if (parsedErc721Log.name === 'ApprovalForAll') {
           const { owner, operator, approved } = parsedErc721Log.args;
-          appendEvent(contractAddress, this.erc721ApprovalForAllEventsByToken, {
+          this.db.addErc721ApprovalForAllEvent({
             owner: owner.toLowerCase(),
             operator: operator.toLowerCase(),
             approved: approved,
-            transaction: transaction,
+            transaction_id: transactionId,
+            contract: contractAddress,
           });
         }
 
@@ -131,31 +115,34 @@ class DataStorage {
 
         if (parsedErc1155Log.name === 'TransferSingle') {
           const { operator, from, to, tokenId, value } = parsedErc1155Log.args;
-          appendEvent(contractAddress, this.erc1155TransferSingleEventsByToken, {
+          this.db.addErc1155TransferSingleEvent({
             operator: operator.toLowerCase(),
             from: from.toLowerCase(),
             to: to.toLowerCase(),
             tokenId: tokenId,
             value: BigInt(value.toString()),
-            transaction: transaction,
+            transaction_id: transactionId,
+            contract: contractAddress,
           });
         } else if (parsedErc1155Log.name === 'TransferBatch') {
           const { operator, from, to, ids } = parsedErc1155Log.args;
-          appendEvent(contractAddress, this.erc1155TransferBatchEventsByToken, {
+          this.db.addErc1155TransferBatchEvent({
             operator: operator.toLowerCase(),
             from: from.toLowerCase(),
             to: to.toLowerCase(),
             ids: ids.map((id: EtherBigNumber) => id.toString()),
             values: parsedErc1155Log.args[4].map((v: EtherBigNumber) => BigInt(v.toString())),
-            transaction: transaction,
+            transaction_id: transactionId,
+            contract: contractAddress,
           });
         } else if (parsedErc1155Log.name === 'ApprovalForAll') {
           const { owner, operator, approved } = parsedErc1155Log.args;
-          appendEvent(contractAddress, this.erc1155ApprovalForAllEventsByToken, {
+          this.db.addErc1155ApprovalForAllEvent({
             owner: owner.toLowerCase(),
             operator: operator.toLowerCase(),
             approved: approved,
-            transaction: transaction,
+            transaction_id: transactionId,
+            contract: contractAddress,
           });
         }
       } catch {
@@ -164,15 +151,53 @@ class DataStorage {
     }
   }
 
-  delete(tokenAddress: string) {
-    this.tokenByAddress.delete(tokenAddress);
-    this.transactionsByToken.delete(tokenAddress);
-    this.erc721TransferEventsByToken.delete(tokenAddress);
-    this.erc721ApprovalEventsByToken.delete(tokenAddress);
-    this.erc721ApprovalForAllEventsByToken.delete(tokenAddress);
-    this.erc1155TransferSingleEventsByToken.delete(tokenAddress);
-    this.erc1155TransferBatchEventsByToken.delete(tokenAddress);
-    this.erc1155ApprovalForAllEventsByToken.delete(tokenAddress);
+  getTokens() {
+    return Array.from(this.tokenByAddress.values());
+  }
+
+  hasToken(address: string) {
+    return this.tokenByAddress.has(address);
+  }
+
+  deleteToken(address: string) {
+    this.tokenByAddress.delete(address);
+    this.db.clearToken(address);
+  }
+
+  getTransactions(to: string | null) {
+    return this.db.getTransactions({ to });
+  }
+
+  getErc20TransferEvents(contract: string) {
+    return this.db.getErc20TransferEvents({ contract });
+  }
+
+  getErc20ApprovalEvents(contract: string) {
+    return this.db.getErc20ApprovalEvents({ contract });
+  }
+
+  getErc721TransferEvents(contract: string) {
+    return this.db.getErc721TransferEvents({ contract });
+  }
+
+  getErc721ApprovalEvents(contract: string) {
+    return this.db.getErc721ApprovalEvents({ contract });
+  }
+
+  getErc721ApprovalForAllEvents(contract: string) {
+    return this.db.getErc721ApprovalForAllEvents({ contract });
+  }
+
+  getErc1155TransferSingleEvents(contract: string) {
+    return this.db.getErc1155TransferSingleEvents({ contract });
+  }
+
+  getErc1155TransferBatchEvents(contract: string) {
+    return this.db.getErc1155TransferBatchEvents({ contract });
+  }
+
+  getErc1155ApprovalForAllEvents(contract: string) {
+    return this.db.getErc1155ApprovalForAllEvents({ contract });
   }
 }
 

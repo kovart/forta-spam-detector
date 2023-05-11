@@ -41,7 +41,7 @@ class LowActivityAfterAirdropModule extends AnalyzerModule {
     if (minReceiversFulfilledAt === -1) return;
     if (timestamp - minReceiversFulfilledAt <= DELAY_AFTER_AIRDROP) return;
 
-    const transactionSet = transformer.transactions(token);
+    const transactionSet = await transformer.transactions(token);
     const senderSet = new Set<string>();
 
     transactionSet.forEach((t) => senderSet.add(t.from));

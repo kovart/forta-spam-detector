@@ -19,6 +19,8 @@ import {
 } from './helpers';
 import { PROVIDER_RPC_URL } from './scripts/contants';
 import { formatDate } from '../helpers';
+import SqlDatabase from '../../src/database';
+import DataStorage from '../../src/storage';
 
 dotenv.config();
 
@@ -51,9 +53,11 @@ async function testTokens(
   fetch: (token: TokenRecord) => Promise<TransactionEvent[]>,
 ) {
   const provider = new ethers.providers.JsonRpcBatchProvider(RPC_URL);
-  const detector = new SpamDetector(provider, 0);
+  const detector = new SpamDetector(provider, new DataStorage(new SqlDatabase()), 0);
   const resultStorage = getTestResultStorage(NETWORK);
   const metadataStorage = getTestMetadataStorage(NETWORK);
+
+  await detector.initialize();
 
   const testedTokens = await resultStorage.read();
   const testedTokenSet = new Set<string>(testedTokens.map((t) => t.contract));
@@ -108,7 +112,7 @@ async function testTokens(
         );
 
       for (const event of block.events) {
-        detector.handleTxEvent(event);
+        await detector.handleTxEvent(event);
       }
 
       detector.tick(block.timestamp, block.number);

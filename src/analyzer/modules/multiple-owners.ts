@@ -26,7 +26,7 @@ class Erc721MultipleOwnersModule extends AnalyzerModule {
     let metadata: Erc721MultipleOwnersModuleMetadata | undefined = undefined;
 
     if (token.type === TokenStandard.Erc721) {
-      const transferEvents = storage.erc721TransferEventsByToken.get(token.address) || [];
+      const transferEvents = await storage.getErc721TransferEvents(token.address);
 
       // tokenId -> account[]
       const ownersByTokenId = new Map<string, string[]>();

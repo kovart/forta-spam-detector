@@ -1,7 +1,7 @@
 import { ethers } from 'ethers';
 import { omit } from 'lodash';
 
-import { SqlDatabase, TokenInsertEvent } from './database';
+import SqlDatabase, { TokenInsertEvent } from './database';
 import {
   Erc1155ApprovalForAllEvent,
   Erc1155TransferBatchEvent,
@@ -453,8 +453,6 @@ describe('sql database', () => {
     // Clear token1
 
     db.clearToken(token1.address);
-
-    await db.wait();
 
     // Check result
     allTokens = await db.getTokens();

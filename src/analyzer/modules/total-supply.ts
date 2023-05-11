@@ -30,9 +30,9 @@ class Erc721FalseTotalSupplyModule extends AnalyzerModule {
     if (token.type !== TokenStandard.Erc721) return;
     if (isTotalSupplyImplemented != null && !isTotalSupplyImplemented) return;
 
-    const transferEvents = storage.erc721TransferEventsByToken.get(token.address) || new Set();
+    const transferEvents = await storage.getErc721TransferEvents(token.address);
 
-    const result = await memo(FALSE_TOTAL_SUPPLY_MODULE_KEY, [transferEvents.size], async () => {
+    const result = await memo(FALSE_TOTAL_SUPPLY_MODULE_KEY, [transferEvents.length], async () => {
       try {
         const contract = new ethers.Contract(token.address, erc721Iface, provider);
 

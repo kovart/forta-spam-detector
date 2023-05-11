@@ -6,6 +6,7 @@ import {
   Initialize,
   TransactionEvent,
 } from 'forta-agent';
+import path from 'path';
 import dayjs from 'dayjs';
 import duration from 'dayjs/plugin/duration';
 
@@ -13,8 +14,11 @@ import Logger from './utils/logger';
 import { findCreatedContracts, identifyTokenInterface } from './utils/helpers';
 import { createSpamNewFinding, createSpamRemoveFinding, createSpamUpdateFinding } from './findings';
 import { SpamDetector } from './detector';
+import SqlDatabase from './database';
+import DataStorage from './storage';
 import { DataContainer } from './types';
 import { IS_DEVELOPMENT, IS_DEBUG, DEBUG_TARGET_TOKEN } from './contants';
+import { mkdir, rmFile } from './utils/storage';
 
 dayjs.extend(duration);
 Logger.level = 'info';
@@ -33,10 +37,26 @@ const provideInitialize = (data: DataContainer, isDevelopment: boolean): Initial
   return async function initialize() {
     const provider = getEthersBatchProvider();
 
+    let storage: DataStorage;
+    if (isDevelopment) {
+      storage = new DataStorage(new SqlDatabase(':memory:'));
+    } else {
+      const folder = path.resolve(__dirname, '../db/');
+      const filePath = path.resolve(folder, './storage.db');
+
+      await mkdir(folder);
+      // We delete the database file because skipping some events can lead to state anomalies and hence False Positives
+      await rmFile(filePath);
+
+      storage = new DataStorage(new SqlDatabase(filePath));
+    }
+
     data.provider = provider;
     data.isDevelopment = isDevelopment;
-    data.detector = new SpamDetector(provider, TICK_INTERVAL);
+    data.detector = new SpamDetector(provider, storage, TICK_INTERVAL);
     data.analysisByToken = new Map();
+
+    await data.detector.initialize();
   };
 };
 
@@ -107,7 +127,7 @@ const provideHandleTransaction = (data: DataContainer): HandleTransaction => {
       }
     }
 
-    data.detector.handleTxEvent(txEvent);
+    await data.detector.handleTxEvent(txEvent);
 
     return [];
   };

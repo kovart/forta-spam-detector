@@ -31,9 +31,7 @@ class TooManyCreationsModule extends AnalyzerModule {
 
     const memo = memoizer.getScope(token.address);
 
-    const tokens = [...storage.tokenByAddress.values()].filter(
-      (t) => t.deployer === token.deployer,
-    );
+    const tokens = storage.getTokens().filter((t) => t.deployer === token.deployer);
 
     if (tokens.length === 0) return;
 

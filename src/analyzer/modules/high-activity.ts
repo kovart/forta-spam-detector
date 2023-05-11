@@ -31,7 +31,7 @@ class HighActivityModule extends AnalyzerModule {
     let detected = false;
     let metadata: HighActivityModuleMetadata | undefined = undefined;
 
-    const transactionSet = storage.transactionsByToken.get(token.address) || new Set();
+    const transactionSet = (await storage.getTransactions(token.address)) || new Set();
     const senderSet = new Set<string>([...transactionSet].map((t) => t.from));
 
     detected = senderSet.size > MIN_UNIQUE_SENDERS_TOTAL;

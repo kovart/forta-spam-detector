@@ -50,7 +50,7 @@ class HoneyPotShareDominanceModule extends AnalyzerModule {
     context[HONEY_POT_SHARE_MODULE_KEY] = { detected, metadata };
 
     const memo = memoizer.getScope(token.address);
-    const balanceByAccount = transformer.balanceByAccount(token);
+    const balanceByAccount = await transformer.balanceByAccount(token);
 
     // Check if there are artifacts in the balances
     if ([...balanceByAccount.values()].find((e) => e.isNegative())) {
@@ -59,7 +59,7 @@ class HoneyPotShareDominanceModule extends AnalyzerModule {
 
     const airdropMetadata = context[AirdropModule.Key].metadata as AirdropModuleMetadata;
     const receiverSet = new Set(airdropMetadata.receivers);
-    const transactionSet = transformer.transactions(token);
+    const transactionSet = await transformer.transactions(token);
     const senderSet = new Set([...transactionSet].map((t) => t.from));
 
     for (const receiver of receiverSet) {

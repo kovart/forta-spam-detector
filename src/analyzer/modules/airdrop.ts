@@ -73,13 +73,15 @@ class AirdropModule extends AnalyzerModule {
       | (Erc1155TransferSingleEvent | Erc1155TransferBatchEvent)
     > = new Set();
 
+    const setify = <T>(arr: T[]): Set<T> => (arr == null ? new Set() : new Set(arr));
+
     if (token.type === TokenStandard.Erc20) {
-      transferEvents = storage.erc20TransferEventsByToken.get(token.address) || new Set();
+      transferEvents = setify(await storage.getErc20TransferEvents(token.address));
     } else if (token.type === TokenStandard.Erc721) {
-      transferEvents = storage.erc721TransferEventsByToken.get(token.address) || new Set();
+      transferEvents = setify(await storage.getErc721TransferEvents(token.address));
     } else if (token.type === TokenStandard.Erc1155) {
-      transferEvents = storage.erc1155TransferSingleEventsByToken.get(token.address) || new Set();
-      (storage.erc1155TransferBatchEventsByToken.get(token.address) || []).forEach((e) =>
+      transferEvents = setify(await storage.getErc1155TransferSingleEvents(token.address));
+      (await storage.getErc1155TransferBatchEvents(token.address)).forEach((e) =>
         transferEvents.add(e),
       );
     }

@@ -10,11 +10,11 @@ const sum = (arr: (string | BigNumber)[]) =>
 class DataTransformer {
   constructor(private storage: DataStorage) {}
 
-  balanceByAccount(token: TokenContract) {
+  async balanceByAccount(token: TokenContract) {
     const balanceByAccount = new Map<string, BigNumber>();
 
     if (token.type === TokenStandard.Erc20) {
-      const transferEvents = this.storage.erc20TransferEventsByToken.get(token.address) || [];
+      const transferEvents = await this.storage.getErc20TransferEvents(token.address);
 
       for (const event of transferEvents) {
         if (event.from !== ethers.constants.AddressZero) {
@@ -29,7 +29,7 @@ class DataTransformer {
         }
       }
     } else if (token.type === TokenStandard.Erc721) {
-      const transferEvents = this.storage.erc721TransferEventsByToken.get(token.address) || [];
+      const transferEvents = await this.storage.getErc721TransferEvents(token.address);
 
       for (const event of transferEvents) {
         if (event.from !== ethers.constants.AddressZero) {
@@ -44,10 +44,8 @@ class DataTransformer {
         }
       }
     } else if (token.type === TokenStandard.Erc1155) {
-      const transferSingleEvents =
-        this.storage.erc1155TransferSingleEventsByToken.get(token.address) || [];
-      const transferBatchEvents =
-        this.storage.erc1155TransferBatchEventsByToken.get(token.address) || [];
+      const transferSingleEvents = await this.storage.getErc1155TransferSingleEvents(token.address);
+      const transferBatchEvents = await this.storage.getErc1155TransferBatchEvents(token.address);
 
       for (const event of transferSingleEvents) {
         if (event.from !== ethers.constants.AddressZero) {
@@ -79,33 +77,29 @@ class DataTransformer {
     return balanceByAccount;
   }
 
-  transactions(token: TokenContract) {
+  async transactions(token: TokenContract) {
     const transactionSet = new Set<SimplifiedTransaction>();
 
-    const directTransactions = this.storage.transactionsByToken.get(token.address) || [];
+    const directTransactions = await this.storage.getTransactions(token.address);
     directTransactions.forEach((t) => transactionSet.add(t));
 
     // Events in a token contract are not always triggered by transactions directly to the contract
     if (token.type === TokenStandard.Erc20) {
-      const transferEvents = this.storage.erc20TransferEventsByToken.get(token.address) || [];
-      const approvalEvents = this.storage.erc20ApprovalEventsByToken.get(token.address) || [];
+      const transferEvents = await this.storage.getErc20TransferEvents(token.address);
+      const approvalEvents = await this.storage.getErc20ApprovalEvents(token.address);
       transferEvents.forEach((e) => transactionSet.add(e.transaction));
       approvalEvents.forEach((e) => transactionSet.add(e.transaction));
     } else if (token.type === TokenStandard.Erc721) {
-      const transferEvents = this.storage.erc721TransferEventsByToken.get(token.address) || [];
-      const approvalEvents = this.storage.erc721ApprovalEventsByToken.get(token.address) || [];
-      const approvalForAllEvents =
-        this.storage.erc721ApprovalForAllEventsByToken.get(token.address) || [];
+      const transferEvents = await this.storage.getErc721TransferEvents(token.address);
+      const approvalEvents = await this.storage.getErc721ApprovalEvents(token.address);
+      const approvalForAllEvents = await this.storage.getErc721ApprovalForAllEvents(token.address);
       transferEvents.forEach((e) => transactionSet.add(e.transaction));
       approvalEvents.forEach((e) => transactionSet.add(e.transaction));
       approvalForAllEvents.forEach((e) => transactionSet.add(e.transaction));
     } else if (token.type === TokenStandard.Erc1155) {
-      const transferSingleEvents =
-        this.storage.erc1155TransferSingleEventsByToken.get(token.address) || [];
-      const transferBatchEvents =
-        this.storage.erc1155TransferBatchEventsByToken.get(token.address) || [];
-      const approvalForAllEvents =
-        this.storage.erc1155ApprovalForAllEventsByToken.get(token.address) || [];
+      const transferSingleEvents = await this.storage.getErc1155TransferSingleEvents(token.address);
+      const transferBatchEvents = await this.storage.getErc1155TransferBatchEvents(token.address);
+      const approvalForAllEvents = await this.storage.getErc1155ApprovalForAllEvents(token.address);
       transferSingleEvents.forEach((e) => transactionSet.add(e.transaction));
       transferBatchEvents.forEach((e) => transactionSet.add(e.transaction));
       approvalForAllEvents.forEach((e) => transactionSet.add(e.transaction));

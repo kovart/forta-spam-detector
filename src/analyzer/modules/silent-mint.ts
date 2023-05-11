@@ -33,7 +33,7 @@ class SilentMintModule extends AnalyzerModule {
 
     if (token.type !== TokenStandard.Erc20) return;
 
-    const balanceByAccount = transformer.balanceByAccount(token);
+    const balanceByAccount = await transformer.balanceByAccount(token);
 
     const negativeBalanceAccounts: Account[] = [];
     for (const [address, balance] of balanceByAccount) {
