@@ -6,9 +6,6 @@ import TokenImpersonationModule, { TokenImpersonationModuleMetadata } from '../t
 import { TokenContract, TokenStandard } from '../../../types';
 import Memoizer from '../../../utils/cache';
 import TokenProvider from '../../../utils/tokens';
-import DataTransformer from '../../transformer';
-import DataStorage from '../../../storage';
-import SqlDatabase from '../../../database';
 import { ModuleAnalysisResult } from '../../types';
 import { erc20Iface } from '../../../contants';
 
@@ -35,7 +32,6 @@ describe('TokenImpersonation', () => {
   });
 
   async function run(token1: [string, string], token2: [string, string]) {
-    const storage = new DataStorage(new SqlDatabase());
     const context: { [key: string]: ModuleAnalysisResult<TokenImpersonationModuleMetadata> } = {};
 
     const blockTag = undefined;
@@ -62,10 +58,10 @@ describe('TokenImpersonation', () => {
       token: mockToken,
       blockNumber: 0,
       timestamp: 0,
-      transformer: new DataTransformer(storage),
+      transformer: null as any,
+      storage: null as any,
       memoizer: new Memoizer(),
       provider: mockEthersProvider as unknown as any,
-      storage: storage,
       context: context,
     });
 
