@@ -5,9 +5,9 @@ import DataStorage from '../storage';
 import DataTransformer from './transformer';
 import { TokenContract } from '../types';
 
-export type ModuleAnalysisResult = {
+export type ModuleAnalysisResult<T extends object = object> = {
   detected: boolean;
-  metadata?: object;
+  metadata?: T;
 };
 
 export type AnalysisContext = {

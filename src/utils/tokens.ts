@@ -7,7 +7,6 @@ import { Mutex } from 'async-mutex';
 import Logger from './logger';
 import { JsonStorage } from './storage';
 import { delay, retry } from './helpers';
-import { normalizeText } from './normalizer';
 import { erc20Iface, PUBLIC_RPC_URLS_BY_NETWORK } from '../contants';
 
 export enum CoinGeckoPlatformId {
@@ -71,7 +70,7 @@ export type TokenProviderCache = {
 class TokenProvider {
   private mutex: Mutex;
   private cache: TokenProviderCache | null = null;
-  private ttl: number = 1 * 24 * 60 * 60 * 1000; // 1d
+  private ttl: number = 6 * 60 * 60 * 1000; // 6h
 
   private storage: JsonStorage<TokenProviderCache>;
 
@@ -113,7 +112,7 @@ class TokenProvider {
     });
   }
 
-  public async fetch() {
+  private async fetch() {
     const coins = await this.fetchCoins();
     const nfts = await this.fetchNfts();
 
@@ -161,7 +160,7 @@ class TokenProvider {
 
     // Merge similar tokens
     const mergedTokens: TokenRecord[] = [];
-    const similarTokens = groupBy(tokens, (t) => this.getTokenHash(t));
+    const similarTokens = groupBy(tokens, (t) => t.name + t.symbol + t.type);
     for (const tokens of Object.values(similarTokens)) {
       mergedTokens.push({
         ...tokens[0],
@@ -220,7 +219,7 @@ class TokenProvider {
     return tokens;
   }
 
-  async fetchTokenMetadata(address: string, network: Network) {
+  private async fetchTokenMetadata(address: string, network: Network) {
     const rpcUrls = PUBLIC_RPC_URLS_BY_NETWORK[network];
 
     if (!rpcUrls) throw new Error(`No RPC urls for network: ${network}`);
@@ -247,7 +246,7 @@ class TokenProvider {
     );
   }
 
-  async updateMetadata(tokens: TokenRecord[]) {
+  private async updateMetadata(tokens: TokenRecord[]) {
     // Unfortunately, CoinGecko returns not quite correct names of tokens.
     // For example the contract of the "Tether" token returns "Tether USD" when you call name() function,
     // however CoinGecko returns just "Tether".
@@ -317,10 +316,6 @@ class TokenProvider {
         }
       }
     }
-  }
-
-  getTokenHash(t: { name: string; symbol: string }) {
-    return `${normalizeText(t.name || '')} (${normalizeText((t.symbol || '').toLowerCase())})`;
   }
 }
 

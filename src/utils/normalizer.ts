@@ -143,42 +143,64 @@ export const INVISIBLE_UNICODE_CHARACTERS = new Set([
   '\u{1D17A}',
 ]);
 
-export function normalizeText(text: string): string {
-  const nameChars = Array.from(text.toLowerCase());
+export function normalizeText(text: string, preserveCase = false): string {
+  const textChars = Array.from(text.toLowerCase());
   const isUpperChars = Array.from(text).map((c) => /[A-Z]/.test(c));
 
   // remap cyrillic glyphs with their ASCII representation
-  nameChars.forEach((char, i) => {
+  textChars.forEach((char, i) => {
     const normalizedChar = ASCII_CHARACTER_BY_CYRILLIC_HOMOGLYPH[char];
     if (normalizedChar) {
-      nameChars.splice(i, 1, normalizedChar);
+      textChars.splice(i, 1, normalizedChar);
     }
   });
 
   // remap UNICODE glyphs with their ASCII representation
-  nameChars.forEach((char, i) => {
+  textChars.forEach((char, i) => {
     const normalizedChar = ASCII_CHARACTER_BY_UNICODE_HOMOGLYPH[char];
     if (normalizedChar) {
-      nameChars.splice(i, 1, normalizedChar);
+      textChars.splice(i, 1, normalizedChar);
     }
   });
 
   // https://stackoverflow.com/a/71459391
-  nameChars.forEach((char, i) => {
+  textChars.forEach((char, i) => {
     // remove separators
     char = char.replace(/\p{Separator}/gu, '');
     // remove control, unassigned, format characters etc
     char = char.replace(/\p{Other}/gu, '');
     // special characters
     char = INVISIBLE_UNICODE_CHARACTERS.has(char) ? '' : char;
-    nameChars.splice(i, 1, char);
+    textChars.splice(i, 1, char);
   });
 
   // combine normalized name (char[] -> string)
-  return nameChars
-    .map((c, i) => {
-      const isUpper = isUpperChars[i];
-      return isUpper ? c.toUpperCase() : c;
-    })
-    .join('');
+
+  if (preserveCase) {
+    return textChars
+      .map((c, i) => {
+        const isUpper = isUpperChars[i];
+        return isUpper ? c.toUpperCase() : c;
+      })
+      .join('');
+  }
+
+  return textChars.join('');
+}
+
+export function normalizeName(name: string) {
+  const isUpperChars = Array.from(name).map((c) => /[A-Z]/.test(c));
+  const upperCharCount = isUpperChars.filter((v) => v).length;
+  const lowerCharCount = isUpperChars.filter((v) => !v).length;
+
+  // Boom -> preserve case
+  // BOOM -> do not preserve case
+  // boom -> do not preserve case
+  // DeNYC -> do not preserve case
+  // Tornado Cash -> do not preserve case
+  // CryptoBank Hybrid Exchange -> do not preserve case
+
+  const shouldPreserveCase = name.length <= 4 && upperCharCount === 1 && lowerCharCount > 1;
+
+  return normalizeText(name, shouldPreserveCase);
 }

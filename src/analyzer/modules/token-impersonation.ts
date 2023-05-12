@@ -4,6 +4,7 @@ import TokenProvider, { TokenRecord } from '../../utils/tokens';
 import { TokenStandard } from '../../types';
 import { erc20Iface } from '../../contants';
 import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
+import { normalizeName, normalizeText } from '../../utils/normalizer';
 
 export const TOKEN_IMPERSONATION_MODULE_KEY = 'TokenImpersonation';
 
@@ -51,8 +52,8 @@ class TokenImpersonationModule extends AnalyzerModule {
     if (symbol && name) {
       try {
         const tokens = await this.tokenProvider.getList();
-        const tokensByHash = new Map(tokens.map((t) => [this.tokenProvider.getTokenHash(t), t]));
-        const existingToken = tokensByHash.get(this.tokenProvider.getTokenHash({ name, symbol }));
+        const tokensByHash = new Map(tokens.map((t) => [this.getTokenHash(t), t]));
+        const existingToken = tokensByHash.get(this.getTokenHash({ name, symbol }));
 
         // If the same token exists and its address does not match the current token.
         detected =
@@ -70,6 +71,10 @@ class TokenImpersonationModule extends AnalyzerModule {
     }
 
     context[TOKEN_IMPERSONATION_MODULE_KEY] = { detected, metadata };
+  }
+
+  getTokenHash(t: { name: string; symbol: string }) {
+    return `${normalizeName(t.name || '')} (${normalizeText((t.symbol || '').toLowerCase())})`;
   }
 }
 
