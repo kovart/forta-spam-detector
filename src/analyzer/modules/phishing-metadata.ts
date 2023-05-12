@@ -41,17 +41,23 @@ class PhishingMetadataModule extends AnalyzerModule {
     try {
       symbol = await memo('symbol', () => retry(() => contract.symbol()));
     } catch {
-      // not implemented
+      // not supported
     }
 
     try {
       name = await memo('name', () => retry(() => contract.name()));
     } catch {
-      // not implemented
+      // not supported
     }
+    const words = [name, symbol]
+      .join(' ')
+      .replace(/\[.\]/g, '.')
+      .replace(/\[dot\]/g, '.')
+      .split(' ')
+      .map((v) => normalizeText(v.toLowerCase()));
 
-    if ([name, symbol].find(containsLink)) {
-      for (const word of [name, symbol].join(' ').split(' ').map(normalizeText)) {
+    if (words.find(containsLink)) {
+      for (const word of words) {
         if (PHISHING_KEYWORDS.includes(word)) {
           detected = true;
           break;
