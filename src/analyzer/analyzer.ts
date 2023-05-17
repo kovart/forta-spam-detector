@@ -137,9 +137,12 @@ class TokenAnalyzer {
     let isFinalized = false; // no longer need to monitor this token
 
     if (
-      [ObservationTimeModule, HighActivityModule, TooMuchAirdropActivityModule].find(
-        (Module) => analysis[Module.Key]?.detected,
-      )
+      [
+        ObservationTimeModule,
+        HighActivityModule,
+        PhishingMetadataModule,
+        TooMuchAirdropActivityModule,
+      ].find((Module) => analysis[Module.Key]?.detected)
     ) {
       isFinalized = true;
     }
