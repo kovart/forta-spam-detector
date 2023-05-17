@@ -144,8 +144,8 @@ class TokenAnalyzer {
       isFinalized = true;
     }
 
-    // The evaluation does not use silent and sleep mint modules because of FPs,
-    // but they are displayed in the presence of other features
+    // The evaluation does not use SilentMint module because of FPs,
+    // but it is displayed in the presence of other indicators
     if (
       analysis[AirdropModule.Key]?.detected &&
       [
@@ -157,6 +157,7 @@ class TokenAnalyzer {
         TooManyHoneyPotOwnersModule,
         HoneypotsDominanceModule,
         PhishingMetadataModule,
+        SleepMintModule,
         TokenImpersonationModule,
         LowActivityAfterAirdropModule,
       ].find((Module) => analysis[Module.Key]?.detected)

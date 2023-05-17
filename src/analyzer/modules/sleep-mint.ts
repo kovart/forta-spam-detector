@@ -9,6 +9,9 @@ import AirdropModule, { AirdropModuleMetadata } from './airdrop';
 export const SLEEP_MINT_MODULE_KEY = 'SleepMint';
 export const SLEEP_MINT_RECEIVERS_THRESHOLD = 4;
 
+// Not a sleep mint
+// https://bscscan.com/tx/0xc14f3e12f0ee9980c1087b785f723d0af2fdc47a98212dbdefa1bc8d08695bac
+
 type SleepMintInfo = {
   from: string;
   to: string;
@@ -105,6 +108,9 @@ class SleepMintModule extends AnalyzerModule {
 
       // Skip if transaction is legal
       if (directApprovals.get(event.from)?.has(event.transaction.from)) continue;
+      // When a contract has transferred some tokens to itself in order to transfer tokens from its account (Disperse.app)
+      // E.g. https://etherscan.io/tx/0x20cd3045105ffff40ce4978f9daf460030257b5cff1587edd2bbe987fd850da1
+      if (directApprovals.get(event.from)?.has(event.transaction.to!)) continue;
 
       sleepMintSet.add({
         from: event.from,
