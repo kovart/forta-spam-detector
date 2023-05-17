@@ -1,7 +1,6 @@
 import axios from 'axios';
 import { ethers } from 'ethers';
 import { Network } from 'forta-agent';
-import { groupBy } from 'lodash';
 import { Mutex } from 'async-mutex';
 
 import Logger from './logger';
@@ -158,19 +157,9 @@ class TokenProvider {
         type: 'nft',
       }));
 
-    // Merge similar tokens
-    const mergedTokens: TokenRecord[] = [];
-    const similarTokens = groupBy(tokens, (t) => t.name + t.symbol + t.type);
-    for (const tokens of Object.values(similarTokens)) {
-      mergedTokens.push({
-        ...tokens[0],
-        deployments: Object.assign({}, ...tokens.map((t) => t.deployments)),
-      });
-    }
+    await this.updateMetadata(tokens);
 
-    await this.updateMetadata(mergedTokens);
-
-    return mergedTokens;
+    return tokens;
   }
 
   private async fetchCoins(): Promise<TokenRecord[]> {

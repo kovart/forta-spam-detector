@@ -52,18 +52,29 @@ class TokenImpersonationModule extends AnalyzerModule {
     if (symbol && name) {
       try {
         const tokens = await this.tokenProvider.getList();
-        const tokensByHash = new Map(tokens.map((t) => [this.getTokenHash(t), t]));
-        const existingToken = tokensByHash.get(this.getTokenHash({ name, symbol }));
+
+        const tokensByHash = new Map<string, TokenRecord[]>();
+        for (const token of tokens) {
+          const hash = this.getTokenHash(token);
+          let arr = tokensByHash.get(hash);
+          if (!arr) {
+            arr = [];
+            tokensByHash.set(hash, arr);
+          }
+          arr.push(token);
+        }
+
+        const similarTokens = tokensByHash.get(this.getTokenHash({ name, symbol })) || [];
 
         // If the same token exists and its address does not match the current token.
         detected =
-          !!existingToken &&
-          !Object.entries(existingToken.deployments).find(
-            (e) => e[1].toLowerCase() == token.address,
+          similarTokens.length > 0 &&
+          !similarTokens.find((t) =>
+            Object.entries(t.deployments).find((e) => e[1].toLowerCase() == token.address),
           );
 
         if (detected) {
-          metadata.impersonatedToken = existingToken;
+          metadata.impersonatedToken = similarTokens[0];
         }
       } catch (e) {
         console.error(e);
