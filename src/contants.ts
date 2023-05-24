@@ -28,6 +28,9 @@ export const LOGTAIL_TOKEN = process.env.LOGTAIL_TOKEN;
 
 export const DATA_PATH = path.resolve(__dirname, '../data');
 
+export const DB_FOLDER_PATH = path.resolve(__dirname, '../db/');
+export const DB_FILE_PATH = path.resolve(DB_FOLDER_PATH, './storage.db');
+
 export const INTERFACE_ID_BY_TYPE = {
   [TokenStandard.Erc20]: '0x36372b07',
   [TokenStandard.Erc721]: '0x5b5e139f',

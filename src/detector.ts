@@ -1,3 +1,4 @@
+import fs from 'fs';
 import { ethers } from 'ethers';
 import { queue, QueueObject } from 'async';
 import { TransactionEvent } from 'forta-agent';
@@ -8,6 +9,7 @@ import TokenAnalyzer from './analyzer/analyzer';
 import Logger from './utils/logger';
 import { CreatedContract, TokenContract, TokenStandard } from './types';
 import { AnalysisResult, AnalyzerTask } from './analyzer/types';
+import { DB_FILE_PATH } from './contants';
 
 export class SpamDetector {
   private tickInterval: number;
@@ -131,6 +133,7 @@ export class SpamDetector {
         `Finished: ${[...this.taskByToken.values()].filter((t) => t.finishedAt).length}`,
         `Queue: ${this.queue.running()}`,
         `Memory: ${Math.round(((process.memoryUsage().heapUsed / 1024 / 1024) * 100) / 100)}Mb`,
+        `Disk: ${Math.round(((fs.statSync(DB_FILE_PATH).size / 1024 / 1024) * 100) / 100)}Mb`,
       ].join(' | '),
     );
   }

@@ -6,7 +6,6 @@ import {
   Initialize,
   TransactionEvent,
 } from 'forta-agent';
-import path from 'path';
 import dayjs from 'dayjs';
 import duration from 'dayjs/plugin/duration';
 
@@ -21,7 +20,14 @@ import TokenProvider from './utils/tokens';
 import Memoizer from './utils/cache';
 import DataStorage from './storage';
 import { DataContainer } from './types';
-import { IS_DEVELOPMENT, IS_DEBUG, DEBUG_TARGET_TOKEN, DATA_PATH } from './contants';
+import {
+  IS_DEVELOPMENT,
+  IS_DEBUG,
+  DEBUG_TARGET_TOKEN,
+  DATA_PATH,
+  DB_FOLDER_PATH,
+  DB_FILE_PATH,
+} from './contants';
 import { JsonStorage, mkdir, rmFile } from './utils/storage';
 
 dayjs.extend(duration);
@@ -45,14 +51,11 @@ const provideInitialize = (data: DataContainer, isDevelopment: boolean): Initial
     if (isDevelopment) {
       storage = new DataStorage(new SqlDatabase(':memory:'));
     } else {
-      const folder = path.resolve(__dirname, '../db/');
-      const filePath = path.resolve(folder, './storage.db');
-
-      await mkdir(folder);
+      await mkdir(DB_FOLDER_PATH);
       // We delete the database file because skipping some events can lead to state anomalies and hence False Positives
-      await rmFile(filePath);
+      await rmFile(DB_FILE_PATH);
 
-      storage = new DataStorage(new SqlDatabase(filePath));
+      storage = new DataStorage(new SqlDatabase(DB_FILE_PATH));
     }
 
     const memoizer = new Memoizer();
