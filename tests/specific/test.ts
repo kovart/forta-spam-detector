@@ -2,24 +2,55 @@ import { ethers } from 'ethers';
 import { Network } from 'forta-agent';
 
 import { SpamDetector } from '../../src/detector';
-import { PUBLIC_RPC_URLS_BY_NETWORK } from '../../src/contants';
+import { DATA_PATH, PUBLIC_RPC_URLS_BY_NETWORK } from '../../src/contants';
 import { Token } from './types';
 import { getBlocks } from './utils';
 import { TokenStandard } from '../../src/types';
 import { formatDate } from '../helpers';
 import SqlDatabase from '../../src/database';
 import DataStorage from '../../src/storage';
+import Memoizer from '../../src/utils/cache';
+import { JsonStorage } from '../../src/utils/storage';
+import TokenProvider from '../../src/utils/tokens';
+import HoneyPotChecker, { EnsLeaderBoard } from '../../src/utils/honeypot';
+import TokenAnalyzer from '../../src/analyzer/analyzer';
 
 const TICK_INTERVAL = 4 * 60 * 60; // 4h
+
+async function createSpamDetector(provider: ethers.providers.JsonRpcProvider) {
+  const memoizer = new Memoizer();
+  const storage = new DataStorage(new SqlDatabase(':memory:'));
+  const leaderStorage = new JsonStorage<any>(DATA_PATH, 'leaders.json');
+  const honeypotStorage = new JsonStorage<string[]>(DATA_PATH, 'honeypots.json');
+  const tokenStorage = new JsonStorage<any>(DATA_PATH, 'tokens.json');
+  const tokenProvider = new TokenProvider(tokenStorage);
+  const honeyPotChecker = new HoneyPotChecker(
+    new EnsLeaderBoard(leaderStorage),
+    new Set(await honeypotStorage.read()),
+  );
+  const tokenAnalyzer = new TokenAnalyzer(
+    provider,
+    honeyPotChecker,
+    tokenProvider,
+    storage,
+    memoizer,
+  );
+  return new SpamDetector(
+    provider,
+    tokenAnalyzer,
+    new DataStorage(new SqlDatabase()),
+    memoizer,
+    TICK_INTERVAL,
+  );
+}
 
 async function testToken(token: Token, isSpam: boolean) {
   const provider = new ethers.providers.JsonRpcBatchProvider(
     PUBLIC_RPC_URLS_BY_NETWORK[token.network][0],
   );
+  const detector = await createSpamDetector(provider);
 
   const blockEvents = await getBlocks(token);
-
-  const detector = new SpamDetector(provider, new DataStorage(new SqlDatabase()), TICK_INTERVAL);
 
   await detector.initialize();
 

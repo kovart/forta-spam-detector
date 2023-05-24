@@ -15,10 +15,14 @@ import { findCreatedContracts, identifyTokenInterface } from './utils/helpers';
 import { createSpamNewFinding, createSpamRemoveFinding, createSpamUpdateFinding } from './findings';
 import { SpamDetector } from './detector';
 import SqlDatabase from './database';
+import HoneyPotChecker, { EnsLeaderBoard } from './utils/honeypot';
+import TokenAnalyzer from './analyzer/analyzer';
+import TokenProvider from './utils/tokens';
+import Memoizer from './utils/cache';
 import DataStorage from './storage';
 import { DataContainer } from './types';
-import { IS_DEVELOPMENT, IS_DEBUG, DEBUG_TARGET_TOKEN } from './contants';
-import { mkdir, rmFile } from './utils/storage';
+import { IS_DEVELOPMENT, IS_DEBUG, DEBUG_TARGET_TOKEN, DATA_PATH } from './contants';
+import { JsonStorage, mkdir, rmFile } from './utils/storage';
 
 dayjs.extend(duration);
 Logger.level = 'info';
@@ -51,9 +55,27 @@ const provideInitialize = (data: DataContainer, isDevelopment: boolean): Initial
       storage = new DataStorage(new SqlDatabase(filePath));
     }
 
+    const memoizer = new Memoizer();
+    const leaderStorage = new JsonStorage<any>(DATA_PATH, 'leaders.json');
+    const honeypotStorage = new JsonStorage<string[]>(DATA_PATH, 'honeypots.json');
+    const tokenStorage = new JsonStorage<any>(DATA_PATH, 'tokens.json');
+    const tokenProvider = new TokenProvider(tokenStorage);
+    const honeyPotChecker = new HoneyPotChecker(
+      new EnsLeaderBoard(leaderStorage),
+      new Set(await honeypotStorage.read()),
+    );
+    const tokenAnalyzer = new TokenAnalyzer(
+      provider,
+      honeyPotChecker,
+      tokenProvider,
+      storage,
+      memoizer,
+    );
+    const detector = new SpamDetector(provider, tokenAnalyzer, storage, memoizer, TICK_INTERVAL);
+
     data.provider = provider;
     data.isDevelopment = isDevelopment;
-    data.detector = new SpamDetector(provider, storage, TICK_INTERVAL);
+    data.detector = detector;
     data.analysisByToken = new Map();
 
     await data.detector.initialize();

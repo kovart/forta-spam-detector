@@ -58,6 +58,7 @@
     "pino-pretty": "^10.0.0"
   },
   "devDependencies": {
+    "cheerio": "^1.0.0-rc.12",
     "@types/async": "^3.2.18",
     "@types/jest": "^27.0.1",
     "@types/lodash": "^4.14.191",

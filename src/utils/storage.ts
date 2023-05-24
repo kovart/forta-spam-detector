@@ -175,7 +175,7 @@ export class CsvStorage<R extends object, W = R> {
   }
 }
 
-export class JsonStorage<P extends object> extends BaseStorage<P> {
+export class JsonStorage<P> extends BaseStorage<P> {
   constructor(public folderPath: string, public fileName: string) {
     super(folderPath, fileName);
   }

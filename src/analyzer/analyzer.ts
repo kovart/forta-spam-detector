@@ -3,13 +3,11 @@ import { isEqual } from 'lodash';
 
 import DataStorage from '../storage';
 import DataTransformer from './transformer';
-import HoneyPotChecker, { EnsLeaderBoard, HoneypotSet } from '../utils/honeypot';
+import HoneyPotChecker from '../utils/honeypot';
 import Memoizer from '../utils/cache';
 import TokenProvider from '../utils/tokens';
 import Logger from '../utils/logger';
-import { JsonStorage } from '../utils/storage';
 import { AnalysisContext, AnalyzerModule, AnalyzerTask } from './types';
-import { DATA_PATH } from '../contants';
 import { TokenContract } from '../types';
 
 import HighActivityModule from './modules/high-activity';
@@ -39,13 +37,11 @@ class TokenAnalyzer {
 
   constructor(
     provider: ethers.providers.StaticJsonRpcProvider,
+    honeyPotChecker: HoneyPotChecker,
+    tokenProvider: TokenProvider,
     storage: DataStorage,
     memoizer: Memoizer,
   ) {
-    const leaderStorage = new JsonStorage<any>(DATA_PATH, 'leaders.json');
-    const tokenStorage = new JsonStorage<any>(DATA_PATH, 'tokens.json');
-    const honeyPotChecker = new HoneyPotChecker(new EnsLeaderBoard(leaderStorage), HoneypotSet);
-
     this.storage = storage;
     this.provider = provider;
     this.memoizer = memoizer;
@@ -64,7 +60,7 @@ class TokenAnalyzer {
       new PhishingMetadataModule(),
       new TooManyHoneyPotOwnersModule(honeyPotChecker),
       new HoneypotsDominanceModule(honeyPotChecker),
-      new TokenImpersonationModule(new TokenProvider(tokenStorage)),
+      new TokenImpersonationModule(tokenProvider),
       new ObservationTimeModule(),
     ];
   }

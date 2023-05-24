@@ -20,14 +20,17 @@ export class SpamDetector {
 
   constructor(
     provider: ethers.providers.StaticJsonRpcProvider,
+    analyzer: TokenAnalyzer,
     storage: DataStorage,
+    memoizer: Memoizer,
     tickInterval: number,
   ) {
     this.tickInterval = tickInterval;
 
     this.storage = storage;
-    this.memoizer = new Memoizer();
-    this.analyzer = new TokenAnalyzer(provider, this.storage, this.memoizer);
+    this.memoizer = memoizer;
+    this.analyzer = analyzer;
+
     this.queue = queue(this.handleTask.bind(this), 1);
     this.analysisByToken = new Map();
     this.taskByToken = new Map();

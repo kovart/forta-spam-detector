@@ -9,7 +9,7 @@ import { TokenContract, TokenStandard } from '../../src/types';
 import { AnalysisContext } from '../../src/analyzer/types';
 import { SpamDetector } from '../../src/detector';
 import { delay } from './utils/utils';
-import { PUBLIC_RPC_URLS_BY_NETWORK } from '../../src/contants';
+import { DATA_PATH, PUBLIC_RPC_URLS_BY_NETWORK } from '../../src/contants';
 import {
   generateBlocks,
   getErc1155TxEvents,
@@ -21,12 +21,17 @@ import { PROVIDER_RPC_URL } from './scripts/contants';
 import { formatDate } from '../helpers';
 import SqlDatabase from '../../src/database';
 import DataStorage from '../../src/storage';
+import Memoizer from '../../src/utils/cache';
+import { JsonStorage } from '../../src/utils/storage';
+import TokenProvider from '../../src/utils/tokens';
+import HoneyPotChecker, { EnsLeaderBoard } from '../../src/utils/honeypot';
+import TokenAnalyzer from '../../src/analyzer/analyzer';
 
 dotenv.config();
 
 Logger.level = 'debug';
 
-const TICK_INTERVAL = 12 * 60 * 60; // 12h
+const TICK_INTERVAL = 31 * 24 * 60 * 60; // 31d
 const OBSERVATION_TIME = 4 * 31 * 24 * 60 * 60; // 4 months
 const NETWORK = Network.MAINNET;
 const RPC_URL = PROVIDER_RPC_URL || PUBLIC_RPC_URLS_BY_NETWORK[NETWORK][0];
@@ -48,12 +53,33 @@ export type TokenTestResult = {
   finalizedAt: number;
 };
 
+async function createSpamDetector() {
+  const memoizer = new Memoizer();
+  const storage = new DataStorage(new SqlDatabase(':memory:'));
+  const leaderStorage = new JsonStorage<any>(DATA_PATH, 'leaders.json');
+  const honeypotStorage = new JsonStorage<string[]>(DATA_PATH, 'honeypots.json');
+  const tokenStorage = new JsonStorage<any>(DATA_PATH, 'tokens.json');
+  const tokenProvider = new TokenProvider(tokenStorage);
+  const honeyPotChecker = new HoneyPotChecker(
+    new EnsLeaderBoard(leaderStorage),
+    new Set(await honeypotStorage.read()),
+  );
+  const provider = new ethers.providers.JsonRpcBatchProvider(RPC_URL);
+  const tokenAnalyzer = new TokenAnalyzer(
+    provider,
+    honeyPotChecker,
+    tokenProvider,
+    storage,
+    memoizer,
+  );
+  return new SpamDetector(provider, tokenAnalyzer, new DataStorage(new SqlDatabase()), memoizer, 0);
+}
+
 async function testTokens(
   tokens: TokenRecord[],
   fetch: (token: TokenRecord) => Promise<TransactionEvent[]>,
 ) {
-  const provider = new ethers.providers.JsonRpcBatchProvider(RPC_URL);
-  const detector = new SpamDetector(provider, new DataStorage(new SqlDatabase()), 0);
+  const detector = await createSpamDetector();
   const resultStorage = getTestResultStorage(NETWORK);
   const metadataStorage = getTestMetadataStorage(NETWORK);
 
