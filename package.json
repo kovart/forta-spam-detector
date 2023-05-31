@@ -15,14 +15,14 @@
   "chainSettings": {
     "default": {
       "shards": 1,
-      "target": 2
+      "target": 8
     }
   },
   "scripts": {
     "build": "tsc",
     "start": "npm run start:dev",
     "start:dev": "nodemon --watch src --watch forta.config.json -e js,ts,json  --exec \"npm run build && forta-agent run\"",
-    "start:prod": "forta-agent run --prod",
+    "start:prod": "NODE_ENV=production forta-agent run --prod",
     "start:docker": "docker run --rm -it $(docker build -q .)",
     "pino": "tail -f logs/agent.log",
     "test": "ts-node ./tests/general/test.ts",
@@ -53,17 +53,18 @@
     "forta-agent": "^0.1.26",
     "forta-agent-tools": "^3.2.7",
     "forta-bot-analytics": "^0.0.4",
+    "forta-sharding": "^1.0.0",
     "lodash": "^4.17.21",
     "pino": "^8.11.0",
     "pino-pretty": "^10.0.0"
   },
   "devDependencies": {
-    "cheerio": "^1.0.0-rc.12",
     "@types/async": "^3.2.18",
     "@types/jest": "^27.0.1",
     "@types/lodash": "^4.14.191",
     "@types/nodemon": "^1.19.0",
     "@typescript-eslint/eslint-plugin": "^5.54.1",
+    "cheerio": "^1.0.0-rc.12",
     "dune-ts": "^1.1.4",
     "eslint": "^8.36.0",
     "eslint-config-prettier": "^8.7.0",

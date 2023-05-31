@@ -10,7 +10,7 @@ import dayjs from 'dayjs';
 import duration from 'dayjs/plugin/duration';
 
 import Logger from './utils/logger';
-import { findCreatedContracts, identifyTokenInterface } from './utils/helpers';
+import { createTicker, findCreatedContracts, identifyTokenInterface } from './utils/helpers';
 import { createSpamNewFinding, createSpamRemoveFinding, createSpamUpdateFinding } from './findings';
 import { SpamDetector } from './detector';
 import SqlDatabase from './database';
@@ -29,6 +29,7 @@ import {
   DB_FILE_PATH,
 } from './contants';
 import { JsonStorage, mkdir, rmFile } from './utils/storage';
+import { BotSharding } from 'forta-sharding';
 
 dayjs.extend(duration);
 Logger.level = 'info';
@@ -75,7 +76,12 @@ const provideInitialize = (data: DataContainer, isDevelopment: boolean): Initial
       memoizer,
     );
     const detector = new SpamDetector(provider, tokenAnalyzer, storage, memoizer, TICK_INTERVAL);
+    const sharding = new BotSharding({
+      redundancy: 2,
+      isDevelopment: IS_DEVELOPMENT,
+    });
 
+    data.sharding = sharding;
     data.provider = provider;
     data.isDevelopment = isDevelopment;
     data.detector = detector;
@@ -134,6 +140,8 @@ const provideHandleBlock = (data: DataContainer): HandleBlock => {
 };
 
 const provideHandleTransaction = (data: DataContainer): HandleTransaction => {
+  const isTimeToSync = createTicker(5 * 60 * 1000); // 5m
+
   return async function handleTransaction(txEvent: TransactionEvent) {
     const createdContracts = findCreatedContracts(txEvent);
 
@@ -141,17 +149,25 @@ const provideHandleTransaction = (data: DataContainer): HandleTransaction => {
       Logger.debug(`Found ${createdContracts.length} created contracts in tx: ${txEvent.hash}`);
     }
 
-    for (const contract of createdContracts) {
-      const type = await identifyTokenInterface(contract.address, data.provider);
+    if (isTimeToSync(txEvent.timestamp)) {
+      await data.sharding.sync(txEvent.network);
+    }
 
-      if (type) {
-        if (IS_DEBUG && DEBUG_TARGET_TOKEN !== contract.address) continue;
+    // Sharded logic
+    if (txEvent.blockNumber % data.sharding.getShardCount() === data.sharding.getShardIndex()) {
+      for (const contract of createdContracts) {
+        const type = await identifyTokenInterface(contract.address, data.provider);
 
-        Logger.debug(`Found token contract (ERC${type}): ${contract.address}`);
-        data.detector.addTokenToWatchList(type, contract);
+        if (type) {
+          if (IS_DEBUG && DEBUG_TARGET_TOKEN !== contract.address) continue;
+
+          Logger.debug(`Found token contract (ERC${type}): ${contract.address}`);
+          data.detector.addTokenToWatchList(type, contract);
+        }
       }
     }
 
+    // Non-sharded logic
     await data.detector.handleTxEvent(txEvent);
 
     return [];

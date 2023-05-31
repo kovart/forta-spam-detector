@@ -1,5 +1,6 @@
 import { Block } from 'forta-agent';
 import { providers } from 'ethers';
+import { BotSharding } from 'forta-sharding';
 
 import { SpamDetector } from './detector';
 import { AnalysisResult } from './analyzer/types';
@@ -7,6 +8,7 @@ import { AnalysisResult } from './analyzer/types';
 export type DataContainer = {
   provider: providers.JsonRpcProvider;
   detector: SpamDetector;
+  sharding: BotSharding;
   analysisByToken: Map<TokenContract, AnalysisResult>;
   previousBlock: Block;
   isInitialized: boolean;
