@@ -130,7 +130,7 @@ const provideHandleBlock = (data: DataContainer): HandleBlock => {
         await data.detector.wait();
       }
 
-      if (blockEvent.blockNumber % 10 == 0) data.detector.logStats();
+      if (blockEvent.blockNumber % 100 == 0) data.detector.logStats();
     }
 
     data.previousBlock = blockEvent.block;
