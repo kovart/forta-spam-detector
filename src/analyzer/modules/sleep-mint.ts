@@ -12,6 +12,9 @@ export const SLEEP_MINT_RECEIVERS_THRESHOLD = 4;
 // Not a sleep mint
 // https://bscscan.com/tx/0xc14f3e12f0ee9980c1087b785f723d0af2fdc47a98212dbdefa1bc8d08695bac
 
+// TODO False positive
+// https://ftmscan.com/tx/0xe8bd8ec593f5fea66cda541065e6ac65d3576b983b68cc9405639ff1d2e09f5d
+
 type SleepMintInfo = {
   from: string;
   to: string;
