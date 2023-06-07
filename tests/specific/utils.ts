@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import dayjs from 'dayjs';
 // @ts-ignore
-import { Dune } from '../../../dune-ts/dist/cjs/index.js';
+import { Dune } from 'dune-ts/dist/cjs/index.js';
 import { createTransactionEvent, EventType, Log, TransactionEvent } from 'forta-agent';
 
 import {

@@ -10,7 +10,7 @@ import dayjs from 'dayjs';
 import duration from 'dayjs/plugin/duration';
 
 import Logger from './utils/logger';
-import { createTicker, findCreatedContracts, identifyTokenInterface } from './utils/helpers';
+import { findCreatedContracts, identifyTokenInterface } from './utils/helpers';
 import { createSpamNewFinding, createSpamRemoveFinding, createSpamUpdateFinding } from './findings';
 import { SpamDetector } from './detector';
 import SqlDatabase from './database';
@@ -30,6 +30,7 @@ import {
 } from './contants';
 import { JsonStorage, mkdir, rmFile } from './utils/storage';
 import { BotSharding } from 'forta-sharding';
+import { createTicker } from 'forta-helpers';
 
 dayjs.extend(duration);
 Logger.level = 'info';

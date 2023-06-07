@@ -53,6 +53,7 @@
     "forta-agent": "^0.1.26",
     "forta-agent-tools": "^3.2.7",
     "forta-bot-analytics": "^0.0.4",
+    "forta-helpers": "^1.0.9",
     "forta-sharding": "^1.0.0",
     "lodash": "^4.17.21",
     "pino": "^8.11.0",
