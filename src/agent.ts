@@ -146,6 +146,10 @@ const provideHandleTransaction = (data: DataContainer): HandleTransaction => {
   return async function handleTransaction(txEvent: TransactionEvent) {
     const createdContracts = findCreatedContracts(txEvent);
 
+    // TODO filter out token pairs (e.g. UNI-V2)
+    // TODO add check for phishing in token description
+    // TODO make high activity indicator dynamic and based on other indicators
+
     if (createdContracts.length > 0) {
       Logger.debug(`Found ${createdContracts.length} created contracts in tx: ${txEvent.hash}`);
     }
