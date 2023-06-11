@@ -24,8 +24,6 @@ export const DEBUG_TARGET_TOKEN = (process.env.TARGET_TOKEN || '').toLowerCase()
 export const PROVIDER_CONCURRENCY = IS_DEVELOPMENT ? 40 : 2;
 export const FETCH_CONCURRENCY = IS_DEVELOPMENT ? 50 : 25;
 
-export const LOGTAIL_TOKEN = process.env.LOGTAIL_TOKEN;
-
 export const DATA_PATH = path.resolve(__dirname, '../data');
 
 export const DB_FOLDER_PATH = path.resolve(__dirname, '../db/');

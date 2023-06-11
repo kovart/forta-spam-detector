@@ -42,7 +42,6 @@
     "keyfile": "forta-agent keyfile"
   },
   "dependencies": {
-    "@logtail/pino": "^0.4.0",
     "@sentry/node": "^7.47.0",
     "async": "^3.2.4",
     "async-mutex": "^0.4.0",

@@ -1,34 +1,44 @@
 import pino from 'pino';
 import path from 'path';
 
-import { DATA_PATH, IS_DEVELOPMENT, LOGTAIL_TOKEN } from '../contants';
+import { DATA_PATH, IS_DEVELOPMENT } from '../contants';
 
 const LOG_FILE_PATH = path.resolve(DATA_PATH, '../logs/agent.log');
 
-function getTransport() {
-  if (LOGTAIL_TOKEN && !IS_DEVELOPMENT) {
-    return pino.transport({
-      target: '@logtail/pino',
-      options: { sourceToken: LOGTAIL_TOKEN },
-    });
-  } else if (IS_DEVELOPMENT) {
-    return pino.transport({
-      target: 'pino-pretty',
+export function getLogger(params: { colorize: boolean; file: boolean; console: boolean }) {
+  const targets: any[] = [];
+
+  if (params.file) {
+    targets.push({
+      target: 'pino/file',
       options: {
-        colorize: true,
+        colorize: params.colorize,
         destination: LOG_FILE_PATH,
       },
-    });
-  } else {
-    return pino.transport({
-      target: 'pino-pretty',
-      options: {
-        colorize: false,
-      },
+      level: 'debug',
     });
   }
+  if (params.console) {
+    targets.push({
+      target: 'pino-pretty',
+      options: {
+        colorize: params.colorize,
+      },
+      level: 'debug',
+    });
+  }
+
+  return pino(
+    pino.transport({
+      targets: targets,
+    }),
+  );
 }
 
-const Logger = pino(getTransport());
+const Logger = getLogger({
+  colorize: IS_DEVELOPMENT,
+  file: IS_DEVELOPMENT,
+  console: !IS_DEVELOPMENT,
+});
 
 export default Logger;
