@@ -3,14 +3,14 @@ import { omit } from 'lodash';
 
 import SqlDatabase, { TokenInsertEvent } from './database';
 import {
-  Erc1155ApprovalForAllEvent,
-  Erc1155TransferBatchEvent,
-  Erc1155TransferSingleEvent,
-  Erc20ApprovalEvent,
-  Erc20TransferEvent,
-  Erc721ApprovalEvent,
-  Erc721ApprovalForAllEvent,
-  Erc721TransferEvent,
+  DetailedErc1155ApprovalForAllEvent,
+  DetailedErc1155TransferBatchEvent,
+  DetailedErc1155TransferSingleEvent,
+  DetailedErc20ApprovalEvent,
+  DetailedErc20TransferEvent,
+  DetailedErc721ApprovalEvent,
+  DetailedErc721ApprovalForAllEvent,
+  DetailedErc721TransferEvent,
   SimplifiedTransaction,
   TokenContract,
   TokenEvent,
@@ -34,13 +34,15 @@ describe('sql database', () => {
   });
 
   async function testEvents<T extends TokenEvent>(params: {
-    init: (transactionId: number, token: TokenContract) => TokenInsertEvent<T>[];
+    init: (
+      transactionId: number,
+      transactionHash: string,
+      token: TokenContract,
+    ) => TokenInsertEvent<T>[];
     add: (event: TokenInsertEvent<T>) => void;
     get: (token: TokenContract) => Promise<object[]>;
   }) {
     const { init, add, get } = params;
-
-    const someContract = autoAddress();
 
     const token: TokenContract = {
       deployer: autoAddress(),
@@ -52,16 +54,17 @@ describe('sql database', () => {
 
     const tx: SimplifiedTransaction = {
       from: autoAddress(),
-      to: someContract,
+      to: autoAddress(),
       sighash: '0xa9059cbb',
       timestamp: 1e8,
       blockNumber: 1234,
       hash: autoTxHash(),
+      index: 1,
     };
 
     const transactionId = await db.addTransaction(tx);
 
-    const events = init(transactionId, token);
+    const events = init(transactionId, tx.hash, token);
 
     db.addToken(token);
     for (const event of events) {
@@ -72,7 +75,7 @@ describe('sql database', () => {
 
     expect(result).toHaveLength(events.length);
     for (const item of result) {
-      expect(result).toContainEqual({ ...omit(item, 'transaction_id'), transaction: tx });
+      expect(result).toContainEqual({ ...omit(item, 'transactionId'), transaction: tx });
     }
   }
 
@@ -103,6 +106,7 @@ describe('sql database', () => {
       timestamp: 1234,
       blockNumber: 22222,
       hash: autoTxHash(),
+      index: 0,
     };
 
     const tx2: SimplifiedTransaction = {
@@ -112,6 +116,7 @@ describe('sql database', () => {
       timestamp: 12344,
       blockNumber: 333333,
       hash: autoTxHash(),
+      index: 1,
     };
 
     const tx3: SimplifiedTransaction = {
@@ -121,6 +126,7 @@ describe('sql database', () => {
       timestamp: 12344,
       blockNumber: 333333,
       hash: autoTxHash(),
+      index: 2,
     };
 
     db.addTransaction(tx1);
@@ -140,21 +146,23 @@ describe('sql database', () => {
   });
 
   it('should add and get ERC20 Transfer events', async () => {
-    await testEvents<Erc20TransferEvent>({
-      init: (transactionId, token) => [
+    await testEvents<DetailedErc20TransferEvent>({
+      init: (transactionId, transactionHash, token) => [
         {
           from: autoAddress(),
           to: autoAddress(),
           contract: token.address,
-          transaction_id: transactionId,
+          transactionId: transactionId,
           value: BigInt('123'),
+          logIndex: 0,
         },
         {
           from: autoAddress(),
           to: autoAddress(),
           contract: token.address,
-          transaction_id: transactionId,
+          transactionHash: transactionHash,
           value: BigInt('12123124324235345693496834968340869348693468463089643098346'),
+          logIndex: 1,
         },
       ],
       add: (event) => db.addErc20TransferEvent(event),
@@ -163,21 +171,23 @@ describe('sql database', () => {
   });
 
   it('should add and get ERC20 Approval events', async () => {
-    await testEvents<Erc20ApprovalEvent>({
-      init: (transactionId, token) => [
+    await testEvents<DetailedErc20ApprovalEvent>({
+      init: (transactionId, transactionHash, token) => [
         {
           owner: autoAddress(),
           spender: autoAddress(),
           contract: token.address,
-          transaction_id: transactionId,
+          transactionId: transactionId,
           value: BigInt('123'),
+          logIndex: 0,
         },
         {
           owner: autoAddress(),
           spender: autoAddress(),
           contract: token.address,
-          transaction_id: transactionId,
+          transactionHash: transactionHash,
           value: BigInt('12123124324235345693496834968340869348693468463089643098346'),
+          logIndex: 1,
         },
       ],
       add: (event) => db.addErc20ApprovalEvent(event),
@@ -186,21 +196,23 @@ describe('sql database', () => {
   });
 
   it('should add and get Erc721 Transfer events', async () => {
-    await testEvents<Erc721TransferEvent>({
-      init: (transactionId, token) => [
+    await testEvents<DetailedErc721TransferEvent>({
+      init: (transactionId, transactionHash, token) => [
         {
           from: autoAddress(),
           to: autoAddress(),
           contract: token.address,
-          transaction_id: transactionId,
+          transactionId: transactionId,
           tokenId: '123546745745765856865865756457546653443554354453366356535723242343266545',
+          logIndex: 1,
         },
         {
           from: autoAddress(),
           to: autoAddress(),
           contract: token.address,
-          transaction_id: transactionId,
+          transactionHash: transactionHash,
           tokenId: '7642',
+          logIndex: 1,
         },
       ],
       add: (event) => db.addErc721TransferEvent(event),
@@ -209,21 +221,23 @@ describe('sql database', () => {
   });
 
   it('should add and get Erc721 Approval events', async () => {
-    await testEvents<Erc721ApprovalEvent>({
-      init: (transactionId, token) => [
+    await testEvents<DetailedErc721ApprovalEvent>({
+      init: (transactionId, transactionHash, token) => [
         {
           owner: autoAddress(),
           approved: autoAddress(),
           contract: token.address,
-          transaction_id: transactionId,
+          transactionHash: transactionHash,
           tokenId: '12345',
+          logIndex: 0,
         },
         {
           owner: autoAddress(),
           approved: autoAddress(),
           contract: token.address,
-          transaction_id: transactionId,
+          transactionId: transactionId,
           tokenId: '7642',
+          logIndex: 1,
         },
       ],
       add: (event) => db.addErc721ApprovalEvent(event),
@@ -232,21 +246,23 @@ describe('sql database', () => {
   });
 
   it('should add and get Erc721 ApprovalForAll events', async () => {
-    await testEvents<Erc721ApprovalForAllEvent>({
-      init: (transactionId, token) => [
+    await testEvents<DetailedErc721ApprovalForAllEvent>({
+      init: (transactionId, transactionHash, token) => [
         {
           owner: autoAddress(),
           operator: autoAddress(),
           approved: false,
           contract: token.address,
-          transaction_id: transactionId,
+          transactionId: transactionId,
+          logIndex: 0,
         },
         {
           owner: autoAddress(),
           operator: autoAddress(),
           approved: true,
           contract: token.address,
-          transaction_id: transactionId,
+          transactionHash: transactionHash,
+          logIndex: 1,
         },
       ],
       add: (event) => db.addErc721ApprovalForAllEvent(event),
@@ -255,8 +271,8 @@ describe('sql database', () => {
   });
 
   it('should add and get Erc1155 TransferSingle events', async () => {
-    await testEvents<Erc1155TransferSingleEvent>({
-      init: (transactionId, token) => [
+    await testEvents<DetailedErc1155TransferSingleEvent>({
+      init: (transactionId, transactionHash, token) => [
         {
           from: autoAddress(),
           to: autoAddress(),
@@ -264,7 +280,8 @@ describe('sql database', () => {
           tokenId: '0',
           value: BigInt('0'),
           contract: token.address,
-          transaction_id: transactionId,
+          transactionId: transactionId,
+          logIndex: 0,
         },
         {
           from: autoAddress(),
@@ -273,7 +290,8 @@ describe('sql database', () => {
           tokenId: '1234556745756765867876876768786784755564654546645',
           value: BigInt('12344378678678678678678679789789879789879789789789789'),
           contract: token.address,
-          transaction_id: transactionId,
+          transactionHash: transactionHash,
+          logIndex: 1,
         },
       ],
       add: (event) => db.addErc1155TransferSingleEvent(event),
@@ -282,8 +300,8 @@ describe('sql database', () => {
   });
 
   it('should add and get Erc1155 TransferBatch events', async () => {
-    await testEvents<Erc1155TransferBatchEvent>({
-      init: (transactionId, token) => [
+    await testEvents<DetailedErc1155TransferBatchEvent>({
+      init: (transactionId, transactionHash, token) => [
         {
           from: autoAddress(),
           to: autoAddress(),
@@ -291,7 +309,8 @@ describe('sql database', () => {
           ids: ['0', '123124325235'],
           values: [BigInt('0'), BigInt('12344378678678678678678679789789879789879789789789789')],
           contract: token.address,
-          transaction_id: transactionId,
+          transactionId: transactionId,
+          logIndex: 0,
         },
         {
           from: autoAddress(),
@@ -300,7 +319,8 @@ describe('sql database', () => {
           ids: ['0', '123124325235'],
           values: [BigInt('0'), BigInt('1')],
           contract: token.address,
-          transaction_id: transactionId,
+          transactionHash: transactionHash,
+          logIndex: 1,
         },
       ],
       add: (event) => db.addErc1155TransferBatchEvent(event),
@@ -309,21 +329,23 @@ describe('sql database', () => {
   });
 
   it('should add and get Erc1155 ApprovalForAll events', async () => {
-    await testEvents<Erc1155ApprovalForAllEvent>({
-      init: (transactionId, token) => [
+    await testEvents<DetailedErc1155ApprovalForAllEvent>({
+      init: (transactionId, transactionHash, token) => [
         {
           owner: autoAddress(),
           operator: autoAddress(),
           approved: false,
           contract: token.address,
-          transaction_id: transactionId,
+          transactionId: transactionId,
+          logIndex: 0,
         },
         {
           owner: autoAddress(),
           operator: autoAddress(),
           approved: true,
           contract: token.address,
-          transaction_id: transactionId,
+          transactionHash: transactionHash,
+          logIndex: 1,
         },
       ],
       add: (event) => db.addErc1155ApprovalForAllEvent(event),
@@ -353,16 +375,18 @@ describe('sql database', () => {
       timestamp: 1e8,
       blockNumber: 1234,
       hash: autoTxHash(),
+      index: 0,
     };
 
     const tx1Id = await db.addTransaction(token1Tx1);
 
-    const token1ApprovalEvent = {
+    const token1ApprovalEvent: TokenInsertEvent<DetailedErc20ApprovalEvent> = {
       owner: autoAddress(),
       spender: autoAddress(),
       contract: token1.address,
-      transaction_id: tx1Id,
+      transactionId: tx1Id,
       value: BigInt('654'),
+      logIndex: 0,
     };
 
     db.addErc20ApprovalEvent(token1ApprovalEvent);
@@ -374,16 +398,18 @@ describe('sql database', () => {
       timestamp: 1e8,
       blockNumber: 1234,
       hash: autoTxHash(),
+      index: 1,
     };
 
     const tx2Id = await db.addTransaction(token1Tx2);
 
-    const token1TransferEvent = {
+    const token1TransferEvent: TokenInsertEvent<DetailedErc20TransferEvent> = {
       from: autoAddress(),
       to: autoAddress(),
       contract: token1.address,
-      transaction_id: tx2Id,
+      transactionHash: token1Tx2.hash,
       value: BigInt('123'),
+      logIndex: 1,
     };
 
     db.addErc20TransferEvent(token1TransferEvent);
@@ -403,18 +429,20 @@ describe('sql database', () => {
       timestamp: 1e8,
       blockNumber: 1234,
       hash: autoTxHash(),
+      index: 2,
     };
 
     db.addToken(token2);
 
     const tx3Id = await db.addTransaction(token2Tx);
 
-    const token2TransferEvent = {
+    const token2TransferEvent: TokenInsertEvent<DetailedErc20TransferEvent> = {
       from: autoAddress(),
       to: autoAddress(),
       contract: token2.address,
-      transaction_id: tx3Id,
+      transactionId: tx3Id,
       value: BigInt('123'),
+      logIndex: 0,
     };
 
     db.addErc20TransferEvent(token2TransferEvent);

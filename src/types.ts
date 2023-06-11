@@ -39,44 +39,56 @@ export type SimplifiedTransaction = {
   timestamp: number;
   blockNumber: number;
   hash: string;
+  index: number;
 };
 
 export type TokenEvent = {
   transaction: SimplifiedTransaction;
   contract: string;
+  logIndex: number;
 };
 
-export type Erc20TransferEvent = TokenEvent & {
+export type Erc20TransferEvent = {
   from: string;
   to: string;
   value: BigInt;
 };
 
-export type Erc20ApprovalEvent = TokenEvent & {
+export type DetailedErc20TransferEvent = TokenEvent & Erc20TransferEvent;
+
+export type Erc20ApprovalEvent = {
   owner: string;
   spender: string;
   value: BigInt;
 };
 
-export type Erc721TransferEvent = TokenEvent & {
+export type DetailedErc20ApprovalEvent = TokenEvent & Erc20ApprovalEvent;
+
+export type Erc721TransferEvent = {
   from: string;
   to: string;
   tokenId: string;
 };
 
-export type Erc721ApprovalEvent = TokenEvent & {
+export type DetailedErc721TransferEvent = TokenEvent & Erc721TransferEvent;
+
+export type Erc721ApprovalEvent = {
   owner: string;
   approved: string;
   tokenId: string;
 };
 
-export type Erc721ApprovalForAllEvent = TokenEvent & {
+export type DetailedErc721ApprovalEvent = TokenEvent & Erc721ApprovalEvent;
+
+export type Erc721ApprovalForAllEvent = {
   owner: string;
   operator: string;
   approved: boolean;
 };
 
-export type Erc1155TransferSingleEvent = TokenEvent & {
+export type DetailedErc721ApprovalForAllEvent = TokenEvent & Erc721ApprovalForAllEvent;
+
+export type Erc1155TransferSingleEvent = {
   operator: string;
   from: string;
   to: string;
@@ -84,16 +96,21 @@ export type Erc1155TransferSingleEvent = TokenEvent & {
   value: BigInt;
 };
 
-export type Erc1155TransferBatchEvent = TokenEvent & {
+export type DetailedErc1155TransferSingleEvent = TokenEvent & Erc1155TransferSingleEvent;
+
+export type Erc1155TransferBatchEvent = {
   operator: string;
   from: string;
   to: string;
   ids: string[];
   values: BigInt[];
 };
+export type DetailedErc1155TransferBatchEvent = TokenEvent & Erc1155TransferBatchEvent;
 
-export type Erc1155ApprovalForAllEvent = TokenEvent & {
+export type Erc1155ApprovalForAllEvent = {
   owner: string;
   operator: string;
   approved: boolean;
 };
+
+export type DetailedErc1155ApprovalForAllEvent = TokenEvent & Erc1155ApprovalForAllEvent;

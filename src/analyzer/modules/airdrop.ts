@@ -2,10 +2,10 @@ import { chunk } from 'lodash';
 
 import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
 import {
-  Erc1155TransferBatchEvent,
-  Erc1155TransferSingleEvent,
-  Erc20TransferEvent,
-  Erc721TransferEvent,
+  DetailedErc1155TransferBatchEvent,
+  DetailedErc1155TransferSingleEvent,
+  DetailedErc20TransferEvent,
+  DetailedErc721TransferEvent,
   SimplifiedTransaction,
   TokenStandard,
 } from '../../types';
@@ -68,9 +68,9 @@ class AirdropModule extends AnalyzerModule {
     const memo = memoizer.getScope(token.address);
 
     let transferEvents: Set<
-      | Erc20TransferEvent
-      | Erc721TransferEvent
-      | (Erc1155TransferSingleEvent | Erc1155TransferBatchEvent)
+      | DetailedErc20TransferEvent
+      | DetailedErc721TransferEvent
+      | (DetailedErc1155TransferSingleEvent | DetailedErc1155TransferBatchEvent)
     > = new Set();
 
     const setify = <T>(arr: T[]): Set<T> => (arr == null ? new Set() : new Set(arr));
@@ -98,7 +98,7 @@ class AirdropModule extends AnalyzerModule {
 
         if (token.type === TokenStandard.Erc20) {
           // Zero transfer phishing?
-          if ((transferEvent as Erc20TransferEvent).value.toString() === '0') continue;
+          if ((transferEvent as DetailedErc20TransferEvent).value.toString() === '0') continue;
         }
 
         // Claim or exchange action?

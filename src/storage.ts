@@ -7,6 +7,8 @@ import { erc1155Iface, erc20Iface, erc721Iface } from './contants';
 
 class DataStorage {
   private tokenByAddress = new Map<string, TokenContract>();
+  private lastBlockNumber: number | null = null;
+  private lastTxIndex: number | null = null;
 
   constructor(public db: SqlDatabase) {}
 
@@ -26,6 +28,11 @@ class DataStorage {
   }
 
   async handleTx(txEvent: TransactionEvent) {
+    const txIndex = txEvent.blockNumber === this.lastBlockNumber ? this.lastTxIndex! + 1 : 0;
+
+    this.lastBlockNumber = txEvent.blockNumber;
+    this.lastTxIndex = txIndex;
+
     const transaction: SimplifiedTransaction = {
       hash: txEvent.hash,
       from: txEvent.from,
@@ -33,6 +40,7 @@ class DataStorage {
       sighash: txEvent.transaction.data.slice(0, 10),
       blockNumber: txEvent.blockNumber,
       timestamp: txEvent.timestamp,
+      index: txIndex,
     };
 
     const logs = txEvent.logs.filter((l) => this.tokenByAddress.has(l.address.toLowerCase()));
@@ -56,7 +64,8 @@ class DataStorage {
             to: to.toLowerCase(),
             value: BigInt(value.toString()),
             contract: contractAddress,
-            transaction_id: transactionId,
+            transactionId: transactionId,
+            logIndex: log.logIndex,
           });
         } else if (parsedErc20Log.name === 'Approval') {
           const { owner, spender, value } = parsedErc20Log.args;
@@ -64,8 +73,9 @@ class DataStorage {
             owner: owner.toLowerCase(),
             spender: spender.toLowerCase(),
             value: BigInt(value.toString()),
-            transaction_id: transactionId,
+            transactionId: transactionId,
             contract: contractAddress,
+            logIndex: log.logIndex,
           });
         }
         continue;
@@ -83,7 +93,8 @@ class DataStorage {
             to: to.toLowerCase(),
             tokenId: tokenId,
             contract: contractAddress,
-            transaction_id: transactionId,
+            transactionId: transactionId,
+            logIndex: log.logIndex,
           });
         } else if (parsedErc721Log.name === 'Approval') {
           const { owner, approved, tokenId } = parsedErc721Log.args;
@@ -91,8 +102,9 @@ class DataStorage {
             owner: owner.toLowerCase(),
             approved: approved.toLowerCase(),
             tokenId: tokenId,
-            transaction_id: transactionId,
+            transactionId: transactionId,
             contract: contractAddress,
+            logIndex: log.logIndex,
           });
         } else if (parsedErc721Log.name === 'ApprovalForAll') {
           const { owner, operator, approved } = parsedErc721Log.args;
@@ -100,8 +112,9 @@ class DataStorage {
             owner: owner.toLowerCase(),
             operator: operator.toLowerCase(),
             approved: approved,
-            transaction_id: transactionId,
+            transactionId: transactionId,
             contract: contractAddress,
+            logIndex: log.logIndex,
           });
         }
 
@@ -121,8 +134,9 @@ class DataStorage {
             to: to.toLowerCase(),
             tokenId: tokenId,
             value: BigInt(value.toString()),
-            transaction_id: transactionId,
+            transactionId: transactionId,
             contract: contractAddress,
+            logIndex: log.logIndex,
           });
         } else if (parsedErc1155Log.name === 'TransferBatch') {
           const { operator, from, to, ids } = parsedErc1155Log.args;
@@ -132,8 +146,9 @@ class DataStorage {
             to: to.toLowerCase(),
             ids: ids.map((id: EtherBigNumber) => id.toString()),
             values: parsedErc1155Log.args[4].map((v: EtherBigNumber) => BigInt(v.toString())),
-            transaction_id: transactionId,
+            transactionId: transactionId,
             contract: contractAddress,
+            logIndex: log.logIndex,
           });
         } else if (parsedErc1155Log.name === 'ApprovalForAll') {
           const { owner, operator, approved } = parsedErc1155Log.args;
@@ -141,8 +156,9 @@ class DataStorage {
             owner: owner.toLowerCase(),
             operator: operator.toLowerCase(),
             approved: approved,
-            transaction_id: transactionId,
+            transactionId: transactionId,
             contract: contractAddress,
+            logIndex: log.logIndex,
           });
         }
       } catch {

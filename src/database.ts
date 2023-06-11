@@ -1,25 +1,27 @@
 /* eslint-disable no-console */
 import sqlite3 from 'sqlite3';
 import {
-  Erc1155ApprovalForAllEvent,
-  Erc1155TransferBatchEvent,
-  Erc1155TransferSingleEvent,
-  Erc20ApprovalEvent,
-  Erc20TransferEvent,
-  Erc721ApprovalEvent,
-  Erc721ApprovalForAllEvent,
-  Erc721TransferEvent,
+  DetailedErc1155ApprovalForAllEvent,
+  DetailedErc1155TransferBatchEvent,
+  DetailedErc1155TransferSingleEvent,
+  DetailedErc20ApprovalEvent,
+  DetailedErc20TransferEvent,
+  DetailedErc721ApprovalEvent,
+  DetailedErc721ApprovalForAllEvent,
+  DetailedErc721TransferEvent,
   SimplifiedTransaction,
   TokenContract,
   TokenEvent,
 } from './types';
 
-export type TokenInsertEvent<T extends TokenEvent> = Omit<T, 'transaction'> & {
-  transaction_id: number;
-};
+export type EventWithTransactionId = { transactionId: number };
+export type EventWithTransactionHash = { transactionHash: string };
+
+export type TokenInsertEvent<T extends TokenEvent> = Omit<T, 'transaction'> &
+  (EventWithTransactionId | EventWithTransactionHash);
 
 // In order to make the database more performance, it was decided to avoid using NULL as the address value (tx.to).
-// Using non-null values us to use the `=` operator, instead of `IS` which is slower.
+// Using non-null values allows us to use the `=` operator, instead of `IS` which is slower.
 const wrapNull = (v: any) => (v == null ? 'NULL' : v);
 const unwrapNull = (v: any) => (v === 'NULL' ? null : v);
 
@@ -61,12 +63,13 @@ class SqlDatabase {
 
     this.db.run(`CREATE TABLE IF NOT EXISTS transactions (
       transaction_id INTEGER PRIMARY KEY AUTOINCREMENT,
-      hash VARCHAR(6) NOT NULL,
+      hash VARCHAR(66) NOT NULL,
       from_id INTEGER NOT NULL,
       to_id INTEGER NOT NULL,
       sighash VARCHAR(10) NOT NULL,
       block_number INTEGER NOT NULL,
       timestamp INTEGER NOT NULL,
+      tx_index INTEGER NOT NULL,
       FOREIGN KEY (from_id) REFERENCES addresses (address_id) ON UPDATE CASCADE ON DELETE CASCADE,
       FOREIGN KEY (to_id) REFERENCES addresses (address_id) ON UPDATE CASCADE ON DELETE CASCADE
     )`);
@@ -80,6 +83,7 @@ class SqlDatabase {
       value TEXT NOT NULL,
       transaction_id INTEGER NOT NULL,
       contract_id INTEGER NOT NULL,
+      log_index INTEGER NOT NULL,
       FOREIGN KEY (transaction_id) REFERENCES transactions (transaction_id) ON UPDATE CASCADE ON DELETE CASCADE,
       FOREIGN KEY (contract_id) REFERENCES contracts (contract_id) ON UPDATE CASCADE ON DELETE CASCADE,
       FOREIGN KEY (from_id) REFERENCES addresses (address_id) ON UPDATE CASCADE ON DELETE CASCADE,
@@ -93,6 +97,7 @@ class SqlDatabase {
       value TEXT NOT NULL,
       transaction_id INTEGER NOT NULL,
       contract_id INTEGER NOT NULL,
+      log_index INTEGER NOT NULL,
       FOREIGN KEY (transaction_id) REFERENCES transactions (transaction_id) ON UPDATE CASCADE ON DELETE CASCADE,
       FOREIGN KEY (contract_id) REFERENCES contracts (contract_id) ON UPDATE CASCADE ON DELETE CASCADE,
       FOREIGN KEY (owner_id) REFERENCES addresses (address_id) ON UPDATE CASCADE ON DELETE CASCADE,
@@ -106,6 +111,7 @@ class SqlDatabase {
       token_id TEXT NOT NULL,
       transaction_id INTEGER NOT NULL,
       contract_id INTEGER NOT NULL,
+      log_index INTEGER NOT NULL,
       FOREIGN KEY (transaction_id) REFERENCES transactions (transaction_id) ON UPDATE CASCADE ON DELETE CASCADE,
       FOREIGN KEY (contract_id) REFERENCES contracts (contract_id) ON UPDATE CASCADE ON DELETE CASCADE,
       FOREIGN KEY (from_id) REFERENCES addresses (address_id) ON UPDATE CASCADE ON DELETE CASCADE,
@@ -119,6 +125,7 @@ class SqlDatabase {
       token_id TEXT NOT NULL,
       transaction_id INTEGER NOT NULL,
       contract_id INTEGER NOT NULL,
+      log_index INTEGER NOT NULL,
       FOREIGN KEY (transaction_id) REFERENCES transactions (transaction_id) ON UPDATE CASCADE ON DELETE CASCADE,
       FOREIGN KEY (contract_id) REFERENCES contracts (contract_id) ON UPDATE CASCADE ON DELETE CASCADE,
       FOREIGN KEY (owner_id) REFERENCES addresses (address_id) ON UPDATE CASCADE ON DELETE CASCADE,
@@ -132,6 +139,7 @@ class SqlDatabase {
       owner_id INTEGER NOT NULL,
       operator_id INTEGER NOT NULL,
       approved BOOLEAN NOT NULL,
+      log_index INTEGER NOT NULL,
       FOREIGN KEY (transaction_id) REFERENCES transactions (transaction_id) ON UPDATE CASCADE ON DELETE CASCADE,
       FOREIGN KEY (contract_id) REFERENCES contracts (contract_id) ON UPDATE CASCADE ON DELETE CASCADE,
       FOREIGN KEY (owner_id) REFERENCES addresses (address_id) ON UPDATE CASCADE ON DELETE CASCADE,
@@ -147,6 +155,7 @@ class SqlDatabase {
       value TEXT NOT NULL,
       transaction_id INTEGER NOT NULL,
       contract_id INTEGER NOT NULL,
+      log_index INTEGER NOT NULL,
       FOREIGN KEY (transaction_id) REFERENCES transactions (transaction_id) ON UPDATE CASCADE ON DELETE CASCADE,
       FOREIGN KEY (contract_id) REFERENCES contracts (contract_id) ON UPDATE CASCADE ON DELETE CASCADE,
       FOREIGN KEY (operator_id) REFERENCES addresses (address_id) ON UPDATE CASCADE ON DELETE CASCADE,
@@ -163,6 +172,7 @@ class SqlDatabase {
       token_values TEXT NOT NULL,
       transaction_id INTEGER NOT NULL,
       contract_id INTEGER NOT NULL,
+      log_index INTEGER NOT NULL,
       FOREIGN KEY (transaction_id) REFERENCES transactions (transaction_id) ON UPDATE CASCADE ON DELETE CASCADE,
       FOREIGN KEY (contract_id) REFERENCES contracts (contract_id) ON UPDATE CASCADE ON DELETE CASCADE,
       FOREIGN KEY (operator_id) REFERENCES addresses (address_id) ON UPDATE CASCADE ON DELETE CASCADE
@@ -177,6 +187,7 @@ class SqlDatabase {
       approved BOOLEAN NOT NULL,
       transaction_id INTEGER NOT NULL,
       contract_id INTEGER NOT NULL,
+      log_index INTEGER NOT NULL,
       FOREIGN KEY (transaction_id) REFERENCES transactions (transaction_id) ON UPDATE CASCADE ON DELETE CASCADE,
       FOREIGN KEY (contract_id) REFERENCES contracts (contract_id) ON UPDATE CASCADE ON DELETE CASCADE,
       FOREIGN KEY (owner_id) REFERENCES addresses (address_id) ON UPDATE CASCADE ON DELETE CASCADE,
@@ -200,7 +211,7 @@ class SqlDatabase {
   async getTransactions(params: { to: string | null }): Promise<SimplifiedTransaction[]> {
     return (
       await this.all<SimplifiedTransaction[]>(
-        `SELECT t.hash, t.sighash, t.timestamp, t.block_number AS "blockNumber", from_a.address AS "from", "${wrapNull(
+        `SELECT t.hash, t.tx_index AS "txIndex", t.sighash, t.timestamp, t.block_number AS "blockNumber", from_a.address AS "from", "${wrapNull(
           params.to,
         )}" AS "to"
       FROM (
@@ -223,6 +234,7 @@ class SqlDatabase {
       from: v.from,
       blockNumber: v.blockNumber,
       timestamp: v.timestamp,
+      index: v.index,
     }));
   }
 
@@ -244,10 +256,13 @@ class SqlDatabase {
       tx_sighash: string;
       tx_block_number: number;
       tx_timestamp: number;
+      tx_index: number;
+      log_index: number;
     };
 
     const rows = await this.all<DBRow[]>(
       `SELECT 
+          e.log_index AS "log_index",
           ${[
             addressFields.map((f) => `${f}_a.address AS "${f}"`).join(','),
             normalFieldsMap.map((f) => `e."${f}" AS "${f}"`).join(','),
@@ -257,7 +272,8 @@ class SqlDatabase {
           tx_to_a.address AS "tx_to", 
           t.sighash AS "tx_sighash", 
           t.block_number AS "tx_block_number",
-          t.timestamp AS "tx_timestamp"
+          t.timestamp AS "tx_timestamp",
+          t.tx_index AS "tx_index"
       FROM (
         SELECT *
         FROM ${table} e
@@ -281,7 +297,7 @@ class SqlDatabase {
       [key in T]: string;
     } & {
       [key in P]: any;
-    } & { contract: string; transaction: SimplifiedTransaction };
+    } & { contract: string; transaction: SimplifiedTransaction; logIndex: number };
 
     return rows.map((e) => {
       const obj = {
@@ -293,7 +309,9 @@ class SqlDatabase {
           blockNumber: e.tx_block_number,
           timestamp: e.tx_timestamp,
           sighash: e.tx_sighash,
+          index: e.tx_index,
         },
+        logIndex: e.log_index,
       } as ResultEventType;
 
       for (const field of [...addressFields, ...normalFieldsMap]) {
@@ -304,7 +322,9 @@ class SqlDatabase {
     });
   }
 
-  async getErc20ApprovalEvents(params: { contract: string }): Promise<Erc20ApprovalEvent[]> {
+  async getErc20ApprovalEvents(params: {
+    contract: string;
+  }): Promise<DetailedErc20ApprovalEvent[]> {
     return (
       await this.getEvents(
         'erc_20_approval_events',
@@ -318,10 +338,13 @@ class SqlDatabase {
       value: BigInt(v.value),
       contract: v.contract,
       transaction: v.transaction,
+      logIndex: v.logIndex,
     }));
   }
 
-  async getErc20TransferEvents(params: { contract: string }): Promise<Erc20TransferEvent[]> {
+  async getErc20TransferEvents(params: {
+    contract: string;
+  }): Promise<DetailedErc20TransferEvent[]> {
     return (
       await this.getEvents('erc_20_transfer_events', params.contract, ['from', 'to'], ['value'])
     ).map((v) => ({
@@ -330,10 +353,13 @@ class SqlDatabase {
       value: BigInt(v.value),
       contract: v.contract,
       transaction: v.transaction,
+      logIndex: v.logIndex,
     }));
   }
 
-  async getErc721ApprovalEvents(params: { contract: string }): Promise<Erc721ApprovalEvent[]> {
+  async getErc721ApprovalEvents(params: {
+    contract: string;
+  }): Promise<DetailedErc721ApprovalEvent[]> {
     return (
       await this.getEvents(
         'erc_721_approval_events',
@@ -347,10 +373,13 @@ class SqlDatabase {
       tokenId: v.token_id,
       contract: v.contract,
       transaction: v.transaction,
+      logIndex: v.logIndex,
     }));
   }
 
-  async getErc721TransferEvents(params: { contract: string }): Promise<Erc721TransferEvent[]> {
+  async getErc721TransferEvents(params: {
+    contract: string;
+  }): Promise<DetailedErc721TransferEvent[]> {
     return (
       await this.getEvents('erc_721_transfer_events', params.contract, ['from', 'to'], ['token_id'])
     ).map((v) => ({
@@ -359,12 +388,13 @@ class SqlDatabase {
       tokenId: v.token_id,
       contract: v.contract,
       transaction: v.transaction,
+      logIndex: v.logIndex,
     }));
   }
 
   async getErc721ApprovalForAllEvents(params: {
     contract: string;
-  }): Promise<Erc721ApprovalForAllEvent[]> {
+  }): Promise<DetailedErc721ApprovalForAllEvent[]> {
     return await this.getEvents(
       'erc_721_approval_for_all_events',
       params.contract,
@@ -375,7 +405,7 @@ class SqlDatabase {
 
   async getErc1155ApprovalForAllEvents(params: {
     contract: string;
-  }): Promise<Erc1155ApprovalForAllEvent[]> {
+  }): Promise<DetailedErc1155ApprovalForAllEvent[]> {
     return await this.getEvents(
       'erc_1155_approval_for_all_events',
       params.contract,
@@ -386,7 +416,7 @@ class SqlDatabase {
 
   async getErc1155TransferSingleEvents(params: {
     contract: string;
-  }): Promise<Erc1155TransferSingleEvent[]> {
+  }): Promise<DetailedErc1155TransferSingleEvent[]> {
     return (
       await this.getEvents(
         'erc_1155_transfer_single_events',
@@ -402,11 +432,12 @@ class SqlDatabase {
       value: BigInt(v.value),
       contract: v.contract,
       transaction: v.transaction,
+      logIndex: v.logIndex,
     }));
   }
   async getErc1155TransferBatchEvents(params: {
     contract: string;
-  }): Promise<Erc1155TransferBatchEvent[]> {
+  }): Promise<DetailedErc1155TransferBatchEvent[]> {
     return (
       await this.getEvents(
         'erc_1155_transfer_batch_events',
@@ -422,6 +453,7 @@ class SqlDatabase {
       values: v.token_values.split(',').map((v: string) => BigInt(v)),
       contract: v.contract,
       transaction: v.transaction,
+      logIndex: v.logIndex,
     }));
   }
 
@@ -467,13 +499,14 @@ class SqlDatabase {
     return new Promise((res, rej) => {
       this.addAddress([tx.from, tx.to]);
       this.db.run(
-        `INSERT INTO transactions(hash, sighash, from_id, to_id, block_number, timestamp) 
+        `INSERT INTO transactions(hash, sighash, from_id, to_id, block_number, tx_index, timestamp) 
             VALUES(
               $hash, 
               $sighash, 
               (SELECT address_id FROM addresses WHERE address = $from), 
               (SELECT address_id FROM addresses WHERE address = $to), 
               $block_number, 
+              $tx_index,
               $timestamp
             )`,
         {
@@ -482,6 +515,7 @@ class SqlDatabase {
           $from: tx.from,
           $to: wrapNull(tx.to),
           $block_number: tx.blockNumber,
+          $tx_index: tx.index,
           $timestamp: tx.timestamp,
         },
         function (err) {
@@ -495,21 +529,28 @@ class SqlDatabase {
     });
   }
 
-  addErc20ApprovalEvent(event: TokenInsertEvent<Erc20ApprovalEvent>) {
+  addErc20ApprovalEvent(event: TokenInsertEvent<DetailedErc20ApprovalEvent>) {
     this.addAddress([event.owner, event.spender]);
     this.db.run(
       `
-        INSERT INTO erc_20_approval_events(transaction_id, contract_id, owner_id, spender_id, value)
+        INSERT INTO erc_20_approval_events(transaction_id, log_index, contract_id, owner_id, spender_id, value)
         VALUES ( 
-            $transaction_id, 
-            (SELECT address_id from addresses WHERE address = $contract), 
-            (SELECT address_id from addresses WHERE address = $owner), 
-            (SELECT address_id from addresses WHERE address = $spender), 
+            ${
+              (event as EventWithTransactionId).transactionId != null
+                ? '$transaction_id'
+                : '(SELECT transaction_id FROM transactions WHERE hash = $transaction_hash)'
+            }, 
+            $log_index,
+            (SELECT address_id FROM addresses WHERE address = $contract), 
+            (SELECT address_id FROM addresses WHERE address = $owner), 
+            (SELECT address_id FROM addresses WHERE address = $spender), 
             $value
         )
     `,
       {
-        $transaction_id: event.transaction_id,
+        $transaction_id: (event as EventWithTransactionId).transactionId,
+        $transaction_hash: (event as EventWithTransactionHash).transactionHash,
+        $log_index: event.logIndex,
         $contract: event.contract,
         $owner: event.owner,
         $spender: event.spender,
@@ -518,13 +559,18 @@ class SqlDatabase {
     );
   }
 
-  addErc20TransferEvent(event: TokenInsertEvent<Erc20TransferEvent>) {
+  addErc20TransferEvent(event: TokenInsertEvent<DetailedErc20TransferEvent>) {
     this.addAddress([event.from, event.to]);
     this.db.run(
       `
-        INSERT INTO erc_20_transfer_events(transaction_id, contract_id, from_id, to_id, value)
+        INSERT INTO erc_20_transfer_events(transaction_id, log_index, contract_id, from_id, to_id, value)
         VALUES ( 
-            $transaction_id, 
+            ${
+              (event as EventWithTransactionId).transactionId != null
+                ? '$transaction_id'
+                : '(SELECT transaction_id FROM transactions WHERE hash = $transaction_hash)'
+            }, 
+            $log_index,
             (SELECT address_id from addresses WHERE address = $contract), 
             (SELECT address_id from addresses WHERE address = $from), 
             (SELECT address_id from addresses WHERE address = $to), 
@@ -532,7 +578,9 @@ class SqlDatabase {
         )
     `,
       {
-        $transaction_id: event.transaction_id,
+        $transaction_id: (event as EventWithTransactionId).transactionId,
+        $transaction_hash: (event as EventWithTransactionHash).transactionHash,
+        $log_index: event.logIndex,
         $contract: event.contract,
         $from: event.from,
         $to: event.to,
@@ -541,13 +589,18 @@ class SqlDatabase {
     );
   }
 
-  addErc721ApprovalEvent(event: TokenInsertEvent<Erc721ApprovalEvent>) {
+  addErc721ApprovalEvent(event: TokenInsertEvent<DetailedErc721ApprovalEvent>) {
     this.addAddress([event.owner, event.approved]);
     this.db.run(
       `
-        INSERT INTO erc_721_approval_events(transaction_id, contract_id, owner_id, approved_id, token_id)
+        INSERT INTO erc_721_approval_events(transaction_id, log_index, contract_id, owner_id, approved_id, token_id)
         VALUES ( 
-            $transaction_id, 
+            ${
+              (event as EventWithTransactionId).transactionId != null
+                ? '$transaction_id'
+                : '(SELECT transaction_id FROM transactions WHERE hash = $transaction_hash)'
+            }, 
+            $log_index,
             (SELECT address_id from addresses WHERE address = $contract), 
             (SELECT address_id from addresses WHERE address = $owner), 
             (SELECT address_id from addresses WHERE address = $approved), 
@@ -555,22 +608,29 @@ class SqlDatabase {
         )
     `,
       {
-        $transaction_id: event.transaction_id,
+        $transaction_id: (event as EventWithTransactionId).transactionId,
+        $transaction_hash: (event as EventWithTransactionHash).transactionHash,
         $contract: event.contract,
         $owner: event.owner,
         $approved: event.approved,
         $token_id: event.tokenId,
+        $log_index: event.logIndex,
       },
     );
   }
 
-  addErc721TransferEvent(event: TokenInsertEvent<Erc721TransferEvent>) {
+  addErc721TransferEvent(event: TokenInsertEvent<DetailedErc721TransferEvent>) {
     this.addAddress([event.from, event.to]);
     this.db.run(
       `
-        INSERT INTO erc_721_transfer_events(transaction_id, contract_id, from_id, to_id, token_id)
+        INSERT INTO erc_721_transfer_events(transaction_id, log_index, contract_id, from_id, to_id, token_id)
         VALUES ( 
-            $transaction_id, 
+            ${
+              (event as EventWithTransactionId).transactionId != null
+                ? '$transaction_id'
+                : '(SELECT transaction_id FROM transactions WHERE hash = $transaction_hash)'
+            },
+            $log_index,
             (SELECT address_id from addresses WHERE address = $contract), 
             (SELECT address_id from addresses WHERE address = $from), 
             (SELECT address_id from addresses WHERE address = $to), 
@@ -578,7 +638,9 @@ class SqlDatabase {
         )
     `,
       {
-        $transaction_id: event.transaction_id,
+        $transaction_id: (event as EventWithTransactionId).transactionId,
+        $transaction_hash: (event as EventWithTransactionHash).transactionHash,
+        $log_index: event.logIndex,
         $contract: event.contract,
         $from: event.from,
         $to: event.to,
@@ -587,13 +649,18 @@ class SqlDatabase {
     );
   }
 
-  addErc721ApprovalForAllEvent(event: TokenInsertEvent<Erc721ApprovalForAllEvent>) {
+  addErc721ApprovalForAllEvent(event: TokenInsertEvent<DetailedErc721ApprovalForAllEvent>) {
     this.addAddress([event.owner, event.operator]);
     this.db.run(
       `
-        INSERT INTO erc_721_approval_for_all_events(transaction_id, contract_id, owner_id, operator_id, approved)
+        INSERT INTO erc_721_approval_for_all_events(transaction_id, log_index, contract_id, owner_id, operator_id, approved)
         VALUES ( 
-            $transaction_id, 
+            ${
+              (event as EventWithTransactionId).transactionId != null
+                ? '$transaction_id'
+                : '(SELECT transaction_id FROM transactions WHERE hash = $transaction_hash)'
+            },
+            $log_index,
             (SELECT address_id from addresses WHERE address = $contract), 
             (SELECT address_id from addresses WHERE address = $owner), 
             (SELECT address_id from addresses WHERE address = $operator), 
@@ -601,7 +668,9 @@ class SqlDatabase {
         )
     `,
       {
-        $transaction_id: event.transaction_id,
+        $transaction_id: (event as EventWithTransactionId).transactionId,
+        $transaction_hash: (event as EventWithTransactionHash).transactionHash,
+        $log_index: event.logIndex,
         $contract: event.contract,
         $owner: event.owner,
         $operator: event.operator,
@@ -610,13 +679,18 @@ class SqlDatabase {
     );
   }
 
-  addErc1155ApprovalForAllEvent(event: TokenInsertEvent<Erc1155ApprovalForAllEvent>) {
+  addErc1155ApprovalForAllEvent(event: TokenInsertEvent<DetailedErc1155ApprovalForAllEvent>) {
     this.addAddress([event.owner, event.operator]);
     this.db.run(
       `
-        INSERT INTO erc_1155_approval_for_all_events(transaction_id, contract_id, owner_id, operator_id, approved)
+        INSERT INTO erc_1155_approval_for_all_events(transaction_id, log_index, contract_id, owner_id, operator_id, approved)
         VALUES ( 
-            $transaction_id, 
+            ${
+              (event as EventWithTransactionId).transactionId != null
+                ? '$transaction_id'
+                : '(SELECT transaction_id FROM transactions WHERE hash = $transaction_hash)'
+            },
+            $log_index,
             (SELECT address_id from addresses WHERE address = $contract), 
             (SELECT address_id from addresses WHERE address = $owner), 
             (SELECT address_id from addresses WHERE address = $operator), 
@@ -624,7 +698,9 @@ class SqlDatabase {
         )
     `,
       {
-        $transaction_id: event.transaction_id,
+        $transaction_id: (event as EventWithTransactionId).transactionId,
+        $transaction_hash: (event as EventWithTransactionHash).transactionHash,
+        $log_index: event.logIndex,
         $contract: event.contract,
         $owner: event.owner,
         $operator: event.operator,
@@ -633,13 +709,18 @@ class SqlDatabase {
     );
   }
 
-  addErc1155TransferSingleEvent(event: TokenInsertEvent<Erc1155TransferSingleEvent>) {
+  addErc1155TransferSingleEvent(event: TokenInsertEvent<DetailedErc1155TransferSingleEvent>) {
     this.addAddress([event.from, event.operator, event.from, event.to]);
     this.db.run(
       `
-        INSERT INTO erc_1155_transfer_single_events(transaction_id, contract_id, operator_id, from_id, to_id, token_id, value)
+        INSERT INTO erc_1155_transfer_single_events(transaction_id, log_index, contract_id, operator_id, from_id, to_id, token_id, value)
         VALUES ( 
-            $transaction_id, 
+            ${
+              (event as EventWithTransactionId).transactionId != null
+                ? '$transaction_id'
+                : '(SELECT transaction_id FROM transactions WHERE hash = $transaction_hash)'
+            },
+            $log_index,
             (SELECT address_id from addresses WHERE address = $contract), 
             (SELECT address_id from addresses WHERE address = $operator), 
             (SELECT address_id from addresses WHERE address = $from), 
@@ -649,7 +730,9 @@ class SqlDatabase {
         )
     `,
       {
-        $transaction_id: event.transaction_id,
+        $transaction_id: (event as EventWithTransactionId).transactionId,
+        $transaction_hash: (event as EventWithTransactionHash).transactionHash,
+        $log_index: event.logIndex,
         $contract: event.contract,
         $operator: event.operator,
         $from: event.from,
@@ -660,13 +743,18 @@ class SqlDatabase {
     );
   }
 
-  addErc1155TransferBatchEvent(event: TokenInsertEvent<Erc1155TransferBatchEvent>) {
+  addErc1155TransferBatchEvent(event: TokenInsertEvent<DetailedErc1155TransferBatchEvent>) {
     this.addAddress([event.from, event.operator, event.from, event.to]);
     this.db.run(
       `
-        INSERT INTO erc_1155_transfer_batch_events(transaction_id, contract_id, operator_id, from_id, to_id, token_ids, token_values)
+        INSERT INTO erc_1155_transfer_batch_events(transaction_id, log_index, contract_id, operator_id, from_id, to_id, token_ids, token_values)
         VALUES ( 
-            $transaction_id, 
+            ${
+              (event as EventWithTransactionId).transactionId != null
+                ? '$transaction_id'
+                : '(SELECT transaction_id FROM transactions WHERE hash = $transaction_hash)'
+            },
+            $log_index,
             (SELECT address_id from addresses WHERE address = $contract), 
             (SELECT address_id from addresses WHERE address = $operator), 
             (SELECT address_id from addresses WHERE address = $from), 
@@ -676,13 +764,15 @@ class SqlDatabase {
         )
     `,
       {
-        $transaction_id: event.transaction_id,
+        $transaction_id: (event as EventWithTransactionId).transactionId,
+        $transaction_hash: (event as EventWithTransactionHash).transactionHash,
         $contract: event.contract,
         $operator: event.operator,
         $from: event.from,
         $to: event.to,
         $token_ids: event.ids.join(','),
         $token_values: event.values.join(','),
+        $log_index: event.logIndex,
       },
     );
   }
