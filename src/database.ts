@@ -613,7 +613,7 @@ class SqlDatabase {
         $contract: event.contract,
         $owner: event.owner,
         $approved: event.approved,
-        $token_id: event.tokenId,
+        $token_id: event.tokenId.toString(),
         $log_index: event.logIndex,
       },
     );
@@ -644,7 +644,7 @@ class SqlDatabase {
         $contract: event.contract,
         $from: event.from,
         $to: event.to,
-        $token_id: event.tokenId,
+        $token_id: event.tokenId.toString(),
       },
     );
   }
@@ -737,7 +737,7 @@ class SqlDatabase {
         $operator: event.operator,
         $from: event.from,
         $to: event.to,
-        $token_id: event.tokenId,
+        $token_id: event.tokenId.toString(),
         $value: event.value.toString(),
       },
     );

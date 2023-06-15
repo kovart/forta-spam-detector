@@ -91,7 +91,7 @@ class DataStorage {
           this.db.addErc721TransferEvent({
             from: from.toLowerCase(),
             to: to.toLowerCase(),
-            tokenId: tokenId,
+            tokenId: tokenId.toString(),
             contract: contractAddress,
             transactionId: transactionId,
             logIndex: log.logIndex,
@@ -101,7 +101,7 @@ class DataStorage {
           this.db.addErc721ApprovalEvent({
             owner: owner.toLowerCase(),
             approved: approved.toLowerCase(),
-            tokenId: tokenId,
+            tokenId: tokenId.toString(),
             transactionId: transactionId,
             contract: contractAddress,
             logIndex: log.logIndex,
@@ -132,7 +132,7 @@ class DataStorage {
             operator: operator.toLowerCase(),
             from: from.toLowerCase(),
             to: to.toLowerCase(),
-            tokenId: tokenId,
+            tokenId: tokenId.toString(),
             value: BigInt(value.toString()),
             transactionId: transactionId,
             contract: contractAddress,
