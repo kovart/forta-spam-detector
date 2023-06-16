@@ -107,4 +107,9 @@ describe('TokenImpersonation', () => {
     await run(['Tornado Cash', 'CASH'], ['Tornado\u{17B4}Cash\u{1D17A}', 'CA\u{2003}SH']);
     expect(result.detected).toStrictEqual(true);
   });
+
+  it('Dai.. (DAI) impersonates Dai (DAI)', async () => {
+    await run(['Dai', 'DAI'], ['Dai..', 'DAI']);
+    expect(result.detected).toStrictEqual(true);
+  });
 });

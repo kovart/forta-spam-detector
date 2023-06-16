@@ -165,6 +165,8 @@ export function normalizeText(text: string, preserveCase = false): string {
 
   // https://stackoverflow.com/a/71459391
   textChars.forEach((char, i) => {
+    // remove dots
+    char = char.replace(/./gu, '');
     // remove separators
     char = char.replace(/\p{Separator}/gu, '');
     // remove control, unassigned, format characters etc
