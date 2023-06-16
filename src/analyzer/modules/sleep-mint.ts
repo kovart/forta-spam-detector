@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import { shuffle } from 'lodash';
+import { groupBy, shuffle } from 'lodash';
 
 import { SimplifiedTransaction, TokenEvent, TokenStandard } from '../../types';
 import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
@@ -7,13 +7,7 @@ import { isBurnAddress } from '../../utils/helpers';
 import AirdropModule, { AirdropModuleMetadata } from './airdrop';
 
 export const SLEEP_MINT_MODULE_KEY = 'SleepMint';
-export const SLEEP_MINT_RECEIVERS_THRESHOLD = 4;
-
-// Not a sleep mint
-// https://bscscan.com/tx/0xc14f3e12f0ee9980c1087b785f723d0af2fdc47a98212dbdefa1bc8d08695bac
-
-// TODO False positive
-// https://ftmscan.com/tx/0xe8bd8ec593f5fea66cda541065e6ac65d3576b983b68cc9405639ff1d2e09f5d
+export const SLEEP_MINT_RECEIVERS_THRESHOLD = 3;
 
 type SleepMintInfo = {
   from: string;
@@ -39,7 +33,7 @@ class SleepMintModule extends AnalyzerModule {
   static Key = SLEEP_MINT_MODULE_KEY;
 
   async scan(params: ScanParams): Promise<ModuleScanReturn> {
-    const { token, storage, context } = params;
+    const { token, storage, context, provider } = params;
 
     let detected = false;
     let metadata: SleepMintModuleMetadata | undefined = undefined;
@@ -81,7 +75,7 @@ class SleepMintModule extends AnalyzerModule {
       }
     }
 
-    const sleepMintSet = new Set<SleepMintInfo>();
+    const sleepMints: SleepMintInfo[] = [];
     const airdropTxHashSet = new Set(airdropTxHashes);
 
     let transferEvents: { from: string; to: string; transaction: SimplifiedTransaction }[] = [];
@@ -115,7 +109,7 @@ class SleepMintModule extends AnalyzerModule {
       // E.g. https://etherscan.io/tx/0x20cd3045105ffff40ce4978f9daf460030257b5cff1587edd2bbe987fd850da1
       if (directApprovals.get(event.from)?.has(event.transaction.to!)) continue;
 
-      sleepMintSet.add({
+      sleepMints.push({
         from: event.from,
         to: event.to,
         sender: event.transaction.from,
@@ -123,12 +117,41 @@ class SleepMintModule extends AnalyzerModule {
       });
     }
 
-    const sleepMintReceiverSet = new Set([...sleepMintSet].map((m) => m.to));
+    const sleepMintReceiverSet = new Set(sleepMints.map((m) => m.to));
+
     if (sleepMintReceiverSet.size > SLEEP_MINT_RECEIVERS_THRESHOLD) {
-      detected = true;
-      metadata = {
-        sleepMints: [...sleepMintSet],
-      };
+      if (token.type === TokenStandard.Erc20) {
+        // This token standard has more complex use cases with various token aggregators,
+        // which can lead to possible false positives. An example of a token transfer without approves:
+        // https://etherscan.io/tx/0x019a04b206c6257c8629986a5255ff4503be81a0759fa8798874a7ddf77e964c
+
+        // To avoid false positives, we check for multiple approvals in the same transaction from the same owner.
+        // You can see this pattern here:
+        // https://polygonscan.com/tx/0x4f9170e145821e31c258c7d186d510728a16cfbd13d0bd53f59214aa7c3a7e3f
+
+        const massSleepMints: SleepMintInfo[] = [];
+        const mintsByTxHash = groupBy(sleepMints, (e) => e.txHash);
+
+        for (const [txHash, txMints] of Object.entries(mintsByTxHash)) {
+          const mintsByOwner = groupBy(txMints, (m) => m.from);
+
+          for (const [owner, mints] of Object.entries(mintsByOwner)) {
+            const receiverSet = new Set(mints.map((m) => m.to));
+            if (receiverSet.size > SLEEP_MINT_RECEIVERS_THRESHOLD) {
+              massSleepMints.push(...txMints);
+              break;
+            }
+          }
+        }
+
+        if (massSleepMints.length > 0) {
+          detected = true;
+          metadata = { sleepMints: massSleepMints };
+        }
+      } else {
+        detected = true;
+        metadata = { sleepMints };
+      }
     }
 
     context[SLEEP_MINT_MODULE_KEY] = { detected, metadata };
