@@ -29,14 +29,21 @@ export type SleepMintModuleShortMetadata = {
   sleepMintTxShortList: string[];
 };
 
+const PairIface = new ethers.utils.Interface([
+  'function token0() external view returns (address)',
+  'function token1() external view returns (address)',
+]);
+
 class SleepMintModule extends AnalyzerModule {
   static Key = SLEEP_MINT_MODULE_KEY;
 
   async scan(params: ScanParams): Promise<ModuleScanReturn> {
-    const { token, storage, context, provider } = params;
+    const { token, storage, context, provider, memoizer } = params;
 
     let detected = false;
     let metadata: SleepMintModuleMetadata | undefined = undefined;
+
+    const memo = memoizer.getScope(token.address);
 
     const airdropMetadata = context[AirdropModule.Key].metadata as AirdropModuleMetadata;
     const airdropTxHashes = airdropMetadata.txHashes;
@@ -138,6 +145,23 @@ class SleepMintModule extends AnalyzerModule {
           for (const [owner, mints] of Object.entries(mintsByOwner)) {
             const receiverSet = new Set(mints.map((m) => m.to));
             if (receiverSet.size > SLEEP_MINT_RECEIVERS_THRESHOLD) {
+              // Check if it is a pair contract
+              // E.g. https://etherscan.io/tx/0x08bb1a91ff8ab76424908b73183fafa96d427d314829c3133ecd3ab6dc2cd6d2
+              const isOwnerPairContract = await memo('isOwnerPairContract', [owner], async () => {
+                try {
+                  const pairContract = new ethers.Contract(owner, PairIface, provider);
+                  return [await pairContract.token0(), await pairContract.token1()]
+                    .map((v) => v.toLowerCase())
+                    .includes(token.address);
+                } catch {
+                  // it is not a pair contract
+                }
+
+                return false;
+              });
+
+              if (isOwnerPairContract) continue;
+
               massSleepMints.push(...txMints);
               break;
             }
