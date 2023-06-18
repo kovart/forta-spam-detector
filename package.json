@@ -1,6 +1,6 @@
 {
   "name": "spam-detector",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "description": "The bot is equipped with advanced algorithms that analyze multiple indicators to detect spam tokens",
   "repository": "https://github.com/kovart/forta-spam-detector",
   "chainIds": [
@@ -66,6 +66,7 @@
     "@types/lodash": "^4.14.191",
     "@types/nodemon": "^1.19.0",
     "@typescript-eslint/eslint-plugin": "^5.54.1",
+    "axios-mock-adapter": "^1.21.5",
     "cheerio": "^1.0.0-rc.12",
     "dune-ts": "^1.1.4",
     "eslint": "^8.36.0",
