@@ -85,7 +85,9 @@ class TokenImpersonationModule extends AnalyzerModule {
   }
 
   getTokenHash(t: { name: string; symbol: string }) {
-    return `${normalizeName(t.name || '')} (${normalizeText((t.symbol || '').toLowerCase())})`;
+    const name = (t.name || '').replace(/[\.,\/\\]/gu, '');
+    const symbol = (t.symbol || '').replace(/[\.,\/\\]/gu, '').toLowerCase();
+    return `${normalizeName(name)} (${normalizeText(symbol)})`;
   }
 }
 

@@ -165,8 +165,10 @@ export function normalizeText(text: string, preserveCase = false): string {
 
   // https://stackoverflow.com/a/71459391
   textChars.forEach((char, i) => {
-    // remove dots
-    char = char.replace(/./gu, '');
+    // replace multiple dots with single dot
+    char = char.replace(/\.+/gu, '.');
+    // replace multiple commas with single comma
+    char = char.replace(/,+/gu, ',');
     // remove separators
     char = char.replace(/\p{Separator}/gu, '');
     // remove control, unassigned, format characters etc
@@ -202,7 +204,10 @@ export function normalizeName(name: string) {
   // Tornado Cash -> do not preserve case
   // CryptoBank Hybrid Exchange -> do not preserve case
 
-  const shouldPreserveCase = name.length <= 4 && upperCharCount === 1 && lowerCharCount > 1;
+  const nameNoSeparators = name.replace(/[\.,]/, '');
+
+  const shouldPreserveCase =
+    nameNoSeparators.length <= 4 && upperCharCount === 1 && lowerCharCount > 1;
 
   return normalizeText(name, shouldPreserveCase);
 }

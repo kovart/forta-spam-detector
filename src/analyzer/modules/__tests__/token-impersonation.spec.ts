@@ -109,7 +109,7 @@ describe('TokenImpersonation', () => {
   });
 
   it('Dai.. (DAI) impersonates Dai (DAI)', async () => {
-    await run(['Dai', 'DAI'], ['Dai..', 'DAI']);
+    await run(['Dai', 'DAI'], ['Dai..,', 'DAI']);
     expect(result.detected).toStrictEqual(true);
   });
 });
