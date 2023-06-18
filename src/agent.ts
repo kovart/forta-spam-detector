@@ -144,15 +144,8 @@ const provideHandleTransaction = (data: DataContainer): HandleTransaction => {
   const isTimeToSync = createTicker(5 * 60 * 1000); // 5m
 
   return async function handleTransaction(txEvent: TransactionEvent) {
-    const createdContracts = findCreatedContracts(txEvent);
-
     // TODO filter out token pairs (e.g. UNI-V2)
-    // TODO add check for phishing in token description
     // TODO make high activity indicator dynamic and based on other indicators
-
-    if (createdContracts.length > 0) {
-      Logger.debug(`Found ${createdContracts.length} created contracts in tx: ${txEvent.hash}`);
-    }
 
     if (isTimeToSync(txEvent.timestamp)) {
       await data.sharding.sync(txEvent.network);
@@ -160,6 +153,12 @@ const provideHandleTransaction = (data: DataContainer): HandleTransaction => {
 
     // Sharded logic
     if (txEvent.blockNumber % data.sharding.getShardCount() === data.sharding.getShardIndex()) {
+      const createdContracts = findCreatedContracts(txEvent);
+
+      if (createdContracts.length > 0) {
+        Logger.debug(`Found ${createdContracts.length} created contracts in tx: ${txEvent.hash}`);
+      }
+
       for (const contract of createdContracts) {
         const type = await identifyTokenInterface(contract.address, data.provider);
 
