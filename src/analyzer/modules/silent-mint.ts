@@ -37,6 +37,7 @@ class SilentMintModule extends AnalyzerModule {
 
     const negativeBalanceAccounts: Account[] = [];
     for (const [address, balance] of balanceByAccount) {
+      if (address === token.deployer || address === token.address) continue;
       if (balance.isNegative()) {
         negativeBalanceAccounts.push({ address, balance: balance.toString() });
       }
