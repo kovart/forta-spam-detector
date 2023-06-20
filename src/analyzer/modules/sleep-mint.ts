@@ -5,6 +5,8 @@ import { SimplifiedTransaction, TokenEvent, TokenStandard } from '../../types';
 import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
 import { isBurnAddress } from '../../utils/helpers';
 import AirdropModule, { AirdropModuleMetadata } from './airdrop';
+import { erc20Iface } from '../../contants';
+import Logger from '../../utils/logger';
 
 export const SLEEP_MINT_MODULE_KEY = 'SleepMint';
 export const SLEEP_MINT_RECEIVERS_THRESHOLD = 3;
@@ -104,6 +106,8 @@ class SleepMintModule extends AnalyzerModule {
         event.transaction.from === event.from ||
         event.transaction.from === event.to ||
         event.from === token.address ||
+        event.from === token.deployer ||
+        event.to === token.deployer ||
         isBurnAddress(event.to) ||
         !airdropTxHashSet.has(event.transaction.hash)
       ) {
@@ -112,9 +116,6 @@ class SleepMintModule extends AnalyzerModule {
 
       // Skip if transaction is legal
       if (directApprovals.get(event.from)?.has(event.transaction.from)) continue;
-      // When a contract has transferred some tokens to itself in order to transfer tokens from its account (Disperse.app)
-      // E.g. https://etherscan.io/tx/0x20cd3045105ffff40ce4978f9daf460030257b5cff1587edd2bbe987fd850da1
-      if (directApprovals.get(event.from)?.has(event.transaction.to!)) continue;
 
       sleepMints.push({
         from: event.from,
@@ -145,6 +146,33 @@ class SleepMintModule extends AnalyzerModule {
           for (const [owner, mints] of Object.entries(mintsByOwner)) {
             const receiverSet = new Set(mints.map((m) => m.to));
             if (receiverSet.size > SLEEP_MINT_RECEIVERS_THRESHOLD) {
+              // There can only be one sender in a tx
+              const sender = mints[0].sender;
+
+              // Check allowance with direct contract calls in order to avoid db anomaly caused by tx drops
+              try {
+                const erc20Contract = new ethers.Contract(token.address, erc20Iface, provider);
+                const allowance = await erc20Contract.allowance(owner, sender);
+
+                const isFalseDetection = allowance.toString() !== '0';
+
+                if (isFalseDetection) continue;
+              } catch (e) {
+                Logger.warn(e);
+                // Not implemented?
+              }
+
+              // Check if it is kind of Disperse app, which has the following flow:
+              // 1. Sender transfers funds to the owner
+              // 2. Owner transfers to other receivers
+              // -----------
+              // Example txs:
+              // - https://etherscan.io/tx/0xb87f93b0ccd6b7a1db0284e50d4c9affd0ba2de421a420d91d914bef76418033
+              // - https://etherscan.io/tx/0x0dbee11ad397b07888706f188e158cdfe0825640b1311c66960effd68e79737a
+              if (transferEvents.find((e) => e.from === sender && e.to === owner)) {
+                continue;
+              }
+
               // Check if it is a pair contract
               // E.g. https://etherscan.io/tx/0x08bb1a91ff8ab76424908b73183fafa96d427d314829c3133ecd3ab6dc2cd6d2
               const isOwnerPairContract = await memo('isOwnerPairContract', [owner], async () => {
