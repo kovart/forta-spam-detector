@@ -224,6 +224,7 @@ class SqlDatabase {
         )
       ) t
       JOIN addresses from_a ON t.from_id = from_a.address_id
+      ORDER BY blockNumber, txIndex
       `,
         { $to_address: wrapNull(params.to) },
       )
@@ -289,6 +290,7 @@ class SqlDatabase {
       JOIN transactions t ON e.transaction_id = t.transaction_id
       JOIN addresses tx_from_a ON t.from_id = tx_from_a.address_id
       JOIN addresses tx_to_a ON t.to_id = tx_to_a.address_id
+      ORDER BY tx_block_number, tx_index, log_index
       `,
       { $contract_address: wrapNull(contract) },
     );
