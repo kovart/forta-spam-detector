@@ -7,6 +7,8 @@ import {
   TransactionEvent,
 } from 'forta-agent';
 import dayjs from 'dayjs';
+import { BotSharding } from 'forta-sharding';
+import { createTicker } from 'forta-helpers';
 import duration from 'dayjs/plugin/duration';
 
 import Logger from './utils/logger';
@@ -28,9 +30,7 @@ import {
   DB_FOLDER_PATH,
   DB_FILE_PATH,
 } from './contants';
-import { JsonStorage, mkdir, rmFile } from './utils/storage';
-import { BotSharding } from 'forta-sharding';
-import { createTicker } from 'forta-helpers';
+import { JsonStorage, mkdir } from './utils/storage';
 
 dayjs.extend(duration);
 Logger.level = 'info';
@@ -54,9 +54,6 @@ const provideInitialize = (data: DataContainer, isDevelopment: boolean): Initial
       storage = new DataStorage(new SqlDatabase(':memory:'));
     } else {
       await mkdir(DB_FOLDER_PATH);
-      // We delete the database file because skipping some events can lead to state anomalies and hence False Positives
-      await rmFile(DB_FILE_PATH);
-
       storage = new DataStorage(new SqlDatabase(DB_FILE_PATH));
     }
 
@@ -146,6 +143,8 @@ const provideHandleTransaction = (data: DataContainer): HandleTransaction => {
   return async function handleTransaction(txEvent: TransactionEvent) {
     // TODO filter out token pairs (e.g. UNI-V2)
     // TODO make high activity indicator dynamic and based on other indicators
+    // TODO filter db by current block number
+    // TODO add indicator for a well-known token from a centralized db
 
     if (isTimeToSync(txEvent.timestamp)) {
       await data.sharding.sync(txEvent.network);
