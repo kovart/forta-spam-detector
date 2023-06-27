@@ -97,6 +97,11 @@ const provideInitialize = (data: DataContainer, isDevelopment: boolean): Initial
     data.analysisByToken = new Map();
 
     await data.detector.initialize();
+
+    Logger.warn(`Agent has been successfully initialized.`);
+    data.detector.logStats();
+
+    data.isInitialized = true;
   };
 };
 
