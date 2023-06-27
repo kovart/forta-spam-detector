@@ -44,6 +44,7 @@ export const PHISHING_DESCRIPTION_KEYWORDS = [
   'coupon',
   'check it',
   'check out',
+  'go to',
   'available here',
   'available at',
 ];
