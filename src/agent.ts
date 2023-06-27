@@ -98,7 +98,7 @@ const provideInitialize = (data: DataContainer, isDevelopment: boolean): Initial
 
     await data.detector.initialize();
 
-    Logger.warn(`Agent has been successfully initialized.`);
+    Logger.warn(`Bot has been successfully initialized.`);
     data.detector.logStats();
 
     data.isInitialized = true;
