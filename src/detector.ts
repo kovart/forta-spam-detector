@@ -131,7 +131,7 @@ export class SpamDetector {
       [
         `Tokens: ${this.storage.getTokens().length}`,
         `Finished: ${[...this.taskByToken.values()].filter((t) => t.finishedAt).length}`,
-        `Queue: ${this.queue.running()}`,
+        `Queue: ${this.queue.length()}`,
         `Memory: ${Math.round(((process.memoryUsage().heapUsed / 1024 / 1024) * 100) / 100)}Mb`,
         `Disk: ${Math.round(((fs.statSync(DB_FILE_PATH).size / 1024 / 1024) * 100) / 100)}Mb`,
       ].join(' | '),
