@@ -4,11 +4,13 @@ import { BotSharding } from 'forta-sharding';
 
 import { SpamDetector } from './detector';
 import { AnalysisResult } from './analyzer/types';
+import { AlertMitigation } from './utils/mitigation';
 
 export type DataContainer = {
   provider: providers.JsonRpcProvider;
   detector: SpamDetector;
   sharding: BotSharding;
+  alertMitigation: AlertMitigation<Token>;
   analysisByToken: Map<TokenContract, AnalysisResult>;
   previousBlock: Block;
   isInitialized: boolean;
@@ -28,9 +30,13 @@ export type CreatedContract = {
   blockNumber: number;
 };
 
-export type TokenContract = CreatedContract & {
+export type Token = {
   type: TokenStandard;
+  deployer: string;
+  address: string;
 };
+
+export type TokenContract = CreatedContract & Token;
 
 export type SimplifiedTransaction = {
   from: string;

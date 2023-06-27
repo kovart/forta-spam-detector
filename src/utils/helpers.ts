@@ -1,4 +1,4 @@
-import { TransactionEvent } from 'forta-agent';
+import { Finding, HandleBlock, HandleTransaction, TransactionEvent } from 'forta-agent';
 import { Contract, ethers, providers, utils } from 'ethers';
 import { queue } from 'async';
 
@@ -353,5 +353,20 @@ export function providersQueue<P, T>(
     finish: finish,
     kill: () => queueObject.kill(),
     running: () => queueObject.running(),
+  };
+}
+
+export function combine(...fns: (HandleTransaction | HandleBlock)[]) {
+  return async (payload: any) => {
+    const findings: Finding[] = [];
+
+    for (const fn of fns) {
+      const result: Finding[] = await fn(payload);
+      if (result) {
+        findings.push(...result);
+      }
+    }
+
+    return findings;
   };
 }

@@ -1,7 +1,7 @@
 import { difference } from 'lodash';
 import { EntityType, Finding, FindingSeverity, FindingType, Label } from 'forta-agent';
 
-import { TokenContract } from './types';
+import { Token } from './types';
 import { AnalysisContext } from './analyzer/types';
 import ObservationTimeModule from './analyzer/modules/observation-time';
 import TokenImpersonation, {
@@ -30,7 +30,7 @@ const formatTriggeredModules = (analysis: AnalysisContext) => {
   return modules.join(', ');
 };
 
-export function createSpamNewFinding(token: TokenContract, analysis: AnalysisContext) {
+export function createSpamNewFinding(token: Token, analysis: AnalysisContext) {
   const labels = [
     Label.fromObject({
       label: 'Spam',
@@ -68,7 +68,7 @@ export function createSpamNewFinding(token: TokenContract, analysis: AnalysisCon
 }
 
 export function createSpamUpdateFinding(
-  token: TokenContract,
+  token: Token,
   currAnalysis: AnalysisContext,
   prevAnalysis: AnalysisContext,
 ) {
@@ -106,7 +106,7 @@ export function createSpamUpdateFinding(
   });
 }
 
-export function createSpamRemoveFinding(token: TokenContract, currAnalysis: AnalysisContext) {
+export function createSpamRemoveFinding(token: Token, currAnalysis: AnalysisContext) {
   const labels = [
     Label.fromObject({
       label: 'Spam',

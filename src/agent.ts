@@ -9,10 +9,11 @@ import {
 import dayjs from 'dayjs';
 import { BotSharding } from 'forta-sharding';
 import { createTicker } from 'forta-helpers';
+import { FortaBotStorage, InMemoryBotStorage } from 'forta-bot-analytics';
 import duration from 'dayjs/plugin/duration';
 
 import Logger from './utils/logger';
-import { findCreatedContracts, identifyTokenInterface } from './utils/helpers';
+import { combine, findCreatedContracts, identifyTokenInterface } from './utils/helpers';
 import { createSpamNewFinding, createSpamRemoveFinding, createSpamUpdateFinding } from './findings';
 import { SpamDetector } from './detector';
 import SqlDatabase from './database';
@@ -21,7 +22,7 @@ import TokenAnalyzer from './analyzer/analyzer';
 import TokenProvider from './utils/tokens';
 import Memoizer from './utils/cache';
 import DataStorage from './storage';
-import { DataContainer } from './types';
+import { DataContainer, Token } from './types';
 import {
   IS_DEVELOPMENT,
   IS_DEBUG,
@@ -29,8 +30,10 @@ import {
   DATA_PATH,
   DB_FOLDER_PATH,
   DB_FILE_PATH,
+  FALSE_FINDINGS_URL,
 } from './contants';
 import { JsonStorage, mkdir } from './utils/storage';
+import { AlertMitigation } from './utils/mitigation';
 
 dayjs.extend(duration);
 Logger.level = 'info';
@@ -48,6 +51,7 @@ const data = {} as DataContainer;
 const provideInitialize = (data: DataContainer, isDevelopment: boolean): Initialize => {
   return async function initialize() {
     const provider = getEthersBatchProvider();
+    const network = await provider.getNetwork();
 
     let storage: DataStorage;
     if (isDevelopment) {
@@ -78,7 +82,14 @@ const provideInitialize = (data: DataContainer, isDevelopment: boolean): Initial
       redundancy: 2,
       isDevelopment: IS_DEVELOPMENT,
     });
+    const alertManager = new AlertMitigation<Token>({
+      chainId: network.chainId,
+      falseFindingsUrl: data.isDevelopment ? undefined : FALSE_FINDINGS_URL,
+      storage: data.isDevelopment ? new InMemoryBotStorage() : new FortaBotStorage(),
+      getHash: (t) => t.address,
+    });
 
+    data.alertMitigation = alertManager;
     data.sharding = sharding;
     data.provider = provider;
     data.isDevelopment = isDevelopment;
@@ -177,8 +188,29 @@ const provideHandleTransaction = (data: DataContainer): HandleTransaction => {
   };
 };
 
+const provideAlertMitigation = (data: DataContainer): HandleTransaction => {
+  return async (txEvent: TransactionEvent) => {
+    try {
+      if (txEvent.blockNumber % 5_010 === 0) {
+        await data.alertMitigation.optimizeStorage();
+      }
+
+      if (txEvent.blockNumber % 250 === 0) {
+        const tokens = await data.alertMitigation.getFalseFindings();
+        await data.alertMitigation.markFindingsAsRemoved(tokens);
+        return tokens.map((t) => createSpamRemoveFinding(t, {}));
+      }
+    } catch (e) {
+      Logger.error('Alert mitigation error');
+      Logger.error(e);
+    }
+
+    return [];
+  };
+};
+
 export default {
   initialize: provideInitialize(data, IS_DEVELOPMENT),
-  handleTransaction: provideHandleTransaction(data),
+  handleTransaction: combine(provideHandleTransaction(data), provideAlertMitigation(data)),
   handleBlock: provideHandleBlock(data),
 };

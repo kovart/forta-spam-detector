@@ -49,6 +49,9 @@ export const PUBLIC_RPC_URLS_BY_NETWORK = {
   [Network.ARBITRUM]: ['https://rpc.ankr.com/arbitrum'],
 } as Record<Network, string[]>;
 
+export const FALSE_FINDINGS_URL =
+  'https://raw.githubusercontent.com/kovart/forta-spam-detector/main/data/false-findings.json';
+
 export const BURN_ADDRESSES = new Set(
   [
     '0x00000000000000000000045261d4ee77acdb3286',
