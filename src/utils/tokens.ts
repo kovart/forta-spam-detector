@@ -166,8 +166,8 @@ class TokenProvider {
     Logger.debug('Fetching coins from CoinGecko...');
 
     const { data: coins } = await retry(() => axios.get<CoinGeckoCoin[]>(COINGECKO_COIN_API_URL), {
-      wait: 2 * 60 * 1000,
-      attempts: 5,
+      wait: 5 * 60 * 1000,
+      attempts: 3,
     });
 
     Logger.debug(`Coins have been successfully fetched: ${coins.length}`);
