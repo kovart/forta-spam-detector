@@ -174,6 +174,10 @@ spam token, while the second alert will update the analysis as one more indicato
 }
 ```
 
+## 🗄️ Data Sources
+
+Token data provided by CoinGecko
+
 ## 📜 License
 
 The bot is released under the [Forta Bot License](./LICENSE).
