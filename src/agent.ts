@@ -1,4 +1,5 @@
 import {
+  BlockEvent,
   Finding,
   getEthersBatchProvider,
   HandleBlock,
@@ -193,15 +194,20 @@ const provideHandleTransaction = (data: DataContainer): HandleTransaction => {
   };
 };
 
-const provideAlertMitigation = (data: DataContainer): HandleTransaction => {
-  return async (txEvent: TransactionEvent) => {
+const provideAlertMitigation = (data: DataContainer): HandleBlock => {
+  return async (blockEvent: BlockEvent) => {
     try {
-      if (txEvent.blockNumber % 5_010 === 0) {
+      // We use such a block number so that it can be executed at different times with fetching false findings
+      if (blockEvent.blockNumber % 5_010 === 0) {
         await data.alertMitigation.optimizeStorage();
+        Logger.info(`Alerts mitigation module has been successfully optimized`);
       }
 
-      if (txEvent.blockNumber % 250 === 0) {
+      if (blockEvent.blockNumber % 250 === 0) {
         const tokens = await data.alertMitigation.getFalseFindings();
+
+        Logger.info(`New false positive alerts: ${tokens.length}`);
+
         await data.alertMitigation.markFindingsAsRemoved(tokens);
         return tokens.map((t) => createSpamRemoveFinding(t, {}));
       }
@@ -216,6 +222,6 @@ const provideAlertMitigation = (data: DataContainer): HandleTransaction => {
 
 export default {
   initialize: provideInitialize(data, IS_DEVELOPMENT),
-  handleTransaction: combine(provideHandleTransaction(data), provideAlertMitigation(data)),
-  handleBlock: provideHandleBlock(data),
+  handleTransaction: provideHandleTransaction(data),
+  handleBlock: combine(provideHandleBlock(data), provideAlertMitigation(data)),
 };

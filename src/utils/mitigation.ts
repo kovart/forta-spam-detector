@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { uniqBy } from 'lodash';
 import { IBotStorage } from 'forta-bot-analytics';
+import Logger from './logger';
 
 type ManuallyRemovedFinding<T> = T & {
   removedAt: number;
@@ -81,6 +82,10 @@ export class AlertMitigation<T> {
         removedFindings
           .filter((f) => !falseFindingsHashSet.has(this.getHash(f)))
           .map((f) => this.getHash(f)),
+      );
+
+      Logger.warn(
+        `[AlertManager] Removed ${notPresentRemovedFindingsSet.size} findings from cache since as they are no longer present in the url of false findings`,
       );
 
       newStorageState.removedFindings = removedFindings.filter(
