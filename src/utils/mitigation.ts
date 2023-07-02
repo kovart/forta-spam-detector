@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { uniqBy } from 'lodash';
 import { IBotStorage } from 'forta-bot-analytics';
 
 type ManuallyRemovedFinding<T> = T & {
@@ -11,12 +12,15 @@ type AlertMitigationStorage<T> = {
 
 export class AlertMitigation<T> {
   private readonly key: string = 'alert-manager';
-  private readonly version: string = 'V1';
+  private readonly version: string = 'V1.5';
   private readonly storage: IBotStorage<AlertMitigationStorage<T>>;
   private readonly chainId: number;
   private readonly getHash: (item: T) => string;
 
   private readonly falseFindingsUrl?: string;
+
+  // In case there are problems with the server
+  private localStorageCache: AlertMitigationStorage<T> | null;
 
   constructor(params: {
     storage: IBotStorage<AlertMitigationStorage<T>>;
@@ -28,62 +32,80 @@ export class AlertMitigation<T> {
     this.chainId = params.chainId;
     this.falseFindingsUrl = params.falseFindingsUrl;
     this.getHash = params.getHash;
+    this.localStorageCache = null;
   }
 
   public async getFalseFindings(): Promise<T[]> {
-    const falseFindings = await this.fetchFalseFindings();
+    const chainId = this.chainId;
+    const falseFindingsByChainId = await this.fetchFalseFindingsMap();
+    const falseFindings = falseFindingsByChainId[chainId] || [];
     const removedFindings = await this.fetchRemovedFindings();
+    const removedFindingsHashSet = new Set(removedFindings.map((f) => this.getHash(f)));
 
-    const removedFindingsMap = new Map(removedFindings.map((f) => [this.getHash(f), f]));
-
-    return falseFindings.filter((i) => !removedFindingsMap.has(this.getHash(i)));
+    return falseFindings.filter((i) => !removedFindingsHashSet.has(this.getHash(i)));
   }
 
   public async markFindingsAsRemoved(findings: T[]) {
-    const response = await this.storage.load(this.storageKey);
-    const fixedFindings = response?.removedFindings || [];
-    await this.storage.save(this.storageKey, {
-      ...response,
-      removedFindings: [
-        ...fixedFindings,
-        ...findings.map((f) => ({ ...f, removedAt: Date.now() })),
-      ],
-    });
+    const storageState = await this.storage.load(this.storageKey);
+    const oldRemovedFindings = storageState?.removedFindings || [];
+    const newRemovedFindings = uniqBy(
+      [...oldRemovedFindings, ...findings.map((f) => ({ ...f, removedAt: Date.now() }))],
+      (i) => this.getHash(i),
+    );
+
+    const newStorageState = {
+      ...storageState,
+      removedFindings: newRemovedFindings,
+    };
+
+    this.localStorageCache = newStorageState;
+    await this.storage.save(this.storageKey, newStorageState);
   }
 
   public async optimizeStorage() {
-    const falseFindings = await this.fetchFalseFindings();
     const storageState = await this.storage.load(this.storageKey);
-
-    const falseFindingsMap = new Map(falseFindings.map((f) => [this.getHash(f), f]));
-
+    const falseFindingsByChainId = await this.fetchFalseFindingsMap();
     const removedFindings = storageState?.removedFindings || [];
-    const notPresentRemovedFindings = removedFindings.filter(
-      (f) => !falseFindingsMap.has(this.getHash(f)),
-    );
 
-    const notPresentRemovedFindingsMap = new Map(
-      notPresentRemovedFindings.map((f) => [this.getHash(f), f]),
-    );
-
-    await this.storage.save(this.storageKey, {
+    const newStorageState: AlertMitigationStorage<T> = {
       ...storageState,
-      removedFindings: removedFindings.filter(
-        (f) => !notPresentRemovedFindingsMap.has(this.getHash(f)),
-      ),
-    });
+      removedFindings: [],
+    };
+
+    for (const chainId of Object.keys(falseFindingsByChainId)) {
+      if (Number(chainId) !== this.chainId) continue;
+
+      const falseFindings = falseFindingsByChainId[chainId] || [];
+      const falseFindingsHashSet = new Set(falseFindings.map((f) => this.getHash(f)));
+      const notPresentRemovedFindingsSet = new Set(
+        removedFindings
+          .filter((f) => !falseFindingsHashSet.has(this.getHash(f)))
+          .map((f) => this.getHash(f)),
+      );
+
+      newStorageState.removedFindings = removedFindings.filter(
+        (f) => !notPresentRemovedFindingsSet.has(this.getHash(f)),
+      );
+    }
+
+    this.localStorageCache = newStorageState;
+    await this.storage.save(this.storageKey, newStorageState);
   }
 
-  private async fetchFalseFindings(): Promise<T[]> {
-    if (!this.falseFindingsUrl) return [];
+  private async fetchFalseFindingsMap(): Promise<{ [chainId: string]: T[] }> {
+    if (!this.falseFindingsUrl) return {};
 
     const { data } = await axios.get(this.falseFindingsUrl);
-    return data || [];
+    return data || {};
   }
 
   private async fetchRemovedFindings(): Promise<ManuallyRemovedFinding<T>[]> {
-    const response = await this.storage.load(this.storageKey);
-    return response?.removedFindings || [];
+    const storageState = await this.storage.load(this.storageKey);
+
+    return [
+      ...(this.localStorageCache?.removedFindings || []),
+      ...(storageState?.removedFindings || []),
+    ];
   }
 
   public get storageKey() {

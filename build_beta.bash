@@ -7,7 +7,11 @@ cp -f forta.config.json forta.config.json.temp
 
 echo "Modifying package.json, forta.config.json, Dockerfile..."
 
-npm pkg set 'name'='spam-detector-beta'
+npm pkg set 'name'='spam-detector-experimental'
+npm pkg set 'description'='This is an experimental version of the spam detector bot.'
+npm pkg delete "chainSettings"
+npm pkg set 'chainSettings.default.shards'=1 --json
+npm pkg set 'chainSettings.default.target'=2 --json
 
 SOURCE_KEY="betaAgentId"
 DESTINATION_KEY="agentId"

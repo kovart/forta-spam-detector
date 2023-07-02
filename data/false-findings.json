@@ -1,12 +1,14 @@
-[
-  {
-    "type": 20,
-    "address": "0xTEST1",
-    "deployer": "0xDEPLOYER1"
-  },
-  {
-    "type": 1155,
-    "address": "0xTEST2",
-    "deployer": "0xDEPLOYER2"
-  }
-]
+{
+  "1": [
+    {
+      "type": 20,
+      "address": "0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF",
+      "deployer": "0x000000000000000000000000000000000000dEaD"
+    },
+    {
+      "type": 1155,
+      "address": "0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF",
+      "deployer": "0x000000000000000000000000000000000000dEaD"
+    }
+  ]
+}
