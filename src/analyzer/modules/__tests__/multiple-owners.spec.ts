@@ -11,6 +11,7 @@ import { erc721Iface } from '../../../contants';
 import { SimplifiedTransaction, TokenContract, TokenStandard } from '../../../types';
 import DataStorage from '../../../storage';
 import { createAddress } from 'forta-agent-tools';
+import { AIRDROP_MODULE_KEY } from '../airdrop';
 
 describe('Erc721MultipleOwners', () => {
   const indicator = new Erc721MultipleOwnersModule({
@@ -35,7 +36,11 @@ describe('Erc721MultipleOwners', () => {
 
   beforeEach(() => {
     mockStorage.getErc721TransferEvents.mockClear();
-    context = {};
+    context = {
+      [AIRDROP_MODULE_KEY]: {
+        detected: true,
+      },
+    };
   });
 
   function createTransaction(params: {

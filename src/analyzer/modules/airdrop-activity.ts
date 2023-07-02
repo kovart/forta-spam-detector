@@ -2,7 +2,7 @@ import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
 import AirdropModule, { AirdropModuleMetadata } from './airdrop';
 
 export const TOO_MUCH_AIRDROP_ACTIVITY_MODULE_KEY = 'TooMuchAirdropActivity';
-export const AIRDROP_DURATION_THRESHOLD = 1.5 * 30 * 24 * 60 * 60; // 1.5 month
+export const AIRDROP_DURATION_THRESHOLD = 1 * 30 * 24 * 60 * 60; // 1 month
 export const RECEIVERS_THRESHOLD = 15_000;
 
 export type TooMuchAirdropActivityModuleMetadata = {
@@ -18,6 +18,10 @@ class TooMuchAirdropActivityModule extends AnalyzerModule {
 
     let detected = false;
     let metadata: TooMuchAirdropActivityModuleMetadata | undefined = undefined;
+
+    context[TOO_MUCH_AIRDROP_ACTIVITY_MODULE_KEY] = { detected, metadata };
+
+    if (!context[AirdropModule.Key]?.detected) return;
 
     const airdropMetadata = context[AirdropModule.Key].metadata as AirdropModuleMetadata;
     const { receivers, startTime, endTime } = airdropMetadata;

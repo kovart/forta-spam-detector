@@ -1,8 +1,9 @@
 import { ethers } from 'ethers';
-import { groupBy, max, maxBy, sortBy } from 'lodash';
+import { groupBy, max, sortBy } from 'lodash';
 import { Erc721TransferEvent, TokenStandard } from '../../types';
 import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
 import { erc721Iface } from '../../contants';
+import { AIRDROP_MODULE_KEY } from './airdrop';
 
 // Detect when single token in the ERC721 collection
 // has been transferred to multiple owners indicating fraudulent transfers.
@@ -54,6 +55,8 @@ class Erc721MultipleOwnersModule extends AnalyzerModule {
     let metadata: Erc721MultipleOwnersModuleMetadata | undefined = undefined;
 
     context[MULTIPLE_OWNERS_MODULE_KEY] = { detected, metadata };
+
+    if (!context[AIRDROP_MODULE_KEY]?.detected) return;
 
     if (token.type !== TokenStandard.Erc721) return;
 

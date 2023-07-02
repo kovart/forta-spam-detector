@@ -4,7 +4,7 @@ import { groupBy, shuffle } from 'lodash';
 import { SimplifiedTransaction, TokenEvent, TokenStandard } from '../../types';
 import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
 import { isBurnAddress } from '../../utils/helpers';
-import AirdropModule, { AirdropModuleMetadata } from './airdrop';
+import AirdropModule, { AIRDROP_MODULE_KEY, AirdropModuleMetadata } from './airdrop';
 import { erc20Iface } from '../../contants';
 import Logger from '../../utils/logger';
 
@@ -44,6 +44,10 @@ class SleepMintModule extends AnalyzerModule {
 
     let detected = false;
     let metadata: SleepMintModuleMetadata | undefined = undefined;
+
+    context[SLEEP_MINT_MODULE_KEY] = { detected, metadata };
+
+    if (!context[AIRDROP_MODULE_KEY]?.detected) return;
 
     const memo = memoizer.getScope(token.address);
 

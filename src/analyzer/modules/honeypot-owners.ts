@@ -2,7 +2,7 @@ import { queue } from 'async';
 
 import Logger from '../../utils/logger';
 import HoneyPotChecker, { HoneypotAnalysisMetadata } from '../../utils/honeypot';
-import AirdropModule, { AirdropModuleMetadata } from './airdrop';
+import AirdropModule, { AIRDROP_MODULE_KEY, AirdropModuleMetadata } from './airdrop';
 import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
 import { isBurnAddress } from '../../utils/helpers';
 import { PROVIDER_CONCURRENCY } from '../../contants';
@@ -43,6 +43,8 @@ class TooManyHoneyPotOwnersModule extends AnalyzerModule {
     let metadata: TooManyHoneyPotOwnersModuleMetadata | undefined = undefined;
 
     context[TOO_MANY_HONEY_POT_OWNERS_MODULE_KEY] = { detected, metadata };
+
+    if (!context[AIRDROP_MODULE_KEY]?.detected) return;
 
     const memo = memoizer.getScope(token.address);
 

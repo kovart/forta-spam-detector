@@ -96,10 +96,13 @@ export class SpamDetector {
       );
       callback();
     } catch (e) {
-      Logger.error('Task error', {
-        task: task.token,
-        error: e,
-      });
+      Logger.error(
+        {
+          task: task.token,
+          error: e,
+        },
+        'Task error',
+      );
       callback(e);
     }
   }

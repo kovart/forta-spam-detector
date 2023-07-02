@@ -3,7 +3,7 @@ import { queue } from 'async';
 
 import Logger from '../../utils/logger';
 import HoneyPotChecker from '../../utils/honeypot';
-import AirdropModule, { AirdropModuleMetadata } from './airdrop';
+import AirdropModule, { AIRDROP_MODULE_KEY, AirdropModuleMetadata } from './airdrop';
 import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
 import { isBurnAddress } from '../../utils/helpers';
 import { PROVIDER_CONCURRENCY } from '../../contants';
@@ -48,6 +48,8 @@ class HoneyPotShareDominanceModule extends AnalyzerModule {
     let metadata: HoneyPotShareModuleMetadata | undefined = undefined;
 
     context[HONEY_POT_SHARE_MODULE_KEY] = { detected, metadata };
+
+    if (!context[AIRDROP_MODULE_KEY]?.detected) return;
 
     const memo = memoizer.getScope(token.address);
     const balanceByAccount = await transformer.balanceByAccount(token);

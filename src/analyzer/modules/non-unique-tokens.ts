@@ -8,6 +8,7 @@ import { isBase64, normalizeMetadataUri, parseBase64, retry } from '../../utils/
 import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
 import { TokenStandard } from '../../types';
 import { erc721Iface, FETCH_CONCURRENCY, PROVIDER_CONCURRENCY } from '../../contants';
+import { AIRDROP_MODULE_KEY } from './airdrop';
 
 export const NON_UNIQUE_TOKENS_MODULE_KEY = 'Erc721NonUniqueTokens';
 export const MIN_NUMBER_OF_TOKENS = 5;
@@ -36,6 +37,8 @@ class Erc721NonUniqueTokensModule extends AnalyzerModule {
     let metadata: NonUniqueTokensModuleMetadata | undefined = undefined;
 
     context[NON_UNIQUE_TOKENS_MODULE_KEY] = { detected, metadata };
+
+    if (!context[AIRDROP_MODULE_KEY]?.detected) return;
 
     const memo = memoizer.getScope(token.address);
 

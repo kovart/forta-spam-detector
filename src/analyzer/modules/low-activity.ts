@@ -26,6 +26,8 @@ class LowActivityAfterAirdropModule extends AnalyzerModule {
 
     context[LOW_ACTIVITY_MODULE_KEY] = { detected, metadata };
 
+    if (!context[AIRDROP_MODULE_KEY]?.detected) return;
+
     const airdropMetadata = context[AIRDROP_MODULE_KEY].metadata as AirdropModuleMetadata;
 
     const receiverSet = new Set<string>();
