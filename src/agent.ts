@@ -206,7 +206,9 @@ const provideAlertMitigation = (data: DataContainer): HandleBlock => {
       if (blockEvent.blockNumber % 250 === 0) {
         const tokens = await data.alertMitigation.getFalseFindings();
 
-        Logger.info(`New false positive alerts: ${tokens.length}`);
+        if (tokens.length > 0) {
+          Logger.info(`New false positive findings: ${tokens.length}`);
+        }
 
         await data.alertMitigation.markFindingsAsRemoved(tokens);
         return tokens.map((t) => createSpamRemoveFinding(t, {}));
