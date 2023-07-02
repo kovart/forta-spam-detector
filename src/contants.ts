@@ -26,7 +26,7 @@ export const FETCH_CONCURRENCY = IS_DEVELOPMENT ? 50 : 25;
 
 export const DATA_PATH = path.resolve(__dirname, '../data');
 
-export const DB_FOLDER_PATH = path.resolve(__dirname, '../db/');
+export const DB_FOLDER_PATH = path.resolve(__dirname);
 export const DB_FILE_PATH = path.resolve(DB_FOLDER_PATH, './storage.db');
 
 export const INTERFACE_ID_BY_TYPE = {
