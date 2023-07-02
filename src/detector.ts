@@ -133,7 +133,10 @@ export class SpamDetector {
         `Finished: ${[...this.taskByToken.values()].filter((t) => t.finishedAt).length}`,
         `Queue: ${this.queue.length()}`,
         `Memory: ${Math.round(((process.memoryUsage().heapUsed / 1024 / 1024) * 100) / 100)}Mb`,
-        `Disk: ${Math.round(((fs.statSync(DB_FILE_PATH).size / 1024 / 1024) * 100) / 100)}Mb`,
+        `Disk: ${Math.round(
+          ((fs.statSync(DB_FILE_PATH, { throwIfNoEntry: false })?.size || 0 / 1024 / 1024) * 100) /
+            100,
+        )}Mb`,
       ].join(' | '),
     );
   }
