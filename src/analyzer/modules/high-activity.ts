@@ -68,7 +68,7 @@ class HighActivityModule extends AnalyzerModule {
     const transactionSet = (await storage.getTransactions(token.address)) || new Set();
     const senderSet = new Set<string>([...transactionSet].map((t) => t.from));
 
-    let multiplier = 0;
+    let multiplier = 1;
     for (const moduleKey of Object.keys(context)) {
       if (this.multipliers[moduleKey] != null) {
         multiplier *= this.multipliers[moduleKey];
