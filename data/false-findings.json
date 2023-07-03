@@ -1,24 +1,3 @@
 {
-  "1": [
-    {
-      "type": 20,
-      "address": "0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF",
-      "deployer": "0x000000000000000000000000000000000000dEaD"
-    },
-    {
-      "type": 1155,
-      "address": "0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF",
-      "deployer": "0x000000000000000000000000000000000000dEaD"
-    },
-    {
-      "type": 20,
-      "address": "0x200000000000000000000000000000000000dEaD",
-      "deployer": "0x000000000000000000000000000000000000dEaD"
-    },
-    {
-      "type": 1155,
-      "address": "0x115500000000000000000000000000000000dEaD",
-      "deployer": "0x000000000000000000000000000000000000dEaD"
-    }
-  ]
+  "1": []
 }
