@@ -113,6 +113,16 @@ efficiently.
 > past transactions after every 10 blocks to ensure optimal performance. Consequently, if you need to scan a specific
 > block that does not end with 0, you should round up the range accordingly.
 
+--- 
+
+Script to grab block numbers from Etherscan.com:
+```js
+const blockNumbers = [];
+const onlyUnique = (value, index, array) => array.indexOf(value) === index;
+document.querySelectorAll('#transactions > div > div.table-responsive > table > tbody > tr > td.d-none.d-sm-table-cell > a').forEach(el => blockNumbers.push(el.innerText));console.log(blockNumbers.filter(onlyUnique).reverse().join(','))
+```
+
+
 ---
 
 #### ERC-20 Phishing token
