@@ -33,7 +33,7 @@ import {
   DB_FILE_PATH,
   FALSE_FINDINGS_URL,
 } from './contants';
-import { JsonStorage, mkdir } from './utils/storage';
+import { JsonStorage, mkdir, rmFile } from './utils/storage';
 import { AlertMitigation } from './utils/mitigation';
 
 dayjs.extend(duration);
@@ -56,7 +56,9 @@ const provideInitialize = (data: DataContainer, isDevelopment: boolean): Initial
 
     let storage: DataStorage;
     if (isDevelopment) {
-      storage = new DataStorage(new SqlDatabase(':memory:'));
+      await mkdir(DB_FOLDER_PATH);
+      await rmFile(DB_FILE_PATH);
+      storage = new DataStorage(new SqlDatabase(DB_FILE_PATH));
     } else {
       await mkdir(DB_FOLDER_PATH);
       storage = new DataStorage(new SqlDatabase(DB_FILE_PATH));
@@ -110,6 +112,20 @@ const provideHandleBlock = (data: DataContainer): HandleBlock => {
   return async function handleBlock(blockEvent) {
     const findings: Finding[] = [];
 
+    // handleBlock() is executed before handleTransaction()
+    if (data.previousBlock) {
+      // We pass to the tick information about the block in which there were previous transactions collected in the storage
+      if (!IS_DEBUG) {
+        data.detector.tick(data.previousBlock.timestamp, data.previousBlock.number);
+      }
+      if (IS_DEBUG && blockEvent.blockNumber % 10 === 0) {
+        data.detector.tick(data.previousBlock.timestamp, data.previousBlock.number);
+        await data.detector.wait();
+      }
+
+      if (blockEvent.blockNumber % 500 == 0) data.detector.logStats();
+    }
+
     const analyses = data.detector.releaseAnalyses();
     for (const { token, result: currentResult } of analyses) {
       const previousResult = data.analysisByToken.get(token);
@@ -134,18 +150,6 @@ const provideHandleBlock = (data: DataContainer): HandleBlock => {
       } else {
         data.analysisByToken.set(token, currentResult);
       }
-    }
-
-    // handleBlock() is executed before handleTransaction()
-    if (data.previousBlock) {
-      // We pass to the tick information about the block in which there were previous transactions collected in the storage
-      data.detector.tick(data.previousBlock.timestamp, data.previousBlock.number);
-
-      if (IS_DEBUG && blockEvent.blockNumber % 10 === 0) {
-        await data.detector.wait();
-      }
-
-      if (blockEvent.blockNumber % 500 == 0) data.detector.logStats();
     }
 
     data.previousBlock = blockEvent.block;
@@ -180,6 +184,9 @@ const provideHandleTransaction = (data: DataContainer): HandleTransaction => {
 
         if (type) {
           if (IS_DEBUG && DEBUG_TARGET_TOKEN !== contract.address) continue;
+          else if (IS_DEBUG && DEBUG_TARGET_TOKEN !== contract.address) {
+            Logger.info(`Detected target token: ${contract.address}`);
+          }
 
           Logger.debug(`Found token contract (ERC${type}): ${contract.address}`);
           data.detector.addTokenToWatchList(type, contract);
