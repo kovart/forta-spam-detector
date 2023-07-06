@@ -118,6 +118,7 @@ const provideHandleBlock = (data: DataContainer): HandleBlock => {
       if (!IS_DEBUG) {
         data.detector.tick(data.previousBlock.timestamp, data.previousBlock.number);
       }
+
       if (IS_DEBUG && blockEvent.blockNumber % 10 === 0) {
         data.detector.tick(data.previousBlock.timestamp, data.previousBlock.number);
         await data.detector.wait();
@@ -175,7 +176,7 @@ const provideHandleTransaction = (data: DataContainer): HandleTransaction => {
     if (txEvent.blockNumber % data.sharding.getShardCount() === data.sharding.getShardIndex()) {
       const createdContracts = findCreatedContracts(txEvent);
 
-      if (createdContracts.length > 0) {
+      if (!IS_DEBUG && createdContracts.length > 0) {
         Logger.debug(`Found ${createdContracts.length} created contracts in tx: ${txEvent.hash}`);
       }
 
@@ -183,9 +184,10 @@ const provideHandleTransaction = (data: DataContainer): HandleTransaction => {
         const type = await identifyTokenInterface(contract.address, data.provider);
 
         if (type) {
-          if (IS_DEBUG && DEBUG_TARGET_TOKEN !== contract.address) continue;
-          else if (IS_DEBUG && DEBUG_TARGET_TOKEN !== contract.address) {
-            Logger.info(`Detected target token: ${contract.address}`);
+          if (IS_DEBUG) {
+            if (DEBUG_TARGET_TOKEN !== contract.address) continue;
+
+            Logger.info(`Found target token: ${contract.address}`);
           }
 
           Logger.debug(`Found token contract (ERC${type}): ${contract.address}`);
