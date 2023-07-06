@@ -1,6 +1,6 @@
 {
   "name": "spam-detector",
-  "version": "0.0.18",
+  "version": "0.0.19",
   "description": "The bot is equipped with advanced algorithms that analyze multiple indicators to detect spam tokens",
   "repository": "https://github.com/kovart/forta-spam-detector",
   "chainIds": [
@@ -71,6 +71,7 @@
     "eslint": "^8.36.0",
     "eslint-config-prettier": "^8.7.0",
     "jest": "^27.0.6",
+    "moralis": "^2.22.3",
     "nodemon": "^2.0.8",
     "prettier": "^2.8.4",
     "ts-jest": "^27.0.3",
