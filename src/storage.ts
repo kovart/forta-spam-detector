@@ -127,12 +127,12 @@ class DataStorage {
         const parsedErc1155Log = erc1155Iface.parseLog(log);
 
         if (parsedErc1155Log.name === 'TransferSingle') {
-          const { operator, from, to, tokenId, value } = parsedErc1155Log.args;
+          const { operator, from, to, id, value } = parsedErc1155Log.args;
           this.db.addErc1155TransferSingleEvent({
             operator: operator.toLowerCase(),
             from: from.toLowerCase(),
             to: to.toLowerCase(),
-            tokenId: tokenId.toString(),
+            tokenId: id.toString(),
             value: BigInt(value.toString()),
             transactionId: transactionId,
             contract: contractAddress,
