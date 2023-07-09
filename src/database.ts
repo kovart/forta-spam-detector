@@ -26,7 +26,7 @@ const wrapNull = (v: any) => (v == null ? 'NULL' : v);
 const unwrapNull = (v: any) => (v === 'NULL' ? null : v);
 
 class SqlDatabase {
-  private db: sqlite3.Database;
+  public db: sqlite3.Database;
 
   constructor(filename = ':memory:') {
     this.db = new sqlite3.Database(filename, (err) => {
@@ -502,7 +502,7 @@ class SqlDatabase {
       this.addAddress([tx.from, tx.to]);
       this.db.run(
         `INSERT INTO transactions(hash, sighash, from_id, to_id, block_number, tx_index, timestamp) 
-            VALUES(
+            SELECT 
               $hash, 
               $sighash, 
               (SELECT address_id FROM addresses WHERE address = $from), 
@@ -510,7 +510,10 @@ class SqlDatabase {
               $block_number, 
               $tx_index,
               $timestamp
-            )`,
+            WHERE NOT EXISTS (
+                SELECT 1 FROM transactions WHERE hash = $hash
+            )
+            `,
         {
           $hash: tx.hash,
           $sighash: tx.sighash,
@@ -850,9 +853,18 @@ class SqlDatabase {
     });
   }
 
-  private async run(query: string, ...params: any[]): Promise<void> {
+  public async run(query: string, ...params: any[]): Promise<void> {
     return new Promise((res, rej) => {
       this.db.run(query, ...params, (err: Error) => {
+        if (err) return rej(err);
+        return res();
+      });
+    });
+  }
+
+  public async exec(query: string, ...params: any[]): Promise<void> {
+    return new Promise((res, rej) => {
+      this.db.exec(query, ...params, (err: Error) => {
         if (err) return rej(err);
         return res();
       });
