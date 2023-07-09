@@ -536,7 +536,7 @@ class SqlDatabase {
 
   addErc20ApprovalEvent(event: TokenInsertEvent<DetailedErc20ApprovalEvent>) {
     this.addAddress([event.owner, event.spender]);
-    this.db.run(
+    return this.run(
       `
         INSERT INTO erc_20_approval_events(transaction_id, log_index, contract_id, owner_id, spender_id, value)
         VALUES ( 
@@ -566,7 +566,7 @@ class SqlDatabase {
 
   addErc20TransferEvent(event: TokenInsertEvent<DetailedErc20TransferEvent>) {
     this.addAddress([event.from, event.to]);
-    this.db.run(
+    return this.run(
       `
         INSERT INTO erc_20_transfer_events(transaction_id, log_index, contract_id, from_id, to_id, value)
         VALUES ( 
@@ -596,7 +596,7 @@ class SqlDatabase {
 
   addErc721ApprovalEvent(event: TokenInsertEvent<DetailedErc721ApprovalEvent>) {
     this.addAddress([event.owner, event.approved]);
-    this.db.run(
+    return this.run(
       `
         INSERT INTO erc_721_approval_events(transaction_id, log_index, contract_id, owner_id, approved_id, token_id)
         VALUES ( 
@@ -626,7 +626,7 @@ class SqlDatabase {
 
   addErc721TransferEvent(event: TokenInsertEvent<DetailedErc721TransferEvent>) {
     this.addAddress([event.from, event.to]);
-    this.db.run(
+    return this.run(
       `
         INSERT INTO erc_721_transfer_events(transaction_id, log_index, contract_id, from_id, to_id, token_id)
         VALUES ( 
@@ -656,7 +656,7 @@ class SqlDatabase {
 
   addErc721ApprovalForAllEvent(event: TokenInsertEvent<DetailedErc721ApprovalForAllEvent>) {
     this.addAddress([event.owner, event.operator]);
-    this.db.run(
+    return this.run(
       `
         INSERT INTO erc_721_approval_for_all_events(transaction_id, log_index, contract_id, owner_id, operator_id, approved)
         VALUES ( 
@@ -686,7 +686,7 @@ class SqlDatabase {
 
   addErc1155ApprovalForAllEvent(event: TokenInsertEvent<DetailedErc1155ApprovalForAllEvent>) {
     this.addAddress([event.owner, event.operator]);
-    this.db.run(
+    return this.run(
       `
         INSERT INTO erc_1155_approval_for_all_events(transaction_id, log_index, contract_id, owner_id, operator_id, approved)
         VALUES ( 
@@ -716,7 +716,7 @@ class SqlDatabase {
 
   addErc1155TransferSingleEvent(event: TokenInsertEvent<DetailedErc1155TransferSingleEvent>) {
     this.addAddress([event.from, event.operator, event.from, event.to]);
-    this.db.run(
+    return this.run(
       `
         INSERT INTO erc_1155_transfer_single_events(transaction_id, log_index, contract_id, operator_id, from_id, to_id, token_id, value)
         VALUES ( 
@@ -750,7 +750,7 @@ class SqlDatabase {
 
   addErc1155TransferBatchEvent(event: TokenInsertEvent<DetailedErc1155TransferBatchEvent>) {
     this.addAddress([event.from, event.operator, event.from, event.to]);
-    this.db.run(
+    return this.run(
       `
         INSERT INTO erc_1155_transfer_batch_events(transaction_id, log_index, contract_id, operator_id, from_id, to_id, token_ids, token_values)
         VALUES ( 
