@@ -69,13 +69,14 @@ export type TokenProviderCache = {
 class TokenProvider {
   private mutex: Mutex;
   private cache: TokenProviderCache | null = null;
-  private ttl: number = 6 * 60 * 60 * 1000; // 6h
+  private ttl: number;
 
   private storage: JsonStorage<TokenProviderCache>;
 
-  constructor(storage: JsonStorage<TokenProviderCache>) {
+  constructor(storage: JsonStorage<TokenProviderCache>, ttl: number = 6 * 60 * 60 * 1000) {
     this.storage = storage;
     this.mutex = new Mutex();
+    this.ttl = ttl;
   }
 
   public async getList(): Promise<TokenRecord[]> {

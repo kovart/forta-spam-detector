@@ -92,7 +92,7 @@ class Erc721NonUniqueTokensModule extends AnalyzerModule {
         );
         uris.forEach((url, i) => tokenUriByTokenId.set(batch[i], url));
       } catch (e) {
-        Logger.error('token uri error', { error: e });
+        Logger.error(e, 'token uri error');
         // Well, something went wrong so that even retry() didn't help
         return;
       }
@@ -155,7 +155,7 @@ class Erc721NonUniqueTokensModule extends AnalyzerModule {
               metadataByTokenId.set(tokenId, metadata);
               callback();
             } catch (e) {
-              Logger.error('metadataQueue error', { error: e });
+              Logger.error(e, 'MetadataQueue error');
               memo.set('isMetadataProviderBroken', true);
               metadataQueue.remove((v) => true);
               callback();
