@@ -60,7 +60,7 @@ class SleepMintModule extends AnalyzerModule {
     const directApprovals = new Map<string, Set<string>>();
     const passiveApprovals = new Map<string, Set<string>>();
 
-    // Normalize events so that we can apply common handlers for them
+    // Collect and normalize approval events so that we can apply common handlers for them
     const allApprovalEvents: (TokenEvent & { owner: string; spender: string })[] = [];
 
     if (token.type === TokenStandard.Erc20) {
@@ -76,6 +76,7 @@ class SleepMintModule extends AnalyzerModule {
       approvalForAllEvents.forEach((e) => allApprovalEvents.push({ ...e, spender: e.operator }));
     }
 
+    // Prepare approval sets (performance optimizations)
     for (const event of allApprovalEvents) {
       if (event.transaction.from !== event.owner) {
         const set = passiveApprovals.get(event.owner) || new Set();
@@ -88,10 +89,11 @@ class SleepMintModule extends AnalyzerModule {
       }
     }
 
-    const sleepMints: SleepMintInfo[] = [];
-    const airdropTxHashSet = new Set(airdropTxHashes);
+    // Fill transfer events
 
+    let sleepMints: SleepMintInfo[] = [];
     let transferEvents: { from: string; to: string; transaction: SimplifiedTransaction }[] = [];
+    const airdropTxHashSet = new Set(airdropTxHashes);
 
     if (token.type === TokenStandard.Erc20) {
       transferEvents = await storage.getErc20TransferEvents(token.address);
@@ -103,6 +105,8 @@ class SleepMintModule extends AnalyzerModule {
         transferEvents.push(event);
       }
     }
+
+    // Check transfer events
 
     for (const event of transferEvents) {
       if (
@@ -129,9 +133,25 @@ class SleepMintModule extends AnalyzerModule {
       });
     }
 
-    const sleepMintReceiverSet = new Set(sleepMints.map((m) => m.to));
+    const ownerSet = new Set(sleepMints.map((m) => m.from));
 
-    if (sleepMintReceiverSet.size > SLEEP_MINT_RECEIVERS_THRESHOLD) {
+    // Check if there are too many different owners ('from' accounts)
+    if (ownerSet.size < 50) {
+      // Remove sleep mints from an account abstraction (e.g. Gnosis-Safe)
+      for (const owner of ownerSet) {
+        const isAbstraction = await memo('isAccountAbstraction', [owner], () =>
+          isAccountAbstraction(owner, provider),
+        );
+
+        if (isAbstraction) {
+          sleepMints = sleepMints.filter((m) => m.from !== owner);
+        }
+      }
+    }
+
+    const receiverSet = new Set(sleepMints.map((m) => m.to));
+
+    if (receiverSet.size > SLEEP_MINT_RECEIVERS_THRESHOLD) {
       if (token.type === TokenStandard.Erc20) {
         // This token standard has more complex use cases with various token aggregators,
         // which can lead to possible false positives. An example of a token transfer without approves:
@@ -192,13 +212,11 @@ class SleepMintModule extends AnalyzerModule {
                 return false;
               });
 
-              const isAccountAbstractionContract = await memo(
-                'isAccountAbstraction',
-                [owner],
-                async () => isAccountAbstraction(owner, provider),
+              const isAccountContract = await memo('isAccountAbstraction', [owner], () =>
+                isAccountAbstraction(owner, provider),
               );
 
-              if (isOwnerPairContract || isAccountAbstractionContract) continue;
+              if (isOwnerPairContract || isAccountContract) continue;
 
               massSleepMints.push(...txMints);
               break;
