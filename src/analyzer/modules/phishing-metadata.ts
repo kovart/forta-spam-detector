@@ -3,7 +3,7 @@ import axios from 'axios';
 
 import { erc1155Iface, erc20Iface, erc721Iface } from '../../contants';
 import {
-  containsLink,
+  extractLinks,
   isBase64,
   normalizeMetadataUri,
   parseBase64,
@@ -24,15 +24,18 @@ export const PHISHING_NAME_KEYWORDS = [
   'activate',
   'reward',
   'free',
+  'bonus',
   'mint',
   'gift',
   'at',
+  'access',
+  'to',
 ];
 export const PHISHING_NAME_PATTERNS = [
   // $ 3000
   /\$\s*\d+/,
   // $ aave.site
-  /\$\s+(http(s)?:\/\/.)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)/,
+  /\$\s+(http(s)?:\/\/.)?(www\.)?[a-zA-Z0-9]{1,256}([-a-zA-Z0-9@:%._\+~#=]*)\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)/,
 ];
 export const PHISHING_DESCRIPTION_KEYWORDS = [
   'visit',
@@ -41,7 +44,8 @@ export const PHISHING_DESCRIPTION_KEYWORDS = [
   'reward',
   'gift',
   'free mint',
-  'coupon',
+  'access',
+  'bonus',
   'check it',
   'check out',
   'go to',
@@ -56,6 +60,7 @@ export const PHISHING_DESCRIPTION_PATTERNS = [
 export type PhishingModuleMetadata = {
   name?: string;
   symbol?: string;
+  urls?: string[];
   descriptionByTokenId?: {
     [tokenId: string]: string;
   };
@@ -119,22 +124,24 @@ class PhishingMetadataModule extends AnalyzerModule {
     }
 
     const words = this.getWords([name, symbol].join(' '));
-    if (words.find(containsLink)) {
-      for (const word of words) {
-        if (PHISHING_NAME_KEYWORDS.includes(word)) {
-          detected = true;
-          break;
-        }
-      }
+    const urls = extractLinks(words.join(' '));
 
-      if (!detected) {
-        for (const text of [name, symbol]) {
-          detected = !!PHISHING_NAME_PATTERNS.find((pattern) => pattern.test(text));
-          if (detected) break;
-        }
-      }
+    metadata = { name, symbol, urls };
 
-      metadata = { name, symbol };
+    if (urls.length === 0) return { detected, metadata };
+
+    for (const word of words) {
+      if (PHISHING_NAME_KEYWORDS.includes(word)) {
+        detected = true;
+        break;
+      }
+    }
+
+    if (!detected) {
+      for (const text of [name, symbol]) {
+        detected = !!PHISHING_NAME_PATTERNS.find((pattern) => pattern.test(text));
+        if (detected) break;
+      }
     }
 
     return { detected, metadata };
@@ -182,11 +189,13 @@ class PhishingMetadataModule extends AnalyzerModule {
         }
 
         const description: string = tokenMetadata.description;
+        const phishing = this.checkPhishingText(description);
 
-        if (this.isPhishingDescription(description)) {
+        if (phishing.detected) {
           detected = true;
           metadata.descriptionByTokenId = metadata.descriptionByTokenId || {};
           metadata.descriptionByTokenId[tokenId] = tokenMetadata?.description;
+          metadata.urls = phishing.urls;
         }
       }
     } catch (e) {
@@ -245,11 +254,13 @@ class PhishingMetadataModule extends AnalyzerModule {
         }
 
         const description: string = tokenMetadata.description;
+        const phishing = this.checkPhishingText(description);
 
-        if (this.isPhishingDescription(description)) {
+        if (phishing.detected) {
           detected = true;
           metadata.descriptionByTokenId = metadata.descriptionByTokenId || {};
           metadata.descriptionByTokenId[tokenId] = tokenMetadata?.description;
+          metadata.urls = phishing.urls;
         }
       }
     } catch (e) {
@@ -265,7 +276,7 @@ class PhishingMetadataModule extends AnalyzerModule {
     return text
       .replace(/\[.\]/g, '.')
       .replace(/\[dot\]/g, '.')
-      .split(' ')
+      .split(/\s/gu)
       .map((v) => normalizeText(v.toLowerCase()));
   }
 
@@ -273,20 +284,28 @@ class PhishingMetadataModule extends AnalyzerModule {
     return this.getWords(text).join(' ');
   }
 
-  private isPhishingDescription(text: string) {
+  private checkPhishingText(text: string): { detected: boolean; urls: string[] } {
     const description = this.normalizeText(text);
 
-    if (!containsLink(description)) return false;
+    const urls = extractLinks(description).filter(
+      // filter out links to well-known marketplaces
+      (url) =>
+        ![/blur.io/, /looksrare.org/, /opensea.io/, /x2y2.io/, /genie.xyz/, /gem.xyz/].find(
+          (regex) => regex.test(url),
+        ),
+    );
+
+    if (urls.length === 0) return { detected: false, urls };
 
     for (const keyword of PHISHING_DESCRIPTION_KEYWORDS) {
-      if (description.includes(keyword)) return true;
+      if (description.includes(keyword)) return { detected: true, urls };
     }
 
     for (const pattern of PHISHING_DESCRIPTION_PATTERNS) {
-      if (pattern.test(description)) return true;
+      if (pattern.test(description)) return { detected: true, urls };
     }
 
-    return false;
+    return { detected: false, urls };
   }
 
   private async getUriMetadata(uri: string, params: ScanParams): Promise<Record<any, any> | null> {

@@ -3,7 +3,7 @@ import { MockEthersProvider } from 'forta-agent-tools/lib/test';
 import AxiosMockAdapter from 'axios-mock-adapter';
 
 import { autoAddress } from './__utils__/helpers';
-import PhishingMetadataModule from '../phishing-metadata';
+import PhishingMetadataModule, { PhishingModuleMetadata } from '../phishing-metadata';
 import Memoizer from '../../../utils/cache';
 import { TokenContract, TokenStandard } from '../../../types';
 import { ModuleAnalysisResult } from '../../types';
@@ -19,7 +19,7 @@ jest.mock('../../../utils/helpers', () => ({
 
 describe('PhishingMetadata', () => {
   describe('ERC-20', () => {
-    let result!: ModuleAnalysisResult<PhishingMetadataModule>;
+    let result!: ModuleAnalysisResult<PhishingModuleMetadata>;
 
     const mockToken = {
       address: autoAddress(),
@@ -32,7 +32,7 @@ describe('PhishingMetadata', () => {
     const indicator = new PhishingMetadataModule();
 
     async function run(token: [string, string]) {
-      const context: { [key: string]: ModuleAnalysisResult<PhishingMetadataModule> } = {};
+      const context: { [key: string]: ModuleAnalysisResult<PhishingModuleMetadata> } = {};
 
       const blockTag = undefined;
 
@@ -72,46 +72,76 @@ describe('PhishingMetadata', () => {
     it('should detect phishing for "VISIT (site.cc)"', async () => {
       await run(['VISIT', 'site.cc']);
       expect(result.detected).toStrictEqual(true);
+      expect(result.metadata!.urls).toHaveLength(1);
+      expect(result.metadata!.urls).toContain('site.cc');
     });
 
     it('should detect phishing for "site.cc (Visit this)"', async () => {
       await run(['site.cc', 'Visit this']);
       expect(result.detected).toStrictEqual(true);
+      expect(result.metadata!.urls).toHaveLength(1);
+      expect(result.metadata!.urls).toContain('site.cc');
+    });
+
+    it('should detect phishing for "https://site.cc/test#link?query=12 (Visit this)"', async () => {
+      await run(['https://site.cc/test#link?query=12', 'Visit this']);
+      expect(result.detected).toStrictEqual(true);
+      expect(result.metadata!.urls).toHaveLength(1);
+      expect(result.metadata!.urls).toContain('https://site.cc/test#link?query=12');
     });
 
     it('should detect phishing for "site[.]cc (Visit this)"', async () => {
       await run(['site[.]cc', 'Visit this']);
       expect(result.detected).toStrictEqual(true);
+      expect(result.metadata!.urls).toHaveLength(1);
+      expect(result.metadata!.urls).toContain('site.cc');
     });
 
     it('should detect phishing for "site[dot]cc (Visit this)"', async () => {
       await run(['site[dot]cc', 'Visit this']);
       expect(result.detected).toStrictEqual(true);
+      expect(result.metadata!.urls).toHaveLength(1);
+      expect(result.metadata!.urls).toContain('site.cc');
     });
 
     it('should detect phishing for "Visit site.cc (TOKEN)"', async () => {
       await run(['Visit site.cc', 'TOKEN']);
       expect(result.detected).toStrictEqual(true);
+      expect(result.metadata!.urls).toHaveLength(1);
+      expect(result.metadata!.urls).toContain('site.cc');
+    });
+
+    it('should detect phishing for "Visit (t.ly/link)"', async () => {
+      await run(['Visit', 't.ly/link']);
+      expect(result.detected).toStrictEqual(true);
+      expect(result.metadata!.urls).toHaveLength(1);
+      expect(result.metadata!.urls).toContain('t.ly/link');
     });
 
     it('should detect phishing for "$ site.cc (TOKEN)"', async () => {
       await run(['$ site.cc', 'TOKEN']);
       expect(result.detected).toStrictEqual(true);
+      expect(result.metadata!.urls).toHaveLength(1);
+      expect(result.metadata!.urls).toContain('site.cc');
     });
 
     it('should detect phishing for "$ 123.32 TOKEN (site.cc)"', async () => {
       await run(['$ 123.32 TOKEN', 'site.cc']);
       expect(result.detected).toStrictEqual(true);
+      expect(result.metadata!.urls).toHaveLength(1);
+      expect(result.metadata!.urls).toContain('site.cc');
     });
 
     it('should detect phishing for "$ 123.32 go site.cc (TOKEN)"', async () => {
       await run(['$ 123.32 go site.cc', 'TOKEN']);
       expect(result.detected).toStrictEqual(true);
+      expect(result.metadata!.urls).toHaveLength(1);
+      expect(result.metadata!.urls).toContain('site.cc');
     });
   });
 
   describe('NFT', () => {
-    let result!: ModuleAnalysisResult<PhishingMetadataModule>;
+    let result!: ModuleAnalysisResult<PhishingModuleMetadata>;
     let tokenCount = 0;
 
     const mockEthersProvider = new MockEthersProvider();
@@ -120,7 +150,7 @@ describe('PhishingMetadata', () => {
     const mockAxios = new AxiosMockAdapter(axios);
 
     async function run(standard: TokenStandard, description: string) {
-      const context: { [key: string]: ModuleAnalysisResult<PhishingMetadataModule> } = {};
+      const context: { [key: string]: ModuleAnalysisResult<PhishingModuleMetadata> } = {};
 
       const token = {
         address: autoAddress(),
@@ -204,6 +234,31 @@ describe('PhishingMetadata', () => {
         expect(result.detected).toStrictEqual(false);
       });
 
+      it('should not detect when using line breaks', async () => {
+        await run(TokenStandard.Erc721, 'visit infinite.\n\nThis ');
+        expect(result.detected).toStrictEqual(false);
+      });
+
+      it('should not detect text that begins with dots', async () => {
+        await run(TokenStandard.Erc721, '...site');
+        expect(result.detected).toStrictEqual(false);
+      });
+
+      it('should detect short urls', async () => {
+        await run(TokenStandard.Erc721, 'Visit t.ly/N-6G');
+        expect(result.detected).toStrictEqual(true);
+        expect(result.metadata!.urls).toHaveLength(1);
+        expect(result.metadata!.urls).toContain('t.ly/n-6g');
+      });
+
+      it('should detect multiple urls', async () => {
+        await run(TokenStandard.Erc721, 'Visit t.ly/N-6G or https://site.cc');
+        expect(result.detected).toStrictEqual(true);
+        expect(result.metadata!.urls).toHaveLength(2);
+        expect(result.metadata!.urls).toContain('t.ly/n-6g');
+        expect(result.metadata!.urls).toContain('https://site.cc');
+      });
+
       it('should detect description with a link and keywords', async () => {
         await run(TokenStandard.Erc721, 'Some text. Visit site.com');
         expect(result.detected).toStrictEqual(true);
@@ -218,8 +273,10 @@ describe('PhishingMetadata', () => {
       });
 
       it('should detect description with a link and a dollar value', async () => {
-        await run(TokenStandard.Erc721, 'You have received $100. Claim here: site.com');
+        await run(TokenStandard.Erc721, 'You have received $ 1,000. site.com');
         expect(result.detected).toStrictEqual(true);
+        expect(result.metadata!.urls).toHaveLength(1);
+        expect(result.metadata!.urls).toContain('site.com');
       });
     });
 
@@ -256,8 +313,21 @@ describe('PhishingMetadata', () => {
       });
 
       it('should detect description with a link and a dollar value', async () => {
-        await run(TokenStandard.Erc1155, 'You have received $100. Claim here: site.com');
+        await run(TokenStandard.Erc1155, 'You have received $100. Its located there: site.com');
         expect(result.detected).toStrictEqual(true);
+        expect(result.metadata!.urls).toHaveLength(1);
+        expect(result.metadata!.urls).toContain('site.com');
+      });
+
+      it('should detect multiple urls', async () => {
+        await run(
+          TokenStandard.Erc1155,
+          'Visit site.com or https://bit.ly/shortlink#test?query=id',
+        );
+        expect(result.detected).toStrictEqual(true);
+        expect(result.metadata!.urls).toHaveLength(2);
+        expect(result.metadata!.urls).toContain('site.com');
+        expect(result.metadata!.urls).toContain('https://bit.ly/shortlink#test?query=id');
       });
     });
   });

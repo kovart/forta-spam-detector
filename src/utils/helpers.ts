@@ -1,6 +1,7 @@
 import { Finding, HandleBlock, HandleTransaction, TransactionEvent } from 'forta-agent';
 import { Contract, ethers, providers, utils } from 'ethers';
 import { queue } from 'async';
+import urlRegex from 'url-regex';
 
 import Logger from './logger';
 import { CreatedContract, TokenStandard } from '../types';
@@ -302,9 +303,11 @@ export function parseBase64(data: string): object | null {
 }
 
 export function containsLink(str: string): boolean {
-  return /(http(s)?:\/\/.)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)/.test(
-    str,
-  );
+  return urlRegex({ strict: false }).test(str);
+}
+
+export function extractLinks(str: string): string[] {
+  return str.match(urlRegex({ strict: false })) || [];
 }
 
 export function isCid(str: string) {
