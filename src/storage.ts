@@ -151,9 +151,9 @@ class DataStorage {
             logIndex: log.logIndex,
           });
         } else if (parsedErc1155Log.name === 'ApprovalForAll') {
-          const { owner, operator, approved } = parsedErc1155Log.args;
+          const { account, operator, approved } = parsedErc1155Log.args;
           this.db.addErc1155ApprovalForAllEvent({
-            owner: owner.toLowerCase(),
+            owner: account.toLowerCase(),
             operator: operator.toLowerCase(),
             approved: approved,
             transactionId: transactionId,
