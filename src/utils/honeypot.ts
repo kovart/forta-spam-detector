@@ -35,6 +35,10 @@ export type HoneypotAnalysisMetadata = {
     detected: boolean;
     name?: string;
   };
+  CEX?: {
+    detected: boolean;
+    nonce: number;
+  };
   ManyTwitterFollowers?: {
     detected: boolean;
     followers?: number;
@@ -145,7 +149,11 @@ class HoneyPotChecker {
 
   static VERY_HIGH_MULTIPLIER = 10;
 
-  constructor(private leaderboard: EnsLeaderBoard, private honeypotSet: Set<string>) {}
+  constructor(
+    private leaderboard: EnsLeaderBoard,
+    private honeypotSet: Set<string>,
+    private CEXNonce = 5_000,
+  ) {}
 
   async testAddress(
     address: string,
@@ -197,6 +205,13 @@ class HoneyPotChecker {
       balance: balance.toString(),
     };
 
+    const nonce = await retry(() => provider.getTransactionCount(address));
+
+    metadata['CEX'] = {
+      detected: nonce >= this.CEXNonce,
+      nonce: nonce,
+    };
+
     let ensProvider: ethers.providers.StaticJsonRpcProvider = provider;
     if (provider.network.chainId !== Network.MAINNET) {
       ensProvider = PUBLIC_ENS_PROVIDER;
@@ -224,6 +239,7 @@ class HoneyPotChecker {
 
     return {
       isHoneypot:
+        metadata['CEX']?.detected ||
         metadata['HardCodedAccount'].detected ||
         metadata['VeryHighBalance']?.detected ||
         (metadata['HighBalance']?.detected && metadata['EnsRegistered']?.detected) ||
