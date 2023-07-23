@@ -198,6 +198,41 @@ export async function identifyTokenInterface(
   return null;
 }
 
+export async function isAccountAbstraction(address: string, provider: providers.JsonRpcProvider) {
+  try {
+    // gnosis iface
+    const iface = new ethers.utils.Interface([
+      {
+        inputs: [],
+        name: 'getOwners',
+        outputs: [{ internalType: 'address[]', name: '', type: 'address[]' }],
+        stateMutability: 'view',
+        type: 'function',
+      },
+      {
+        inputs: [{ internalType: 'address', name: 'owner', type: 'address' }],
+        name: 'isOwner',
+        outputs: [{ internalType: 'bool', name: '', type: 'bool' }],
+        stateMutability: 'view',
+        type: 'function',
+      },
+    ]);
+
+    const contract = new ethers.Contract(address, iface, provider);
+
+    // Gnosis-like contract
+    const owners = await contract.getOwners();
+    await contract.isOwner(owners[0] || ethers.constants.AddressZero);
+
+    return true;
+  } catch {}
+
+  // EIP-4337 is still in draft
+  // https://eips.ethereum.org/EIPS/eip-4337
+
+  return false;
+}
+
 export const delay = (ms: number): Promise<unknown> => new Promise((res) => setTimeout(res, ms));
 
 export async function retry<T>(

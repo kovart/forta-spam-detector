@@ -3,7 +3,7 @@ import { groupBy, shuffle } from 'lodash';
 
 import { SimplifiedTransaction, TokenEvent, TokenStandard } from '../../types';
 import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
-import { isBurnAddress } from '../../utils/helpers';
+import { isAccountAbstraction, isBurnAddress } from '../../utils/helpers';
 import AirdropModule, { AIRDROP_MODULE_KEY, AirdropModuleMetadata } from './airdrop';
 import { erc20Iface } from '../../contants';
 import Logger from '../../utils/logger';
@@ -192,7 +192,13 @@ class SleepMintModule extends AnalyzerModule {
                 return false;
               });
 
-              if (isOwnerPairContract) continue;
+              const isAccountAbstractionContract = await memo(
+                'isAccountAbstraction',
+                [owner],
+                async () => isAccountAbstraction(owner, provider),
+              );
+
+              if (isOwnerPairContract || isAccountAbstractionContract) continue;
 
               massSleepMints.push(...txMints);
               break;
