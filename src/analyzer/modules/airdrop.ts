@@ -52,8 +52,8 @@ export type AirdropModuleShortMetadata = {
 };
 
 export const AIRDROP_MODULE_KEY = 'Airdrop';
-export const MIN_RECEIVERS_PER_TX = 10;
-export const MIN_RECEIVERS_PER_SENDER = 50;
+export const MIN_RECEIVERS_PER_TX = 9;
+export const MIN_RECEIVERS_PER_SENDER = 20;
 export const AIRDROP_WINDOW = 5 * 24 * 60 * 60; // 5d
 
 class AirdropModule extends AnalyzerModule {
