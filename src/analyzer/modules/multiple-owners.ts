@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
 import { groupBy, max, sortBy } from 'lodash';
-import { Erc721TransferEvent, TokenStandard } from '../../types';
+import { DetailedErc721TransferEvent, TokenStandard } from '../../types';
 import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
 import { erc721Iface } from '../../contants';
 import { AIRDROP_MODULE_KEY } from './airdrop';
@@ -80,7 +80,7 @@ class Erc721MultipleOwnersModule extends AnalyzerModule {
     };
 
     // tokenId -> transfers[]
-    const allTransfersByTokenId = new Map<string, Erc721TransferEvent[]>();
+    const allTransfersByTokenId = new Map<string, DetailedErc721TransferEvent[]>();
     for (const [block, transfers] of transferEntries) {
       const blockNumber = Number(block);
       const transfersByTokenId = groupBy(transfers, (e) => e.tokenId.toString());
@@ -100,7 +100,11 @@ class Erc721MultipleOwnersModule extends AnalyzerModule {
             : null;
 
           if (prevTokenTransfer) {
-            if (prevTokenTransfer.to !== currTokenTransfer.from) {
+            if (
+              prevTokenTransfer.to !== currTokenTransfer.from &&
+              // ensure there are no anomalies in db
+              prevTokenTransfer.logIndex != currTokenTransfer.logIndex
+            ) {
               // Detected an anomaly; multiple owners of the same token id
 
               const isFirstTransferInBlock = i === 0;
