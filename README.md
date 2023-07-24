@@ -1,29 +1,23 @@
-# Spam Detector Bot
+# Spam Token Detector
 
 ## 💬 Description
 
-This bot is equipped with advanced algorithms that analyze multiple indicators to detect spam tokens. These
-indicators include token metadata analysis, compliance with declared token standards, distribution rationality, and
-analysis of creator and recipient behavior. Additionally, the bot has the ability to adjust its assessment during token
-monitoring, providing accurate and up-to-date detection of spam tokens.
+This bot detects spam tokens using advanced algorithms that analyze multiple indicators.
+These indicators include token metadata analysis, compliance with declared token standards, distribution rationality and
+analysis of creator and recipient behavior. Additionally, the bot has the ability to adjust its assessment during the
+lifespan of the token, providing up-to-date characterization of spam tokens.
 
 ## 🛠️ How it Works
 
-The bot utilizes a modular system of indicators for analyzing tokens. The modules
-are designed to detect both negative indications of spam and positive indications of a legitimate token.
+The bot utilizes a modular system of indicators to analyze *all* new tokens.
+The modules are designed to detect both negative indications of spam and positive indications of a legitimate token.
 
-Each module's result is recorded in the overall token analysis context, which can be used by subsequent modules.
-Additionally, some modules can interrupt the execution of other modules and determine the final evaluation of the token,
-i.e. `ObservationTimeIsOver` module.
+The result of each module’s analysis is captured in the overall analysis of the token, and can be used by subsequent
+modules. Additionally, some modules can interrupt the execution of other modules and determine the final evaluation of
+the token, i.e. `ObservationTimeIsOver` module.
 
-The [TokenAnalyzer](./src/analyzer/analyzer.ts) interprets the final result of the modules and decides whether the
-token is spam or not.
-When spam is detected, the bot publishes an alert that includes information about the token and the context of the
-modules used to evaluate it.
-If there are changes during token monitoring, such as when a module finds additional signs of spam, the bot will publish
-an update alert to indicate the changes.
-If there is a change that alters the evaluation, such as when the bot no longer identifies the token as spam, it will
-publish an alert instructing Forta Protocol to remove the labels that identify it as spam.
+The [TokenAnalyzer](./src/analyzer/analyzer.ts), which operates like an analysis engine, ingests the results from different modules and determines whether the token is spam or not. To summarize the logic applied by the TokenAnalyzer - the presence of negative indicators and an absence of positive indicators, along with the detection of a passive airdrop, suggests the token is spam. When a spam determination is made, the bot emits an alert that includes information about the token and the context of the modules used to evaluate it. The token contract also receives a persistent label in the Forta Graphql database. If there are changes during token monitoring, such as when a module finds additional signs of spam, the bot will emit an updated alert to indicate the change. If there is a change that alters the evaluation, such that the token is no longer considered spam, the bot will emit an alert instructing Forta to remove the spam label.
+
 
 ## 🕵️‍♀️ Modules
 
@@ -97,6 +91,19 @@ Here is a table containing all the indicator modules utilized in the project.
         - `tokenDeployer`: the account that deployed the token
         - `analysis`: a stringified object containing a simplified overview of each indicator's execution context
 
+## 🏷️  Labels
+- Spam
+  - `entityType`: EntityType.Address
+  - `label`: "Spam"
+  - `entity`: token address
+  - `confidence`: 0.7
+
+- Spammer
+  - `entityType`: EntityType.Address
+  - `label`: "Spammer"
+  - `entity`: address of token deployer
+  - `confidence`: 0.7
+
 ## 🐛 Testing
 
 The bot includes a debug mode that enables you to scan for a specific token.
@@ -116,12 +123,13 @@ efficiently.
 --- 
 
 Script to grab block numbers from Etherscan.com:
+
 ```js
 const blockNumbers = [];
 const onlyUnique = (value, index, array) => array.indexOf(value) === index;
-document.querySelectorAll('#transactions > div > div.table-responsive > table > tbody > tr > td.d-none.d-sm-table-cell > a').forEach(el => blockNumbers.push(el.innerText));console.log(blockNumbers.filter(onlyUnique).reverse().join(','))
+document.querySelectorAll('#transactions > div > div.table-responsive > table > tbody > tr > td.d-none.d-sm-table-cell > a').forEach(el => blockNumbers.push(el.innerText));
+console.log(blockNumbers.filter(onlyUnique).reverse().join(','))
 ```
-
 
 ---
 
