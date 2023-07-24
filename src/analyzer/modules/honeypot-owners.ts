@@ -13,7 +13,7 @@ import { PROVIDER_CONCURRENCY } from '../../contants';
 export const TOO_MANY_HONEY_POT_OWNERS_MODULE_KEY = 'TooManyHoneyPotOwners';
 export const HONEYPOT_THRESHOLD_RATIO = 0.5;
 export const MAX_HOLDERS = 1500;
-export const MAX_CEX_HOLDERS = 30;
+export const MAX_CEX_HOLDERS = 6;
 
 type HoneypotInfo = { address: string; metadata: HoneypotAnalysisMetadata };
 
