@@ -152,7 +152,7 @@ class HoneyPotChecker {
   constructor(
     private leaderboard: EnsLeaderBoard,
     private honeypotSet: Set<string>,
-    private CEXNonce = 5_000,
+    private CEXNonce = 50_000,
   ) {}
 
   async testAddress(
