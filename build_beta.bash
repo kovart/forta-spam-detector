@@ -13,7 +13,7 @@ npm pkg delete "chainSettings"
 npm pkg set 'chainSettings.default.shards'=1 --json
 npm pkg set 'chainSettings.default.target'=2 --json
 
-SOURCE_KEY="betaAgentId"
+SOURCE_KEY="agentIdBeta"
 DESTINATION_KEY="agentId"
 JSON=$(cat forta.config.json)
 SOURCE_VALUE=$(echo "$JSON" | jq -r ".$SOURCE_KEY")

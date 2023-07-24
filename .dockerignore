@@ -1,4 +1,10 @@
 node_modules
+.vscode
+.idea
 dist
 tests
 forta.config.json
+scan
+logs
+research
+scripts

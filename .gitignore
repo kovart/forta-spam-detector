@@ -13,3 +13,5 @@ tests/general/data/test-*
 .env.private
 .env.public
 events.db
+
+scan
