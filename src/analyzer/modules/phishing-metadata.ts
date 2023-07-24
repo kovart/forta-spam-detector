@@ -305,7 +305,7 @@ class PhishingMetadataModule extends AnalyzerModule {
     if (urls.length === 0) return { detected: false, urls };
 
     // The presence of several social media links is often used in the tokenization of restaurants, establishments, artists, and events
-    if ([...description.matchAll(/twitter|facebook|instagram|discord|telegram/gm)].length >= 2) {
+    if ([...description.matchAll(/twitter|facebook|instagram|discord|telegram/gm)].length >= 3) {
       return { detected: false, urls: [] };
     }
 
