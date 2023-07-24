@@ -45,7 +45,7 @@ class TooManyHoneyPotOwnersModule extends AnalyzerModule {
   }
 
   async scan(params: ScanParams): Promise<ModuleScanReturn> {
-    const { token, context, provider, memoizer, transformer, blockNumber } = params;
+    const { token, context, provider, memoizer, blockNumber } = params;
 
     let detected = false;
     let metadata: TooManyHoneyPotOwnersModuleMetadata | undefined = undefined;
@@ -57,18 +57,15 @@ class TooManyHoneyPotOwnersModule extends AnalyzerModule {
     const memo = memoizer.getScope(token.address);
 
     const airdropMetadata = context[AirdropModule.Key].metadata as AirdropModuleMetadata;
-
-    let receiverSet = new Set(airdropMetadata.receivers);
-    const transactionSet = await transformer.transactions(token);
-    const senderSet = new Set([...transactionSet].map((t) => t.from));
+    const receiverSet = new Set(airdropMetadata.receivers);
 
     // Creators often allocate tokens to themselves
     receiverSet.delete(token.deployer);
     receiverSet.delete(token.address);
 
     for (const receiver of receiverSet) {
-      // Delete all burn addresses and all receivers that interacted with the token
-      if (isBurnAddress(receiver) || senderSet.has(receiver)) {
+      // Delete all burn addresses
+      if (isBurnAddress(receiver)) {
         receiverSet.delete(receiver);
       }
     }

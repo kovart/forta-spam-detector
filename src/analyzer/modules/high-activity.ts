@@ -11,14 +11,18 @@ import { TOO_MANY_CREATIONS_MODULE_KEY } from './many-creations';
 import { PHISHING_METADATA_MODULE_KEY } from './phishing-metadata';
 import { HONEY_POT_SHARE_MODULE_KEY } from './honeypot-dominance';
 import { TOKEN_IMPERSONATION_MODULE_KEY } from './token-impersonation';
+import AirdropModule, { AirdropModuleMetadata } from './airdrop';
 
 export const HIGH_ACTIVITY_MODULE_KEY = 'HighActivity';
-export const MIN_UNIQUE_SENDERS_TOTAL = 400;
+export const MIN_UNIQUE_SENDERS_TOTAL = 250;
 export const MIN_UNIQUE_SENDERS_IN_WINDOW = 120;
 export const WINDOW_PERIOD = 7 * 24 * 60 * 60; // 7d
+export const MIN_ACTIVE_RECEIVER_COUNT = 5;
+export const MIN_ACTIVE_RECEIVER_RATE = 0.2; // 20%
 
 export type HighActivityModuleMetadata = {
   senders: string[];
+  activeReceivers: string[];
   startTime: number;
   endTime: number;
   windowPeriod: number;
@@ -28,6 +32,8 @@ export type HighActivityModuleMetadata = {
 export type HighActivityModuleShortMetadata = {
   senderCount: number;
   senderShortList: string[];
+  activeReceiverCount: number;
+  activeReceiverShortList: string[];
   startTime: number;
   endTime: number;
   windowPeriod: number;
@@ -60,25 +66,39 @@ class HighActivityModule extends AnalyzerModule {
   }
 
   async scan(params: ScanParams): Promise<ModuleScanReturn> {
-    const { token, storage, context } = params;
+    const { token, transformer, context } = params;
 
     let detected = false;
     let metadata: HighActivityModuleMetadata | undefined = undefined;
 
-    const transactionSet = (await storage.getTransactions(token.address)) || new Set();
-    const senderSet = new Set<string>([...transactionSet].map((t) => t.from));
+    const airdropMetadata = context[AirdropModule.Key].metadata as AirdropModuleMetadata;
 
-    let multiplier = 1;
+    let suspiciousMultiplier = 1;
     for (const moduleKey of Object.keys(context)) {
       if (this.multipliers[moduleKey] != null) {
-        multiplier *= this.multipliers[moduleKey];
+        suspiciousMultiplier *= this.multipliers[moduleKey];
       }
     }
 
-    detected = senderSet.size > MIN_UNIQUE_SENDERS_TOTAL * multiplier;
+    const transactionSet = await transformer.transactions(token);
+    const senderSet = new Set<string>([...transactionSet].map((t) => t.from));
+    const receiverSet = new Set(airdropMetadata.receivers);
+    const activeReceivers = [...receiverSet].filter((r) => senderSet.has(r));
 
-    let maxSenderCountInWindow = 0;
+    // Check active receivers
+
+    detected =
+      activeReceivers.length > MIN_ACTIVE_RECEIVER_COUNT &&
+      receiverSet.size / activeReceivers.length >= MIN_ACTIVE_RECEIVER_RATE;
+
+    // Check total active accounts
+
+    detected = detected || senderSet.size > MIN_UNIQUE_SENDERS_TOTAL * suspiciousMultiplier;
+
+    let maxSenderCountInWindow = -1;
     if (!detected) {
+      maxSenderCountInWindow = 0;
+
       const transactions = Array.from(transactionSet);
       for (let i = 0; i < transactions.length; i++) {
         const startTransaction = transactions[i];
@@ -95,11 +115,12 @@ class HighActivityModule extends AnalyzerModule {
         maxSenderCountInWindow = Math.max(maxSenderCountInWindow, senderSet.size);
       }
 
-      detected = maxSenderCountInWindow >= MIN_UNIQUE_SENDERS_IN_WINDOW * multiplier;
+      detected = maxSenderCountInWindow >= MIN_UNIQUE_SENDERS_IN_WINDOW * suspiciousMultiplier;
     }
 
     metadata = {
       senders: [...senderSet],
+      activeReceivers: activeReceivers,
       startTime: token.timestamp,
       endTime: params.timestamp,
       windowPeriod: WINDOW_PERIOD,
@@ -115,6 +136,8 @@ class HighActivityModule extends AnalyzerModule {
     return {
       senderCount: metadata.senders.length,
       senderShortList: metadata.senders.slice(0, 15),
+      activeReceiverCount: metadata.activeReceivers.length,
+      activeReceiverShortList: metadata.activeReceivers.slice(0, 15),
       startTime: metadata.startTime,
       endTime: metadata.endTime,
       windowPeriod: WINDOW_PERIOD,
