@@ -215,6 +215,10 @@ describe('PhishingMetadata', () => {
       result = context[indicator.key];
     }
 
+    const longDescriptionWithLink =
+      "wave flow vibrate oscillate swing waft drift float undulate surge meander...\n\n\n\nafter years of living in cities, on a trip through the alps, i’ve been immersed in a beautiful landscape. i was shocked by this vastness, depth, rhythmic beauty...\nsoft rolling hills that gently swing into each other, to the depths of overlying rugged ridges, followed by billowing cloud banks, this kind of loving frequency!\nwas it then when the theme “landscape” became a constant companion of my work? maybe.\n\nnevertheless, it's not my ambition to create landscape illustrations. rather, through the joy of playing with code, many different abstract structures led me to this sort of linear turbulence, which can sometimes leave a pleasant impression of “familiarity”. however, an openness that stimulates the imagination has always been important to me.\n\nsoftly morphing blob shapes traveling horizontally and leaving their trails behind. creating virtual three-dimensional forms, layered over each other, building up staggered fields out of random color sequences of partly pre-defined color arrays. mixed and overlaid with white and greyscale palettes.\nwhen some remaining colorful structures shine through, sometimes, this reminds me of thawing snow in spring, when yellow and green grasses and early bloomers, or lost toys or trash suddenly appear.\nsometimes it's the case that when the picture is built up randomly, by chance, a beautiful colorful structure is suddenly overlaid with gray again, an appropriate allegory to the concealing snow or wrapped gifts, or similar things, and for whom i consider the secret to remain hidden.\n\n...\n\ncomputer-based aesthetics have always had a strong fascination for me.\nin the early 90s, during my 2 year residency in new york i used to go into clubs and bars around the East village.  once entered a small place with electronic music playing and animations beamed onto the wall. i couldn’t stop staring at these into-each-other-morphing structures. fractals!" +
+      +'Visit site.com';
+
     describe('ERC721', () => {
       it('should not detect description with just keywords', async () => {
         await run(
@@ -244,6 +248,21 @@ describe('PhishingMetadata', () => {
         expect(result.detected).toStrictEqual(false);
       });
 
+      it('should not detect phishing in long descriptions', async () => {
+        await run(TokenStandard.Erc721, longDescriptionWithLink);
+        expect(result.detected).toStrictEqual(false);
+      });
+
+      it('should not detect marketplace links', async () => {
+        await run(TokenStandard.Erc721, 'Visit opensea.io/link');
+        expect(result.detected).toStrictEqual(false);
+      });
+
+      it('should not detect phishing with multiple social media links', async () => {
+        await run(TokenStandard.Erc721, 'Visit our telegram and twitter. site.com');
+        expect(result.detected).toStrictEqual(false);
+      });
+
       it('should detect short urls', async () => {
         await run(TokenStandard.Erc721, 'Visit t.ly/N-6G');
         expect(result.detected).toStrictEqual(true);
@@ -257,6 +276,13 @@ describe('PhishingMetadata', () => {
         expect(result.metadata!.urls).toHaveLength(2);
         expect(result.metadata!.urls).toContain('t.ly/n-6g');
         expect(result.metadata!.urls).toContain('https://site.cc');
+      });
+
+      it('should not extract "(" and ")" symbols in url', async () => {
+        await run(TokenStandard.Erc721, 'Visit our discord (https://discord.gg/av66rnpc)');
+        expect(result.detected).toStrictEqual(true);
+        expect(result.metadata!.urls).toHaveLength(1);
+        expect(result.metadata!.urls).toContain('https://discord.gg/av66rnpc');
       });
 
       it('should detect description with a link and keywords', async () => {
@@ -296,6 +322,11 @@ describe('PhishingMetadata', () => {
 
       it('should not detect description with just a link', async () => {
         await run(TokenStandard.Erc1155, 'Some text. site.com');
+        expect(result.detected).toStrictEqual(false);
+      });
+
+      it('should not detect phishing in long descriptions', async () => {
+        await run(TokenStandard.Erc1155, longDescriptionWithLink);
         expect(result.detected).toStrictEqual(false);
       });
 

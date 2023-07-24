@@ -51,6 +51,7 @@ export const PHISHING_DESCRIPTION_KEYWORDS = [
   'go to',
   'available here',
   'available at',
+  'more information',
 ];
 export const PHISHING_DESCRIPTION_PATTERNS = [
   /* presence of NFT value */
@@ -287,15 +288,26 @@ class PhishingMetadataModule extends AnalyzerModule {
   private checkPhishingText(text: string): { detected: boolean; urls: string[] } {
     const description = this.normalizeText(text);
 
-    const urls = extractLinks(description).filter(
-      // filter out links to well-known marketplaces
+    const urls = [...new Set(extractLinks(description))].filter(
       (url) =>
-        ![/blur.io/, /looksrare.org/, /opensea.io/, /x2y2.io/, /genie.xyz/, /gem.xyz/].find(
-          (regex) => regex.test(url),
-        ),
+        // Well-known marketplaces
+        !url.match(/blur.io|looksrare.org|opensea.io|x2y2.io|genie.xyz|gem.xyz/m) &&
+        // Governance sites
+        !url.match(/^(.*\.)?(edu|gov)(\.[a-zA-Z]{2,})?$/m) &&
+        // Explorers
+        !url.match(
+          /etherscan.io|bscscan.com|polygonscan.com|arbiscan.io|snowtrace.io|ftmscan.com/m,
+        ) &&
+        // Popular sites
+        !url.match(/wikipedia|bbc.com|cnn.com/m),
     );
 
     if (urls.length === 0) return { detected: false, urls };
+
+    // The presence of several social media links is often used in the tokenization of restaurants, establishments, artists, and events
+    if ([...description.matchAll(/twitter|facebook|instagram|discord|telegram/gm)].length >= 2) {
+      return { detected: false, urls: [] };
+    }
 
     for (const keyword of PHISHING_DESCRIPTION_KEYWORDS) {
       if (description.includes(keyword)) return { detected: true, urls };

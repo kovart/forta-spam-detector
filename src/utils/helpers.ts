@@ -307,7 +307,7 @@ export function containsLink(str: string): boolean {
 }
 
 export function extractLinks(str: string): string[] {
-  return str.match(urlRegex({ strict: false })) || [];
+  return (str.match(urlRegex({ strict: false })) || []).map((url) => url.replace(/\)$/g, ''));
 }
 
 export function isCid(str: string) {
