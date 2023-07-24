@@ -82,7 +82,7 @@ const provideInitialize = (data: DataContainer, isDevelopment: boolean): Initial
     );
     const detector = new SpamDetector(provider, tokenAnalyzer, storage, memoizer, TICK_INTERVAL);
     const sharding = new BotSharding({
-      redundancy: 2,
+      redundancy: 3,
       isDevelopment: IS_DEVELOPMENT,
     });
     const alertManager = new AlertMitigation<Token>({
@@ -163,10 +163,9 @@ const provideHandleTransaction = (data: DataContainer): HandleTransaction => {
   const isTimeToSync = createTicker(5 * 60 * 1000); // 5m
 
   return async function handleTransaction(txEvent: TransactionEvent) {
-    // TODO filter out token pairs (e.g. UNI-V2)
-    // TODO make high activity indicator dynamic and based on other indicators
     // TODO filter db by current block number
     // TODO add indicator for a well-known token from a centralized db
+    // TODO monitor "removed liquidity with no further activity"
 
     if (isTimeToSync(txEvent.timestamp)) {
       await data.sharding.sync(txEvent.network);
