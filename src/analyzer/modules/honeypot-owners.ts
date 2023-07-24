@@ -13,20 +13,28 @@ import { PROVIDER_CONCURRENCY } from '../../contants';
 export const TOO_MANY_HONEY_POT_OWNERS_MODULE_KEY = 'TooManyHoneyPotOwners';
 export const HONEYPOT_THRESHOLD_RATIO = 0.5;
 export const MAX_HOLDERS = 1500;
+export const MAX_CEX_HOLDERS = 30;
 
 type HoneypotInfo = { address: string; metadata: HoneypotAnalysisMetadata };
 
+type CEXInfo = { address: string; nonce: number };
+
 export type TooManyHoneyPotOwnersModuleMetadata = {
+  cexs: CEXInfo[];
   honeypots: HoneypotInfo[];
   honeypotRatio: number;
+  cexCount: number;
+  honeypotCount: number;
   holderCount: number;
 };
 
 export type TooManyHoneyPotOwnersModuleShortMetadata = {
-  honeypotCount: number;
+  cexShortList: CEXInfo[];
   honeypotShortList: HoneypotInfo[];
-  honeypotRatio: number;
+  cexCount: number;
+  honeypotCount: number;
   holderCount: number;
+  honeypotRatio: number;
 };
 
 class TooManyHoneyPotOwnersModule extends AnalyzerModule {
@@ -71,6 +79,7 @@ class TooManyHoneyPotOwnersModule extends AnalyzerModule {
     }
 
     const honeypots: HoneypotInfo[] = [];
+    const cexs: CEXInfo[] = [];
     const holderQueue = queue<string>(async (receiver, callback) => {
       try {
         const { isHoneypot, metadata } = await memo('honeypot', [receiver], () => {
@@ -78,13 +87,19 @@ class TooManyHoneyPotOwnersModule extends AnalyzerModule {
           return this.honeypotChecker.testAddress(receiver, provider, blockNumber);
         });
 
+        const isCEX = metadata.CEX?.detected || false;
+
+        if (isCEX) {
+          cexs.push({ address: receiver, nonce: metadata.CEX?.nonce ?? 0 });
+        }
+
         if (isHoneypot) {
           honeypots.push({ address: receiver, metadata: metadata });
         }
 
         callback();
       } catch (e: any) {
-        Logger.error('holderQueue error', { error: e });
+        Logger.error(e, 'holderQueue error');
         holderQueue.remove(() => true);
         callback();
       }
@@ -100,9 +115,17 @@ class TooManyHoneyPotOwnersModule extends AnalyzerModule {
     }
 
     const honeypotRatio = honeypots.length / receiverSet.size;
-    detected = honeypotRatio >= HONEYPOT_THRESHOLD_RATIO;
-    if (detected) {
-      metadata = { honeypots, honeypotRatio, holderCount: receiverSet.size };
+
+    if (cexs.length > MAX_CEX_HOLDERS || honeypotRatio >= HONEYPOT_THRESHOLD_RATIO) {
+      detected = true;
+      metadata = {
+        cexs,
+        honeypots,
+        honeypotRatio,
+        cexCount: cexs.length,
+        honeypotCount: honeypots.length,
+        holderCount: receiverSet.size,
+      };
     }
 
     context[TOO_MANY_HONEY_POT_OWNERS_MODULE_KEY] = { detected, metadata };
@@ -113,8 +136,10 @@ class TooManyHoneyPotOwnersModule extends AnalyzerModule {
   ): TooManyHoneyPotOwnersModuleShortMetadata {
     return {
       holderCount: metadata.holderCount,
+      cexCount: metadata.cexs.length,
       honeypotCount: metadata.honeypots.length,
       honeypotShortList: metadata.honeypots.slice(0, 15),
+      cexShortList: metadata.cexs.slice(0, 15),
       honeypotRatio: metadata.honeypotRatio,
     };
   }
