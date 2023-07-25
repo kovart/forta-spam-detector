@@ -193,6 +193,7 @@ class AirdropModule extends AnalyzerModule {
             }
 
             if (isAirdropDetected) {
+              airdropStartTime = startTransfer.tx.timestamp;
               for (let i = startIndex; i <= endIndex; i++) {
                 const transfer = transfers[i];
                 airdropTransferSet.add({
