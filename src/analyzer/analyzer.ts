@@ -132,17 +132,6 @@ class TokenAnalyzer {
     let isSpam = false;
     let isFinalized = false; // no longer need to monitor this token
 
-    if (
-      [
-        ObservationTimeModule,
-        HighActivityModule,
-        PhishingMetadataModule,
-        TooMuchAirdropActivityModule,
-      ].find((Module) => analysis[Module.Key]?.detected)
-    ) {
-      isFinalized = true;
-    }
-
     // The evaluation does not use SilentMint module because of FPs,
     // but it is displayed in the presence of other indicators
     if (
@@ -162,6 +151,21 @@ class TokenAnalyzer {
       ].find((Module) => analysis[Module.Key]?.detected)
     ) {
       isSpam = true;
+    }
+
+    if (
+      [
+        ObservationTimeModule,
+        HighActivityModule,
+        PhishingMetadataModule,
+        TooMuchAirdropActivityModule,
+      ].find((Module) => analysis[Module.Key]?.detected)
+    ) {
+      isFinalized = true;
+
+      if (analysis[HighActivityModule.Key].detected) {
+        isSpam = false;
+      }
     }
 
     return {
