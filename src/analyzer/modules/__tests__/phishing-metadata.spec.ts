@@ -259,7 +259,7 @@ describe('PhishingMetadata', () => {
       });
 
       it('should not detect phishing with multiple social media links', async () => {
-        await run(TokenStandard.Erc721, 'Visit our telegram and twitter. site.com');
+        await run(TokenStandard.Erc721, 'Visit our telegram, twitter and facebook. site.com');
         expect(result.detected).toStrictEqual(false);
       });
 
@@ -279,7 +279,7 @@ describe('PhishingMetadata', () => {
       });
 
       it('should not extract "(" and ")" symbols in url', async () => {
-        await run(TokenStandard.Erc721, 'Visit our discord (https://discord.gg/av66rnpc)');
+        await run(TokenStandard.Erc721, 'Visit our discord (https://discord.gg/av66rnpc).//');
         expect(result.detected).toStrictEqual(true);
         expect(result.metadata!.urls).toHaveLength(1);
         expect(result.metadata!.urls).toContain('https://discord.gg/av66rnpc');

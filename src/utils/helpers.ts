@@ -307,7 +307,12 @@ export function containsLink(str: string): boolean {
 }
 
 export function extractLinks(str: string): string[] {
-  return (str.match(urlRegex({ strict: false })) || []).map((url) => url.replace(/\)$/g, ''));
+  return (
+    (str.match(urlRegex({ strict: false })) || [])
+      // fix links that contain parentheses: "(site.com).test"
+      .map((url) => /([^\)]+)/.exec(url)?.[0])
+      .filter((v) => !!v) as string[]
+  );
 }
 
 export function isCid(str: string) {
