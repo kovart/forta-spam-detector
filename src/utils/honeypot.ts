@@ -137,22 +137,24 @@ export class EnsLeaderBoard {
 }
 
 class HoneyPotChecker {
-  static NETWORK_HIGH_BALANCE_THRESHOLDS: { [network: string]: BigNumber } = {
-    [Network.MAINNET]: ethers.utils.parseUnits('1.5'),
-    [Network.BSC]: ethers.utils.parseUnits('6'),
-    [Network.POLYGON]: ethers.utils.parseUnits('2000'),
-    [Network.FANTOM]: ethers.utils.parseUnits('4600'),
-    [Network.ARBITRUM]: ethers.utils.parseUnits('1.5'), // ETH
-    [Network.AVALANCHE]: ethers.utils.parseUnits('118'),
-    [Network.OPTIMISM]: ethers.utils.parseUnits('1.5'), // ETH
-  };
-
   static VERY_HIGH_MULTIPLIER = 10;
 
   constructor(
     private leaderboard: EnsLeaderBoard,
     private honeypotSet: Set<string>,
-    private CEXNonce = 50_000,
+    private highBalanceByChainId: { [network: string]: BigNumber } = {
+      [Network.MAINNET]: ethers.utils.parseUnits('1.5'),
+      [Network.BSC]: ethers.utils.parseUnits('6'),
+      [Network.POLYGON]: ethers.utils.parseUnits('2000'),
+      [Network.FANTOM]: ethers.utils.parseUnits('4600'),
+      [Network.ARBITRUM]: ethers.utils.parseUnits('1.5'), // ETH
+      [Network.AVALANCHE]: ethers.utils.parseUnits('118'),
+      [Network.OPTIMISM]: ethers.utils.parseUnits('1.5'), // ETH
+    },
+    private cexNonceByChainId: { [chain: number]: number } = {
+      [0]: 400_000, // default
+      [Network.MAINNET]: 50_000,
+    },
   ) {}
 
   async testAddress(
@@ -188,27 +190,27 @@ class HoneyPotChecker {
     const network = provider.network;
     const balance = await retry(() => provider.getBalance(address, blockNumber));
 
-    if (!HoneyPotChecker.NETWORK_HIGH_BALANCE_THRESHOLDS[network.chainId])
+    if (!this.highBalanceByChainId[network.chainId])
       throw new Error('Network is not supported yet: ' + network.chainId);
 
     metadata['HighBalance'] = {
-      detected: balance.gt(HoneyPotChecker.NETWORK_HIGH_BALANCE_THRESHOLDS[network.chainId]),
+      detected: balance.gt(this.highBalanceByChainId[network.chainId]),
       balance: balance.toString(),
     };
 
     metadata['VeryHighBalance'] = {
       detected: balance.gt(
-        HoneyPotChecker.NETWORK_HIGH_BALANCE_THRESHOLDS[network.chainId].mul(
-          HoneyPotChecker.VERY_HIGH_MULTIPLIER,
-        ),
+        this.highBalanceByChainId[network.chainId].mul(HoneyPotChecker.VERY_HIGH_MULTIPLIER),
       ),
       balance: balance.toString(),
     };
 
     const nonce = await retry(() => provider.getTransactionCount(address));
 
+    const cexNonce = this.cexNonceByChainId[network.chainId] || this.cexNonceByChainId[0];
+
     metadata['CEX'] = {
-      detected: nonce >= this.CEXNonce,
+      detected: nonce >= cexNonce,
       nonce: nonce,
     };
 
