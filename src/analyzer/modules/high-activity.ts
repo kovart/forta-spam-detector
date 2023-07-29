@@ -44,15 +44,15 @@ export const SUSPICIOUS_MULTIPLIERS: { [moduleKey: string]: number } = {
   [TOO_MUCH_AIRDROP_ACTIVITY_MODULE_KEY]: 1.5,
   [LOW_ACTIVITY_MODULE_KEY]: 1.3,
   [MULTIPLE_OWNERS_MODULE_KEY]: 4,
-  [NON_UNIQUE_TOKENS_MODULE_KEY]: 4,
-  [FALSE_TOTAL_SUPPLY_MODULE_KEY]: 4,
+  [NON_UNIQUE_TOKENS_MODULE_KEY]: 1.5,
+  [FALSE_TOTAL_SUPPLY_MODULE_KEY]: 2,
   [SILENT_MINT_MODULE_KEY]: 1.1,
   [SLEEP_MINT_MODULE_KEY]: 1.5,
   [TOO_MANY_CREATIONS_MODULE_KEY]: 1.5,
-  [PHISHING_METADATA_MODULE_KEY]: 4,
+  [PHISHING_METADATA_MODULE_KEY]: 2,
   [TOO_MANY_HONEY_POT_OWNERS_MODULE_KEY]: 2,
   [HONEY_POT_SHARE_MODULE_KEY]: 1.5,
-  [TOKEN_IMPERSONATION_MODULE_KEY]: 5,
+  [TOKEN_IMPERSONATION_MODULE_KEY]: 3,
 };
 
 class HighActivityModule extends AnalyzerModule {
@@ -75,7 +75,7 @@ class HighActivityModule extends AnalyzerModule {
 
     let suspiciousMultiplier = 1;
     for (const moduleKey of Object.keys(context)) {
-      if (this.multipliers[moduleKey] != null) {
+      if (context[moduleKey]?.detected && this.multipliers[moduleKey] != null) {
         suspiciousMultiplier *= this.multipliers[moduleKey];
       }
     }
@@ -89,7 +89,7 @@ class HighActivityModule extends AnalyzerModule {
 
     detected =
       activeReceivers.length > MIN_ACTIVE_RECEIVER_COUNT &&
-      receiverSet.size / activeReceivers.length >= MIN_ACTIVE_RECEIVER_RATE;
+      activeReceivers.length / receiverSet.size >= MIN_ACTIVE_RECEIVER_RATE;
 
     // Check total active accounts
 
