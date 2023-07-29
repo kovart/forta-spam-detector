@@ -103,7 +103,10 @@ class Erc721MultipleOwnersModule extends AnalyzerModule {
             if (
               prevTokenTransfer.to !== currTokenTransfer.from &&
               // ensure there are no anomalies in db
-              prevTokenTransfer.logIndex != currTokenTransfer.logIndex
+              !(
+                prevTokenTransfer.transaction.hash == currTokenTransfer.transaction.hash &&
+                prevTokenTransfer.logIndex == currTokenTransfer.logIndex
+              )
             ) {
               // Detected an anomaly; multiple owners of the same token id
 

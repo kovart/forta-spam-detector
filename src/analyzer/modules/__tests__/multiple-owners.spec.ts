@@ -54,7 +54,7 @@ describe('Erc721MultipleOwners', () => {
       blockNumber: params.blockNumber,
       to: token.address,
       from: autoAddress(),
-      hash: params.hash || '0xHASH',
+      hash: params.hash || `0xB${params.blockNumber}I${params.index}`,
       sighash: '0xSIGHASH',
     };
   }
