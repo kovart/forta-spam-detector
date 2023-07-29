@@ -113,17 +113,15 @@ class TooManyHoneyPotOwnersModule extends AnalyzerModule {
 
     const honeypotRatio = honeypots.length / receiverSet.size;
 
-    if (cexs.length > MAX_CEX_HOLDERS || honeypotRatio >= HONEYPOT_THRESHOLD_RATIO) {
-      detected = true;
-      metadata = {
-        cexs,
-        honeypots,
-        honeypotRatio,
-        cexCount: cexs.length,
-        honeypotCount: honeypots.length,
-        holderCount: receiverSet.size,
-      };
-    }
+    detected = cexs.length > MAX_CEX_HOLDERS || honeypotRatio >= HONEYPOT_THRESHOLD_RATIO;
+    metadata = {
+      cexs,
+      honeypots,
+      honeypotRatio,
+      cexCount: cexs.length,
+      honeypotCount: honeypots.length,
+      holderCount: receiverSet.size,
+    };
 
     context[TOO_MANY_HONEY_POT_OWNERS_MODULE_KEY] = { detected, metadata };
   }
