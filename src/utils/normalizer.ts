@@ -143,7 +143,11 @@ export const INVISIBLE_UNICODE_CHARACTERS = new Set([
   '\u{1D17A}',
 ]);
 
-export function normalizeText(text: string, preserveCase = false): string {
+export function normalizeText(
+  text: string,
+  preserveCase = false,
+  preserveSeparators = false,
+): string {
   const textChars = Array.from(text.toLowerCase());
   const isUpperChars = Array.from(text).map((c) => /[A-Z]/.test(c));
 
@@ -169,8 +173,10 @@ export function normalizeText(text: string, preserveCase = false): string {
     char = char.replace(/\.+/gu, '.');
     // replace multiple commas with single comma
     char = char.replace(/,+/gu, ',');
-    // remove separators
-    char = char.replace(/\p{Separator}/gu, '');
+    if (!preserveSeparators) {
+      // remove separators
+      char = char.replace(/\p{Separator}/gu, '');
+    }
     // remove control, unassigned, format characters etc
     char = char.replace(/\p{Other}/gu, '');
     // special characters

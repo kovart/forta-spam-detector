@@ -278,7 +278,7 @@ class PhishingMetadataModule extends AnalyzerModule {
       .replace(/\[.\]/g, '.')
       .replace(/\[dot\]/g, '.')
       .split(/\s/gu)
-      .map((v) => normalizeText(v.toLowerCase()));
+      .map((v) => normalizeText(v.toLowerCase(), false, true));
   }
 
   private normalizeText(text: string) {
@@ -288,19 +288,22 @@ class PhishingMetadataModule extends AnalyzerModule {
   private checkPhishingText(text: string): { detected: boolean; urls: string[] } {
     const description = this.normalizeText(text);
 
-    const urls = [...new Set(extractLinks(description))].filter(
-      (url) =>
-        // Well-known marketplaces
-        !url.match(/blur.io|looksrare.org|opensea.io|x2y2.io|genie.xyz|gem.xyz/m) &&
-        // Governance sites
-        !url.match(/^(.*\.)?(edu|gov)(\.[a-zA-Z]{2,})?$/m) &&
-        // Explorers
-        !url.match(
-          /etherscan.io|bscscan.com|polygonscan.com|arbiscan.io|snowtrace.io|ftmscan.com/m,
-        ) &&
-        // Popular sites
-        !url.match(/wikipedia|bbc.com|cnn.com/m),
-    );
+    const urls = [...new Set(extractLinks(description))]
+      .filter(
+        (url) =>
+          // Well-known marketplaces
+          !url.match(/blur.io|looksrare.org|opensea.io|x2y2.io|genie.xyz|gem.xyz/m) &&
+          // Governance sites
+          !url.match(/^(.*\.)?(edu|gov)(\.[a-zA-Z]{2,})?$/m) &&
+          // Explorers
+          !url.match(
+            /etherscan.io|bscscan.com|polygonscan.com|arbiscan.io|snowtrace.io|ftmscan.com/m,
+          ) &&
+          // Popular sites
+          !url.match(/wikipedia|bbc.com|cnn.com/m),
+      )
+      // Links that are too short are probably incorrectly parsed text (A.A.Murakai -> a.a.mu)
+      .filter((url) => url.replace(/\./g, '').length >= 6);
 
     if (urls.length === 0) return { detected: false, urls };
 

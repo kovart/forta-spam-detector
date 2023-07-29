@@ -258,6 +258,11 @@ describe('PhishingMetadata', () => {
         expect(result.detected).toStrictEqual(false);
       });
 
+      it('should not detect links in names', async () => {
+        await run(TokenStandard.Erc721, "Visit art symbolizing A.A.Murakami's Mataverse");
+        expect(result.detected).toStrictEqual(false);
+      });
+
       it('should not detect phishing with multiple social media links', async () => {
         await run(TokenStandard.Erc721, 'Visit our telegram, twitter and facebook. site.com');
         expect(result.detected).toStrictEqual(false);
