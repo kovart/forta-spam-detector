@@ -42,9 +42,9 @@ Logger.level = 'info';
 let TICK_INTERVAL = 4 * 60 * 60; // 4h
 
 if (IS_DEBUG) {
+  Logger.level = 'trace';
   Logger.debug(`Debug mode enabled. Target contract: ${DEBUG_TARGET_TOKEN}`);
   TICK_INTERVAL = 0;
-  Logger.level = 'debug';
 }
 
 const data = {} as DataContainer;
@@ -166,6 +166,7 @@ const provideHandleTransaction = (data: DataContainer): HandleTransaction => {
     // TODO filter db by current block number
     // TODO add indicator for a well-known token from a centralized db
     // TODO monitor "removed liquidity with no further activity"
+    // TODO check for a partial match in the name then checking the metadata with the images
 
     if (isTimeToSync(txEvent.timestamp)) {
       await data.sharding.sync(txEvent.network);
@@ -175,8 +176,9 @@ const provideHandleTransaction = (data: DataContainer): HandleTransaction => {
     if (txEvent.blockNumber % data.sharding.getShardCount() === data.sharding.getShardIndex()) {
       const createdContracts = findCreatedContracts(txEvent);
 
-      if (!IS_DEBUG && createdContracts.length > 0) {
+      if (createdContracts.length > 0) {
         Logger.debug(`Found ${createdContracts.length} created contracts in tx: ${txEvent.hash}`);
+        Logger.trace(createdContracts);
       }
 
       for (const contract of createdContracts) {
