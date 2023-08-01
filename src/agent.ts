@@ -109,6 +109,8 @@ const provideInitialize = (data: DataContainer, isDevelopment: boolean): Initial
 };
 
 const provideHandleBlock = (data: DataContainer): HandleBlock => {
+  const isTimeToLog = createTicker(60 * 60 * 1000); // 1h
+
   return async function handleBlock(blockEvent) {
     const findings: Finding[] = [];
 
@@ -124,7 +126,7 @@ const provideHandleBlock = (data: DataContainer): HandleBlock => {
         await data.detector.wait();
       }
 
-      if (blockEvent.blockNumber % 500 == 0) data.detector.logStats();
+      if (isTimeToLog(blockEvent.block.timestamp)) data.detector.logStats();
     }
 
     const analyses = data.detector.releaseAnalyses();
