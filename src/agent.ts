@@ -28,8 +28,9 @@ import HoneyPotChecker, { EnsLeaderBoard } from './utils/honeypot';
 import TokenAnalyzer from './analyzer/analyzer';
 import TokenProvider from './utils/tokens';
 import Memoizer from './utils/cache';
+import PhishingMetadataModule from './analyzer/modules/phishing-metadata';
 import DataStorage from './storage';
-import { DataContainer, Token } from './types';
+import { AlertRemoveItem, DataContainer } from './types';
 import {
   IS_DEVELOPMENT,
   IS_DEBUG,
@@ -91,14 +92,15 @@ const provideInitialize = (data: DataContainer, isDevelopment: boolean): Initial
       redundancy: 3,
       isDevelopment: IS_DEVELOPMENT,
     });
-    const alertManager = new AlertMitigation<Token>({
+
+    const alertManager = new AlertMitigation<AlertRemoveItem>({
       chainId: network.chainId,
       falseFindingsUrl: data.isDevelopment ? undefined : FALSE_FINDINGS_URL,
       storage: data.isDevelopment ? new InMemoryBotStorage() : new FortaBotStorage(),
       getHash: (t) => t.address,
     });
 
-    data.spamAlertMitigation = alertManager;
+    data.alertMitigation = alertManager;
     data.sharding = sharding;
     data.provider = provider;
     data.isDevelopment = isDevelopment;
@@ -228,18 +230,36 @@ const provideAlertMitigation = (data: DataContainer): HandleBlock => {
     try {
       // We use such a block number so that it can be executed at different times with fetching false findings
       if (blockEvent.blockNumber % 5_010 === 0) {
-        await data.spamAlertMitigation.optimizeStorage();
+        await data.alertMitigation.optimizeStorage();
       }
 
       if (blockEvent.blockNumber % 250 === 0) {
-        const tokens = await data.spamAlertMitigation.getFalseFindings();
+        const tokens = await data.alertMitigation.getFalseFindings();
 
         if (tokens.length > 0) {
           Logger.info(`New false positive findings: ${tokens.length}`);
         }
 
-        await data.spamAlertMitigation.markFindingsAsRemoved(tokens);
-        return tokens.map((t) => createSpamRemoveFinding(t, {}));
+        await data.alertMitigation.markFindingsAsRemoved(tokens);
+
+        return tokens
+          .map((item) => {
+            const findings: Finding[] = [createSpamRemoveFinding(item, {})];
+
+            if (item.isPhishing) {
+              findings.push(
+                createPhishingRemoveFinding(item, {
+                  [PhishingMetadataModule.Key]: {
+                    detected: true,
+                    metadata: { urls: item.phishingUrls || [] },
+                  },
+                }),
+              );
+            }
+
+            return findings;
+          })
+          .flat();
       }
     } catch (e) {
       Logger.error('Alert mitigation error');

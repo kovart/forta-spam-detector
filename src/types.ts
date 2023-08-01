@@ -6,11 +6,16 @@ import { SpamDetector } from './detector';
 import { AnalysisResult } from './analyzer/types';
 import { AlertMitigation } from './utils/mitigation';
 
+export type AlertRemoveItem = Token & {
+  isPhishing?: boolean;
+  phishingUrls?: string[];
+};
+
 export type DataContainer = {
   provider: providers.JsonRpcProvider;
   detector: SpamDetector;
   sharding: BotSharding;
-  alertMitigation: AlertMitigation<Token>;
+  alertMitigation: AlertMitigation<AlertRemoveItem>;
   analysisByToken: Map<TokenContract, AnalysisResult>;
   previousBlock: Block;
   isInitialized: boolean;
