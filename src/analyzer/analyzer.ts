@@ -133,7 +133,7 @@ class TokenAnalyzer {
   private interpret(analysis: AnalysisContext) {
     let isSpam = false;
     let isFinalized = false; // no longer need to monitor this token
-    let isPhishing = analysis[PhishingMetadata.Key].detected || false;
+    let isPhishing = analysis[PhishingMetadata.Key]?.detected || false;
 
     // The evaluation does not use SilentMint module because of FPs,
     // but it is displayed in the presence of other indicators

@@ -63,7 +63,7 @@ export function calcConfidence(analysis: AnalysisContext): number {
   }
 
   const receivers =
-    (analysis[AirdropModule.Key].metadata as AirdropModuleShortMetadata)?.receiverCount ?? 0;
+    (analysis[AirdropModule.Key]?.metadata as AirdropModuleShortMetadata)?.receiverCount ?? 0;
 
   if (receivers >= 1000) {
     confidence *= 1.2;
@@ -71,8 +71,9 @@ export function calcConfidence(analysis: AnalysisContext): number {
     confidence *= 1.1;
   }
 
-  const phishingMetadata = analysis[PhishingMetadataModule.Key]
-    .metadata as PhishingModuleMetadata | null;
+  const phishingMetadata = analysis[PhishingMetadataModule.Key]?.metadata as
+    | PhishingModuleMetadata
+    | undefined;
 
   const description: string =
     maxBy(Object.values(phishingMetadata?.descriptionByTokenId || {}), (e) => e.length) || '';
@@ -94,7 +95,7 @@ export function calcConfidence(analysis: AnalysisContext): number {
   }
 
   const senders: number =
-    (analysis[HighActivityModule.Key].metadata as HighActivityModuleShortMetadata)?.senderCount ||
+    (analysis[HighActivityModule.Key]?.metadata as HighActivityModuleShortMetadata)?.senderCount ||
     0;
 
   if (senders >= 300) {
