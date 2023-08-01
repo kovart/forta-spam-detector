@@ -28,6 +28,7 @@ import ObservationTimeModule from './modules/observation-time';
 import TooMuchAirdropActivityModule from './modules/airdrop-activity';
 import SleepMintModule from './modules/sleep-mint';
 import TokenImpersonation from './modules/token-impersonation';
+import PhishingMetadata from './modules/phishing-metadata';
 
 class TokenAnalyzer {
   private modules: AnalyzerModule[];
@@ -132,6 +133,7 @@ class TokenAnalyzer {
   private interpret(analysis: AnalysisContext) {
     let isSpam = false;
     let isFinalized = false; // no longer need to monitor this token
+    let isPhishing = analysis[PhishingMetadata.Key].detected || false;
 
     // The evaluation does not use SilentMint module because of FPs,
     // but it is displayed in the presence of other indicators
@@ -172,6 +174,7 @@ class TokenAnalyzer {
     return {
       isSpam,
       isFinalized,
+      isPhishing,
     };
   }
 

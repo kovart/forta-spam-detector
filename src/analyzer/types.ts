@@ -30,7 +30,7 @@ export type ModuleScanReturn = { interrupt?: boolean; finalized?: boolean } | un
 
 export type AnalysisResult = {
   analysis: AnalysisContext;
-  interpret: () => { isSpam: boolean; isFinalized: boolean };
+  interpret: () => { isSpam: boolean; isPhishing: boolean; isFinalized: boolean };
   compare: (prevAnalysis?: AnalysisContext) => { isUpdated: boolean; isChanged: boolean };
 };
 

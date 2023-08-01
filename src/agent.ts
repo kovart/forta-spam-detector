@@ -15,7 +15,13 @@ import duration from 'dayjs/plugin/duration';
 
 import Logger from './utils/logger';
 import { combine, findCreatedContracts, identifyTokenInterface } from './utils/helpers';
-import { createSpamNewFinding, createSpamRemoveFinding, createSpamUpdateFinding } from './findings';
+import {
+  createPhishingNewFinding,
+  createPhishingRemoveFinding,
+  createSpamNewFinding,
+  createSpamRemoveFinding,
+  createSpamUpdateFinding,
+} from './findings';
 import { SpamDetector } from './detector';
 import SqlDatabase from './database';
 import HoneyPotChecker, { EnsLeaderBoard } from './utils/honeypot';
@@ -92,7 +98,7 @@ const provideInitialize = (data: DataContainer, isDevelopment: boolean): Initial
       getHash: (t) => t.address,
     });
 
-    data.alertMitigation = alertManager;
+    data.spamAlertMitigation = alertManager;
     data.sharding = sharding;
     data.provider = provider;
     data.isDevelopment = isDevelopment;
@@ -133,19 +139,30 @@ const provideHandleBlock = (data: DataContainer): HandleBlock => {
     for (const { token, result: currentResult } of analyses) {
       const previousResult = data.analysisByToken.get(token);
 
-      const { isSpam, isFinalized } = currentResult.interpret();
+      const { isSpam, isPhishing, isFinalized } = currentResult.interpret();
       const { isUpdated } = currentResult.compare(previousResult?.analysis);
 
-      const wasSpam = previousResult?.interpret().isSpam || false;
+      const previousInterpretation = previousResult?.interpret();
+      const wasSpam = previousInterpretation?.isSpam || false;
+      const wasPhishing = previousInterpretation?.isPhishing || false;
 
       if (isSpam && !wasSpam) {
         findings.push(createSpamNewFinding(token, currentResult.analysis));
+        findings.push(createSpamNewFinding(token, currentResult.analysis));
+
+        if (isPhishing) {
+          findings.push(createPhishingNewFinding(token, currentResult.analysis));
+        }
       } else if (isSpam && isUpdated) {
         findings.push(
           createSpamUpdateFinding(token, currentResult.analysis, previousResult!.analysis),
         );
       } else if (!isSpam && wasSpam) {
         findings.push(createSpamRemoveFinding(token, currentResult.analysis));
+
+        if (wasPhishing) {
+          findings.push(createPhishingRemoveFinding(token, currentResult.analysis));
+        }
       }
 
       if (isFinalized) {
@@ -211,18 +228,17 @@ const provideAlertMitigation = (data: DataContainer): HandleBlock => {
     try {
       // We use such a block number so that it can be executed at different times with fetching false findings
       if (blockEvent.blockNumber % 5_010 === 0) {
-        await data.alertMitigation.optimizeStorage();
-        Logger.info(`Alerts mitigation module has been successfully optimized`);
+        await data.spamAlertMitigation.optimizeStorage();
       }
 
       if (blockEvent.blockNumber % 250 === 0) {
-        const tokens = await data.alertMitigation.getFalseFindings();
+        const tokens = await data.spamAlertMitigation.getFalseFindings();
 
         if (tokens.length > 0) {
           Logger.info(`New false positive findings: ${tokens.length}`);
         }
 
-        await data.alertMitigation.markFindingsAsRemoved(tokens);
+        await data.spamAlertMitigation.markFindingsAsRemoved(tokens);
         return tokens.map((t) => createSpamRemoveFinding(t, {}));
       }
     } catch (e) {
