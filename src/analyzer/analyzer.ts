@@ -27,6 +27,7 @@ import LowActivityAfterAirdropModule from './modules/low-activity';
 import ObservationTimeModule from './modules/observation-time';
 import TooMuchAirdropActivityModule from './modules/airdrop-activity';
 import SleepMintModule from './modules/sleep-mint';
+import TokenImpersonation from './modules/token-impersonation';
 
 class TokenAnalyzer {
   private modules: AnalyzerModule[];
@@ -47,6 +48,7 @@ class TokenAnalyzer {
     this.memoizer = memoizer;
     this.transformer = new DataTransformer(storage);
     this.modules = [
+      new TokenImpersonationModule(tokenProvider),
       new AirdropModule(),
       new TooMuchAirdropActivityModule(),
       new LowActivityAfterAirdropModule(),
@@ -59,7 +61,6 @@ class TokenAnalyzer {
       new PhishingMetadataModule(),
       new TooManyHoneyPotOwnersModule(honeyPotChecker),
       new HoneypotsDominanceModule(honeyPotChecker),
-      new TokenImpersonationModule(tokenProvider),
       new HighActivityModule(),
       new ObservationTimeModule(),
     ];
@@ -135,20 +136,20 @@ class TokenAnalyzer {
     // The evaluation does not use SilentMint module because of FPs,
     // but it is displayed in the presence of other indicators
     if (
-      analysis[AirdropModule.Key]?.detected &&
-      [
-        MultipleOwnersModule,
-        Erc721FalseTotalSupplyModule,
-        NonUniqueTokens,
-        TooMuchAirdropActivityModule,
-        TooManyCreationsModule,
-        TooManyHoneyPotOwnersModule,
-        HoneypotsDominanceModule,
-        PhishingMetadataModule,
-        SleepMintModule,
-        TokenImpersonationModule,
-        LowActivityAfterAirdropModule,
-      ].find((Module) => analysis[Module.Key]?.detected)
+      analysis[TokenImpersonation.Key]?.detected ||
+      (analysis[AirdropModule.Key]?.detected &&
+        [
+          MultipleOwnersModule,
+          Erc721FalseTotalSupplyModule,
+          NonUniqueTokens,
+          TooMuchAirdropActivityModule,
+          TooManyCreationsModule,
+          TooManyHoneyPotOwnersModule,
+          HoneypotsDominanceModule,
+          PhishingMetadataModule,
+          SleepMintModule,
+          LowActivityAfterAirdropModule,
+        ].find((Module) => analysis[Module.Key]?.detected))
     ) {
       isSpam = true;
     }
