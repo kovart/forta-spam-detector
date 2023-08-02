@@ -38,6 +38,8 @@ const formatTriggeredModules = (analysis: AnalysisContext) => {
   return modules.join(', ');
 };
 
+const formatConfidence = (val: number) => Number(val.toFixed(2));
+
 export function getIndicators(analysis: AnalysisContext): string[] {
   return Object.entries(analysis)
     .filter((e) => e[1].detected && e[0] !== ObservationTimeModule.Key)
@@ -86,7 +88,7 @@ export function createSpamNewFinding(token: Token, analysis: AnalysisContext, co
       `The ERC-${token.type} token ${formatSpamToken(token.address, analysis)} ` +
       `shows signs of spam token behavior. Indicators: ${formatTriggeredModules(
         analysis,
-      )}. Confidence: ${confidence.toFixed(2)}.`,
+      )}. Confidence: ${formatConfidence(confidence)}.`,
     type: FindingType.Suspicious,
     severity: FindingSeverity.Low,
     labels: labels,
@@ -131,7 +133,7 @@ export function createSpamUpdateFinding(
       `Indicators: ${formatTriggeredModules(currAnalysis)}.` +
       (addedModules.length > 0 ? ` New: ${addedModules.join(', ')}.` : '') +
       (removedModules.length > 0 ? ` Removed: ${removedModules.join(', ')}.` : '') +
-      ` New confidence: ${currConfidence}.`,
+      ` New confidence: ${formatConfidence(currConfidence)}.`,
     type: FindingType.Suspicious,
     severity: FindingSeverity.Low,
     labels: labels,
@@ -231,9 +233,9 @@ export function createPhishingNewFinding(
     name: 'Phishing Token',
     description:
       `The ERC-${token.type} token ${formatPhishingToken(token.address, metadata)} ` +
-      `shows signs of phishing behavior. Confidence: ${confidence}. Potential phishing URLs: ${metadata.urls?.join(
-        ', ',
-      )}`,
+      `shows signs of phishing behavior. Confidence: ${formatConfidence(
+        confidence,
+      )}. Potential phishing URLs: ${metadata.urls?.join(', ')}`,
     type: FindingType.Suspicious,
     severity: FindingSeverity.Low,
     labels: labels,
@@ -264,9 +266,9 @@ export function createPhishingUpdateFinding(
     name: 'Phishing Token (Update)',
     description:
       `The ERC-${token.type} token ${formatPhishingToken(token.address, metadata)} ` +
-      `shows signs of phishing behavior. New confidence: ${currConfidence}. Potential phishing URLs: ${metadata.urls?.join(
-        ', ',
-      )}`,
+      `shows signs of phishing behavior. New confidence: ${formatConfidence(
+        currConfidence,
+      )}. Potential phishing URLs: ${metadata.urls?.join(', ')}`,
     type: FindingType.Suspicious,
     severity: FindingSeverity.Low,
     labels: labels,
