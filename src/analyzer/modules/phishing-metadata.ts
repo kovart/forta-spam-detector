@@ -74,25 +74,34 @@ class PhishingMetadataModule extends AnalyzerModule {
     const { context } = params;
 
     let detected = false;
-    let metadata: PhishingModuleMetadata | undefined = undefined;
+    let metadata: PhishingModuleMetadata | undefined = {};
 
     context[PHISHING_METADATA_MODULE_KEY] = { detected, metadata };
 
     const erc20Phishing = await this.scanErc20Phishing(params);
+    context[PHISHING_METADATA_MODULE_KEY].detected = erc20Phishing.detected;
+    context[PHISHING_METADATA_MODULE_KEY].metadata = erc20Phishing.metadata;
     if (erc20Phishing.detected) {
-      context[PHISHING_METADATA_MODULE_KEY] = erc20Phishing;
       return;
     }
 
     const erc721Phishing = await this.scanErc721Phishing(params);
     if (erc721Phishing.detected) {
-      context[PHISHING_METADATA_MODULE_KEY] = erc721Phishing;
+      context[PHISHING_METADATA_MODULE_KEY].detected = erc721Phishing.detected;
+      context[PHISHING_METADATA_MODULE_KEY].metadata = {
+        ...context[PHISHING_METADATA_MODULE_KEY].metadata,
+        ...erc721Phishing.metadata,
+      };
       return;
     }
 
     const erc1155Phishing = await this.scanErc1155Phishing(params);
     if (erc1155Phishing.detected) {
-      context[PHISHING_METADATA_MODULE_KEY] = erc1155Phishing;
+      context[PHISHING_METADATA_MODULE_KEY].detected = erc1155Phishing.detected;
+      context[PHISHING_METADATA_MODULE_KEY].metadata = {
+        ...context[PHISHING_METADATA_MODULE_KEY].metadata,
+        ...erc1155Phishing.metadata,
+      };
       return;
     }
   }
