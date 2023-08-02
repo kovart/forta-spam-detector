@@ -228,7 +228,7 @@ class TokenProvider {
 
         const [symbol, name] = await retry(
           () => Promise.all([contract.symbol(), contract.name()]),
-          { wait: random(1, 3) },
+          { wait: random(1, 3) * 1000 },
         );
 
         return { symbol, name };
