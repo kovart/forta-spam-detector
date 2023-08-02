@@ -2,6 +2,7 @@ import axios from 'axios';
 import { ethers } from 'ethers';
 import { Network } from 'forta-agent';
 import { Mutex } from 'async-mutex';
+import { random } from 'lodash';
 
 import Logger from './logger';
 import { JsonStorage } from './storage';
@@ -85,7 +86,7 @@ class TokenProvider {
         Logger.debug('There are no token cache');
         this.cache = await this.storage.read();
         if (this.cache) {
-          Logger.debug('Cache has been successfully loaded');
+          Logger.info('Cache has been successfully loaded from local storage.');
         }
       }
 
@@ -98,7 +99,7 @@ class TokenProvider {
         await this.fetch();
       } catch (e) {
         if (this.cache) {
-          Logger.error('Caught fetch error. Fallback to the cached version', { error: e });
+          Logger.error(e, 'Caught fetch error. Fallback to the cached version');
           return this.cache.tokens;
         }
 
@@ -158,6 +159,8 @@ class TokenProvider {
         type: 'nft',
       }));
 
+    Logger.info(`Successfully fetched ${tokens.length} NFTs.`);
+
     await this.updateMetadata(tokens);
 
     return tokens;
@@ -204,6 +207,8 @@ class TokenProvider {
       });
     }
 
+    Logger.info(`Successfully fetched ${coins.length} coins.`);
+
     await this.updateMetadata(tokens);
 
     return tokens;
@@ -217,16 +222,18 @@ class TokenProvider {
     for (const rpcUrl of rpcUrls) {
       Logger.debug(`Fetching metadata with the following RPC url (${Network[network]}): ${rpcUrl}`);
 
-      const provider = new ethers.providers.StaticJsonRpcProvider(rpcUrl);
-      const contract = new ethers.Contract(address, erc20Iface, provider);
-
       try {
-        const symbol: string = await retry(() => contract.symbol());
-        const name: string = await retry(() => contract.name());
+        const provider = new ethers.providers.JsonRpcBatchProvider(rpcUrl);
+        const contract = new ethers.Contract(address, erc20Iface, provider);
+
+        const [symbol, name] = await retry(
+          () => Promise.all([contract.symbol(), contract.name()]),
+          { wait: random(1, 3) },
+        );
 
         return { symbol, name };
       } catch (e) {
-        Logger.error('Cannot read token metadata', { error: e });
+        Logger.debug(e, 'Cannot read token metadata');
         // ignore, use the next rpc url
       }
     }
