@@ -118,7 +118,7 @@ const provideInitialize = (data: DataContainer, isDevelopment: boolean): Initial
 };
 
 const provideHandleBlock = (data: DataContainer): HandleBlock => {
-  const isTimeToLog = createTicker(60 * 60 * 1000); // 1h
+  const isTimeToLog = createTicker(12 * 60 * 60 * 1000); // 12h
 
   return async function handleBlock(blockEvent) {
     const findings: Finding[] = [];
