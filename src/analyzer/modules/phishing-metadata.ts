@@ -13,6 +13,8 @@ import { AnalyzerModule, ModuleAnalysisResult, ModuleScanReturn, ScanParams } fr
 import { normalizeText } from '../../utils/normalizer';
 import { TokenStandard } from '../../types';
 import Logger from '../../utils/logger';
+import * as url from 'url';
+import AirdropModule, { AirdropModuleMetadata } from './airdrop';
 
 // This module analyzes the metadata of tokens for the presence of a link to a website.
 // If such a link is found, it may suggest a phishing attack, particularly in the case of a large airdrop.
@@ -57,6 +59,8 @@ export const PHISHING_DESCRIPTION_PATTERNS = [
   /* presence of NFT value */
   /\$\s*\d+/,
 ];
+
+export const ERC20_RECEIVERS_THRESHOLD = 1999;
 
 export type PhishingModuleMetadata = {
   name?: string;
@@ -109,10 +113,14 @@ class PhishingMetadataModule extends AnalyzerModule {
   private async scanErc20Phishing(
     params: ScanParams,
   ): Promise<ModuleAnalysisResult<PhishingModuleMetadata>> {
-    const { token, memoizer, provider } = params;
+    const { token, memoizer, provider, context } = params;
 
     let detected = false;
     let metadata: PhishingModuleMetadata | undefined = undefined;
+
+    const receivers =
+      (context[AirdropModule.Key]?.metadata as AirdropModuleMetadata | undefined)?.receivers
+        .length || 0;
 
     const memo = memoizer.getScope(token.address);
 
@@ -139,6 +147,11 @@ class PhishingMetadataModule extends AnalyzerModule {
     metadata = { name, symbol, urls };
 
     if (urls.length === 0) return { detected, metadata };
+
+    // Some spam tokens only contain a link
+    if (receivers >= ERC20_RECEIVERS_THRESHOLD) {
+      return { detected: true, metadata };
+    }
 
     for (const word of words) {
       if (PHISHING_NAME_KEYWORDS.includes(word)) {
