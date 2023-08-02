@@ -18,6 +18,7 @@ import { combine, findCreatedContracts, identifyTokenInterface } from './utils/h
 import {
   createPhishingNewFinding,
   createPhishingRemoveFinding,
+  createPhishingUpdateFinding,
   createSpamNewFinding,
   createSpamRemoveFinding,
   createSpamUpdateFinding,
@@ -141,24 +142,41 @@ const provideHandleBlock = (data: DataContainer): HandleBlock => {
     for (const { token, result: currentResult } of analyses) {
       const previousResult = data.analysisByToken.get(token);
 
-      const { isSpam, isPhishing, isFinalized } = currentResult.interpret();
+      const { isSpam, isPhishing, isFinalized, confidence } = currentResult.interpret();
       const { isUpdated } = currentResult.compare(previousResult?.analysis);
 
       const previousInterpretation = previousResult?.interpret();
+      const previousConfidence = previousInterpretation?.confidence || confidence;
       const wasSpam = previousInterpretation?.isSpam || false;
       const wasPhishing = previousInterpretation?.isPhishing || false;
 
       if (isSpam && !wasSpam) {
-        findings.push(createSpamNewFinding(token, currentResult.analysis));
-        findings.push(createSpamNewFinding(token, currentResult.analysis));
+        findings.push(createSpamNewFinding(token, currentResult.analysis, confidence));
 
         if (isPhishing) {
-          findings.push(createPhishingNewFinding(token, currentResult.analysis));
+          findings.push(createPhishingNewFinding(token, currentResult.analysis, confidence));
         }
       } else if (isSpam && isUpdated) {
         findings.push(
-          createSpamUpdateFinding(token, currentResult.analysis, previousResult!.analysis),
+          createSpamUpdateFinding(
+            token,
+            currentResult.analysis,
+            previousResult!.analysis,
+            confidence,
+            previousConfidence,
+          ),
         );
+
+        if (isPhishing) {
+          findings.push(
+            createPhishingUpdateFinding(
+              token,
+              currentResult.analysis,
+              confidence,
+              previousConfidence,
+            ),
+          );
+        }
       } else if (!isSpam && wasSpam) {
         findings.push(createSpamRemoveFinding(token, currentResult.analysis));
 
@@ -227,6 +245,8 @@ const provideHandleTransaction = (data: DataContainer): HandleTransaction => {
 
 const provideAlertMitigation = (data: DataContainer): HandleBlock => {
   return async (blockEvent: BlockEvent) => {
+    if (IS_DEVELOPMENT) return [];
+
     try {
       // We use such a block number so that it can be executed at different times with fetching false findings
       if (blockEvent.blockNumber % 5_010 === 0) {

@@ -1,4 +1,4 @@
-import { difference, maxBy } from 'lodash';
+import { difference } from 'lodash';
 import { EntityType, Finding, FindingSeverity, FindingType, Label } from 'forta-agent';
 
 import { Token } from './types';
@@ -7,15 +7,9 @@ import ObservationTimeModule from './analyzer/modules/observation-time';
 import TokenImpersonation, {
   TokenImpersonationModuleMetadata,
 } from './analyzer/modules/token-impersonation';
-import AirdropModule, { AirdropModuleShortMetadata } from './analyzer/modules/airdrop';
 import PhishingMetadataModule, {
   PhishingModuleMetadata,
 } from './analyzer/modules/phishing-metadata';
-import HighActivityModule, {
-  HighActivityModuleShortMetadata,
-} from './analyzer/modules/high-activity';
-import SilentMint from './analyzer/modules/silent-mint';
-import { parseLocation } from './utils/helpers';
 
 const BASE_SPAM_ALERT_ID = 'SPAM-TOKEN';
 const NEW_SPAM_ALERT_ID = `${BASE_SPAM_ALERT_ID}-NEW`;
@@ -24,6 +18,7 @@ const REMOVE_SPAM_ALERT_ID = `${BASE_SPAM_ALERT_ID}-REMOVE`;
 
 const BASE_PHISHING_ALERT_ID = 'PHISHING-TOKEN';
 const NEW_PHISHING_ALERT_ID = `${BASE_PHISHING_ALERT_ID}-NEW`;
+const UPDATE_PHISHING_ALERT_ID = `${BASE_PHISHING_ALERT_ID}-UPDATE`;
 const REMOVE_PHISHING_ALERT_ID = `${BASE_PHISHING_ALERT_ID}-REMOVE`;
 
 const formatSpamToken = (address: string, analysis: AnalysisContext) => {
@@ -49,64 +44,12 @@ export function getIndicators(analysis: AnalysisContext): string[] {
     .map((e) => e[0]);
 }
 
-export function calcConfidence(analysis: AnalysisContext): number {
-  const indicators = getIndicators(analysis).filter(
-    (m) => m !== SilentMint.Key && m !== AirdropModule.Key,
-  );
-
-  let confidence = 0.55;
-
-  if (indicators.length > 2) {
-    confidence += 0.35;
-  } else if (indicators.length > 1) {
-    confidence += 0.15;
-  }
-
-  const receivers =
-    (analysis[AirdropModule.Key]?.metadata as AirdropModuleShortMetadata)?.receiverCount ?? 0;
-
-  if (receivers >= 1000) {
-    confidence *= 1.2;
-  } else if (receivers >= 100) {
-    confidence *= 1.1;
-  }
-
-  const phishingMetadata = analysis[PhishingMetadataModule.Key]?.metadata as
-    | PhishingModuleMetadata
-    | undefined;
-
-  const description: string =
-    maxBy(Object.values(phishingMetadata?.descriptionByTokenId || {}), (e) => e.length) || '';
-
-  // Too much for phishing?
-  if (description.length >= 2000) {
-    confidence *= 0.8;
-  }
-
-  const urls = phishingMetadata?.urls || [];
-  if (urls.length > 1) {
-    // Get unique hostnames
-    const hosts = new Set(urls.map((url) => parseLocation(url)?.host).filter((v) => v));
-
-    // The more unique domains there are, the less likely it is to be phishing
-    const multiplier = Math.max(0.15, 0.8 / (hosts.size - 1));
-
-    confidence *= multiplier;
-  }
-
-  const senders: number =
-    (analysis[HighActivityModule.Key]?.metadata as HighActivityModuleShortMetadata)?.senderCount ||
-    0;
-
-  if (senders >= 300) {
-    confidence *= 0.8;
-  }
-
-  return Math.min(1, confidence);
-}
-
-export function getLabels(token: Token, analysis: AnalysisContext, remove: boolean = false) {
-  const confidence = calcConfidence(analysis);
+export function getLabels(
+  token: Token,
+  analysis: AnalysisContext,
+  remove: boolean = false,
+  confidence: number,
+) {
   const indicators = getIndicators(analysis);
 
   return [
@@ -133,16 +76,17 @@ export function getLabels(token: Token, analysis: AnalysisContext, remove: boole
   ];
 }
 
-export function createSpamNewFinding(token: Token, analysis: AnalysisContext) {
-  const confidence = calcConfidence(analysis);
-  const labels = getLabels(token, analysis, false);
+export function createSpamNewFinding(token: Token, analysis: AnalysisContext, confidence: number) {
+  const labels = getLabels(token, analysis, false, confidence);
 
   return Finding.from({
     alertId: NEW_SPAM_ALERT_ID,
     name: 'Spam Token',
     description:
       `The ERC-${token.type} token ${formatSpamToken(token.address, analysis)} ` +
-      `shows signs of spam token behavior. Indicators: ${formatTriggeredModules(analysis)}.`,
+      `shows signs of spam token behavior. Indicators: ${formatTriggeredModules(
+        analysis,
+      )}. Confidence: ${confidence.toFixed(2)}.`,
     type: FindingType.Suspicious,
     severity: FindingSeverity.Low,
     labels: labels,
@@ -161,6 +105,8 @@ export function createSpamUpdateFinding(
   token: Token,
   currAnalysis: AnalysisContext,
   prevAnalysis: AnalysisContext,
+  currConfidence: number,
+  prevConfidence: number,
 ) {
   const currModules = Object.entries(currAnalysis)
     .filter((e) => e[1].detected)
@@ -174,8 +120,7 @@ export function createSpamUpdateFinding(
   const addedModules = diff.filter((m) => !prevModules.includes(m));
   const removedModules = diff.filter((m) => !currModules.includes(m));
 
-  const confidence = calcConfidence(currAnalysis);
-  const labels = getLabels(token, currAnalysis, false);
+  const labels = getLabels(token, currAnalysis, false, currConfidence);
 
   return Finding.from({
     alertId: UPDATE_SPAM_ALERT_ID,
@@ -185,13 +130,14 @@ export function createSpamUpdateFinding(
       `shows signs of spam token behavior. ` +
       `Indicators: ${formatTriggeredModules(currAnalysis)}.` +
       (addedModules.length > 0 ? ` New: ${addedModules.join(', ')}.` : '') +
-      (removedModules.length > 0 ? ` Removed: ${removedModules.join(', ')}.` : ''),
+      (removedModules.length > 0 ? ` Removed: ${removedModules.join(', ')}.` : '') +
+      ` New confidence: ${currConfidence}.`,
     type: FindingType.Suspicious,
     severity: FindingSeverity.Low,
     labels: labels,
     addresses: [token.address, token.deployer],
     metadata: {
-      confidence: confidence.toString(),
+      confidence: currConfidence.toString(),
       tokenAddress: token.address,
       tokenStandard: `ERC-${token.type}`,
       tokenDeployer: token.deployer,
@@ -201,7 +147,7 @@ export function createSpamUpdateFinding(
 }
 
 export function createSpamRemoveFinding(token: Token, currAnalysis: AnalysisContext) {
-  const labels = getLabels(token, currAnalysis, true);
+  const labels = getLabels(token, currAnalysis, true, 0);
 
   return Finding.from({
     alertId: REMOVE_SPAM_ALERT_ID,
@@ -271,9 +217,12 @@ function getPhishingLabels(
   ];
 }
 
-export function createPhishingNewFinding(token: Token, analysis: AnalysisContext) {
-  const metadata = (analysis[PhishingMetadataModule.Key] || {}) as PhishingModuleMetadata;
-  const confidence = calcConfidence(analysis);
+export function createPhishingNewFinding(
+  token: Token,
+  analysis: AnalysisContext,
+  confidence: number,
+) {
+  const metadata = (analysis[PhishingMetadataModule.Key]?.metadata || {}) as PhishingModuleMetadata;
 
   const labels = getPhishingLabels(token, metadata.urls || [], confidence, false);
 
@@ -282,13 +231,48 @@ export function createPhishingNewFinding(token: Token, analysis: AnalysisContext
     name: 'Phishing Token',
     description:
       `The ERC-${token.type} token ${formatPhishingToken(token.address, metadata)} ` +
-      `shows signs of phishing behavior. Potential phishing urls: ${metadata.urls?.join(', ')}`,
+      `shows signs of phishing behavior. Confidence: ${confidence}. Potential phishing URLs: ${metadata.urls?.join(
+        ', ',
+      )}`,
     type: FindingType.Suspicious,
     severity: FindingSeverity.Low,
     labels: labels,
     addresses: [token.address, token.deployer],
     metadata: {
       confidence: confidence.toString(),
+      tokenAddress: token.address,
+      tokenStandard: `ERC-${token.type}`,
+      tokenDeployer: token.deployer,
+      urls: JSON.stringify(metadata.urls || []),
+      analysis: JSON.stringify(metadata),
+    },
+  });
+}
+
+export function createPhishingUpdateFinding(
+  token: Token,
+  analysis: AnalysisContext,
+  currConfidence: number,
+  prevConfidence: number,
+) {
+  const metadata = (analysis[PhishingMetadataModule.Key]?.metadata || {}) as PhishingModuleMetadata;
+
+  const labels = getPhishingLabels(token, metadata.urls || [], currConfidence, false);
+
+  return Finding.from({
+    alertId: UPDATE_PHISHING_ALERT_ID,
+    name: 'Phishing Token (Update)',
+    description:
+      `The ERC-${token.type} token ${formatPhishingToken(token.address, metadata)} ` +
+      `shows signs of phishing behavior. New confidence: ${currConfidence}. Potential phishing URLs: ${metadata.urls?.join(
+        ', ',
+      )}`,
+    type: FindingType.Suspicious,
+    severity: FindingSeverity.Low,
+    labels: labels,
+    addresses: [token.address, token.deployer],
+    metadata: {
+      confidence: currConfidence.toString(),
       tokenAddress: token.address,
       tokenStandard: `ERC-${token.type}`,
       tokenDeployer: token.deployer,

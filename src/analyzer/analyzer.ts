@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import { isEqual } from 'lodash';
+import { isEqual, maxBy } from 'lodash';
 
 import DataStorage from '../storage';
 import DataTransformer from './transformer';
@@ -10,8 +10,8 @@ import Logger from '../utils/logger';
 import { AnalysisContext, AnalyzerModule, AnalyzerTask } from './types';
 import { TokenContract } from '../types';
 
-import HighActivityModule from './modules/high-activity';
-import AirdropModule from './modules/airdrop';
+import HighActivityModule, { HighActivityModuleShortMetadata } from './modules/high-activity';
+import AirdropModule, { AirdropModuleShortMetadata } from './modules/airdrop';
 import Erc721MultipleOwnersModule from './modules/multiple-owners';
 import MultipleOwnersModule from './modules/multiple-owners';
 import Erc721NonUniqueTokensModule from './modules/non-unique-tokens';
@@ -19,7 +19,7 @@ import NonUniqueTokens from './modules/non-unique-tokens';
 import Erc721FalseTotalSupplyModule from './modules/total-supply';
 import TooManyCreationsModule from './modules/many-creations';
 import TooManyHoneyPotOwnersModule from './modules/honeypot-owners';
-import PhishingMetadataModule from './modules/phishing-metadata';
+import PhishingMetadataModule, { PhishingModuleMetadata } from './modules/phishing-metadata';
 import SilentMintModule from './modules/silent-mint';
 import HoneypotsDominanceModule from './modules/honeypot-dominance';
 import TokenImpersonationModule from './modules/token-impersonation';
@@ -29,6 +29,8 @@ import TooMuchAirdropActivityModule from './modules/airdrop-activity';
 import SleepMintModule from './modules/sleep-mint';
 import TokenImpersonation from './modules/token-impersonation';
 import PhishingMetadata from './modules/phishing-metadata';
+import SilentMint from './modules/silent-mint';
+import { parseLocation } from '../utils/helpers';
 
 class TokenAnalyzer {
   private modules: AnalyzerModule[];
@@ -134,10 +136,12 @@ class TokenAnalyzer {
     let isSpam = false;
     let isFinalized = false; // no longer need to monitor this token
     let isPhishing = analysis[PhishingMetadata.Key]?.detected || false;
+    let confidence = this.calcConfidence(analysis);
 
     // The evaluation does not use SilentMint module because of FPs,
     // but it is displayed in the presence of other indicators
     if (
+      analysis[PhishingMetadataModule.Key]?.detected ||
       analysis[TokenImpersonation.Key]?.detected ||
       (analysis[AirdropModule.Key]?.detected &&
         [
@@ -175,6 +179,7 @@ class TokenAnalyzer {
       isSpam,
       isFinalized,
       isPhishing,
+      confidence,
     };
   }
 
@@ -206,9 +211,73 @@ class TokenAnalyzer {
     const prevResults = modules.map((Module) => prevAnalysis[Module.Key]?.detected);
 
     return {
-      isUpdated: !isEqual(currResults, prevResults),
+      isUpdated:
+        currInterpretation.confidence != prevInterpretation.confidence ||
+        !isEqual(currResults, prevResults),
       isChanged: currInterpretation.isSpam != prevInterpretation.isSpam,
     };
+  }
+
+  private calcConfidence(analysis: AnalysisContext): number {
+    const indicators = this.getIndicators(analysis).filter(
+      (m) => m !== SilentMint.Key && m !== AirdropModule.Key,
+    );
+
+    let confidence = 0.55;
+
+    if (indicators.length > 2) {
+      confidence += 0.35;
+    } else if (indicators.length > 1) {
+      confidence += 0.15;
+    }
+
+    const receivers =
+      (analysis[AirdropModule.Key]?.metadata as AirdropModuleShortMetadata)?.receiverCount ?? 0;
+
+    if (receivers >= 1000) {
+      confidence *= 1.2;
+    } else if (receivers >= 100) {
+      confidence *= 1.1;
+    }
+
+    const phishingMetadata = analysis[PhishingMetadataModule.Key]?.metadata as
+      | PhishingModuleMetadata
+      | undefined;
+
+    const description: string =
+      maxBy(Object.values(phishingMetadata?.descriptionByTokenId || {}), (e) => e.length) || '';
+
+    // Too much for phishing?
+    if (description.length >= 2000) {
+      confidence *= 0.8;
+    }
+
+    const urls = phishingMetadata?.urls || [];
+    if (urls.length > 1) {
+      // Get unique hostnames
+      const hosts = new Set(urls.map((url) => parseLocation(url)?.host).filter((v) => v));
+
+      // The more unique domains there are, the less likely it is to be phishing
+      const multiplier = Math.max(0.15, 0.8 / (hosts.size - 1));
+
+      confidence *= multiplier;
+    }
+
+    const senders: number =
+      (analysis[HighActivityModule.Key]?.metadata as HighActivityModuleShortMetadata)
+        ?.senderCount || 0;
+
+    if (senders >= 300) {
+      confidence *= 0.8;
+    }
+
+    return Math.min(1, confidence);
+  }
+
+  private getIndicators(analysis: AnalysisContext) {
+    return Object.entries(analysis)
+      .filter((e) => e[1].detected && e[0] !== ObservationTimeModule.Key)
+      .map((e) => e[0]);
   }
 }
 
