@@ -223,7 +223,7 @@ class TokenAnalyzer {
       (m) => m !== SilentMint.Key && m !== AirdropModule.Key,
     );
 
-    let confidence = 0.55;
+    let confidence = indicators.find((i) => i === TokenImpersonationModule.Key) ? 0.75 : 0.6;
 
     if (indicators.length > 2) {
       confidence += 0.35;
