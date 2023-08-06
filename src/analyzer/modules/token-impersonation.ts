@@ -53,6 +53,13 @@ class TokenImpersonationModule extends AnalyzerModule {
       try {
         const tokens = await this.tokenProvider.getList();
 
+        tokens.push({
+          name: 'ETH',
+          symbol: 'ETH',
+          type: 'coin',
+          deployments: {},
+        });
+
         const tokensByHash = new Map<string, TokenRecord[]>();
         for (const token of tokens) {
           const hash = this.getTokenHash(token);
