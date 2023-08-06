@@ -30,7 +30,7 @@ import SleepMintModule from './modules/sleep-mint';
 import TokenImpersonation from './modules/token-impersonation';
 import PhishingMetadata from './modules/phishing-metadata';
 import SilentMint from './modules/silent-mint';
-import { parseLocation } from '../utils/helpers';
+import { getIndicators, parseLocation } from '../utils/helpers';
 
 class TokenAnalyzer {
   private modules: AnalyzerModule[];
@@ -61,9 +61,9 @@ class TokenAnalyzer {
       new SilentMintModule(),
       new SleepMintModule(),
       new TooManyCreationsModule(),
-      new PhishingMetadataModule(),
       new TooManyHoneyPotOwnersModule(honeyPotChecker),
       new HoneypotsDominanceModule(honeyPotChecker),
+      new PhishingMetadataModule(),
       new HighActivityModule(),
       new ObservationTimeModule(),
     ];
@@ -161,12 +161,9 @@ class TokenAnalyzer {
     }
 
     if (
-      [
-        ObservationTimeModule,
-        HighActivityModule,
-        PhishingMetadataModule,
-        TooMuchAirdropActivityModule,
-      ].find((Module) => analysis[Module.Key]?.detected)
+      [ObservationTimeModule, HighActivityModule, TooMuchAirdropActivityModule].find(
+        (Module) => analysis[Module.Key]?.detected,
+      )
     ) {
       isFinalized = true;
 
@@ -219,25 +216,28 @@ class TokenAnalyzer {
   }
 
   private calcConfidence(analysis: AnalysisContext): number {
-    const indicators = this.getIndicators(analysis).filter(
-      (m) => m !== SilentMint.Key && m !== AirdropModule.Key,
-    );
+    const indicators = getIndicators(analysis);
 
-    let confidence = indicators.find((i) => i === TokenImpersonationModule.Key) ? 0.75 : 0.6;
+    const isTokenImpersonation = indicators.includes(TokenImpersonationModule.Key);
+    const isAirdrop = indicators.includes(AirdropModule.Key);
 
-    if (indicators.length > 2) {
-      confidence += 0.35;
-    } else if (indicators.length > 1) {
-      confidence += 0.15;
+    let confidence = 0.6;
+
+    if (isTokenImpersonation) {
+      confidence = 0.75;
+
+      if (isAirdrop) confidence = 0.8;
     }
 
-    const receivers =
-      (analysis[AirdropModule.Key]?.metadata as AirdropModuleShortMetadata)?.receiverCount ?? 0;
-
-    if (receivers >= 1000) {
-      confidence *= 1.2;
-    } else if (receivers >= 100) {
-      confidence *= 1.1;
+    const nonValuableIndicators = [
+      SilentMint,
+      AirdropModule,
+      ObservationTimeModule,
+      HighActivityModule,
+    ].map((m) => m.Key);
+    const valuableIndicators = indicators.filter((m) => !nonValuableIndicators.includes(m));
+    if (valuableIndicators.length > 1) {
+      confidence *= 1 + valuableIndicators.length / 10;
     }
 
     const phishingMetadata = analysis[PhishingMetadataModule.Key]?.metadata as
@@ -253,14 +253,37 @@ class TokenAnalyzer {
     }
 
     const urls = phishingMetadata?.urls || [];
-    if (urls.length > 1) {
-      // Get unique hostnames
-      const hosts = new Set(urls.map((url) => parseLocation(url)?.host).filter((v) => v));
-
+    // Get unique hostnames
+    const hosts = new Set(urls.map((url) => parseLocation(url)?.host).filter((v) => v));
+    if (hosts.size > 1) {
       // The more unique domains there are, the less likely it is to be phishing
-      const multiplier = Math.max(0.15, 0.8 / (hosts.size - 1));
+      const multiplier = Math.max(0.15, 0.8 / ((hosts.size || urls.length) - 1));
 
       confidence *= multiplier;
+    }
+
+    const receivers =
+      (analysis[AirdropModule.Key]?.metadata as AirdropModuleShortMetadata)?.receiverCount ?? 0;
+    const activeReceivers =
+      (analysis[HighActivityModule.Key]?.metadata as HighActivityModuleShortMetadata)
+        ?.activeReceiverCount ?? 0;
+
+    if (activeReceivers >= 10) {
+      if (activeReceivers >= 100) {
+        confidence *= 0.25;
+      } else if (activeReceivers >= 50) {
+        confidence *= 0.5;
+      } else if (activeReceivers >= 25) {
+        confidence *= 0.75;
+      } else {
+        confidence *= 0.8;
+      }
+    } else {
+      if (receivers >= 1000) {
+        confidence *= 1.2;
+      } else if (receivers >= 100) {
+        confidence *= 1.1;
+      }
     }
 
     const senders: number =
@@ -268,16 +291,12 @@ class TokenAnalyzer {
         ?.senderCount || 0;
 
     if (senders >= 300) {
-      confidence *= 0.8;
+      confidence *= 0.75;
+    } else if (senders >= 200) {
+      confidence *= 0.85;
     }
 
-    return Math.min(1, confidence);
-  }
-
-  private getIndicators(analysis: AnalysisContext) {
-    return Object.entries(analysis)
-      .filter((e) => e[1].detected && e[0] !== ObservationTimeModule.Key)
-      .map((e) => e[0]);
+    return Number(Math.min(0.99, confidence).toFixed(3));
   }
 }
 
