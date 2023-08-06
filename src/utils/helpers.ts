@@ -2,6 +2,7 @@ import { Finding, HandleBlock, HandleTransaction, TransactionEvent } from 'forta
 import { Contract, ethers, providers, utils } from 'ethers';
 import { queue } from 'async';
 import urlRegex from 'url-regex';
+import parseUrl from 'parse-url';
 
 import Logger from './logger';
 import { CreatedContract, TokenStandard } from '../types';
@@ -307,12 +308,14 @@ export function containsLink(str: string): boolean {
 }
 
 export function extractLinks(str: string): string[] {
-  return (
-    (str.match(urlRegex({ strict: false })) || [])
-      // fix links that contain parentheses: "(site.com).test"
-      .map((url) => /([^\)]+)/.exec(url)?.[0])
-      .filter((v) => !!v) as string[]
-  );
+  return [
+    ...new Set(
+      (str.match(urlRegex({ strict: false })) || [])
+        // fix links that contain parentheses: "(site.com).test"
+        .map((url) => /([^\)]+)/.exec(url)?.[0])
+        .filter((v) => !!v) as string[],
+    ),
+  ];
 }
 
 export function isCid(str: string) {
@@ -415,20 +418,15 @@ export function combine(...fns: (HandleTransaction | HandleBlock)[]) {
 }
 
 export function parseLocation(href: string) {
-  const match = href.match(
-    /^(https?\:)\/\/(([^:\/?#]*)(?:\:([0-9]+))?)([\/]{0,1}[^?#]*)(\?[^#]*|)(#.*|)$/,
-  );
+  const match: any = parseUrl(href, true);
 
   if (!match) return null;
 
   return {
-    href: href,
-    protocol: match[1],
-    host: match[2],
-    hostname: match[3],
-    port: match[4],
-    pathname: match[5],
-    search: match[6],
-    hash: match[7],
+    href: match.href,
+    protocol: match.protocol,
+    host: match.resource,
+    pathname: match.pathname,
+    search: match.search,
   };
 }
