@@ -23,6 +23,7 @@ export const MIN_ACTIVE_RECEIVER_RATE = 0.15; // 15%
 export type HighActivityModuleMetadata = {
   senders: string[];
   activeReceivers: string[];
+  activeReceiverRatio: number;
   startTime: number;
   endTime: number;
   windowPeriod: number;
@@ -34,6 +35,7 @@ export type HighActivityModuleShortMetadata = {
   senderShortList: string[];
   activeReceiverCount: number;
   activeReceiverShortList: string[];
+  activeReceiverRatio: number;
   startTime: number;
   endTime: number;
   windowPeriod: number;
@@ -121,6 +123,7 @@ class HighActivityModule extends AnalyzerModule {
     metadata = {
       senders: [...senderSet],
       activeReceivers: activeReceivers,
+      activeReceiverRatio: activeReceivers.length / receiverSet.size,
       startTime: token.timestamp,
       endTime: params.timestamp,
       windowPeriod: WINDOW_PERIOD,
@@ -138,6 +141,7 @@ class HighActivityModule extends AnalyzerModule {
       senderShortList: metadata.senders.slice(0, 15),
       activeReceiverCount: metadata.activeReceivers.length,
       activeReceiverShortList: metadata.activeReceivers.slice(0, 15),
+      activeReceiverRatio: metadata.activeReceiverRatio,
       startTime: metadata.startTime,
       endTime: metadata.endTime,
       windowPeriod: WINDOW_PERIOD,

@@ -286,6 +286,14 @@ class TokenAnalyzer {
       }
     }
 
+    const activeReceiverRatio =
+      (analysis[HighActivityModule.Key]?.metadata as HighActivityModuleShortMetadata)
+        ?.activeReceiverRatio ?? 0;
+
+    if (activeReceiverRatio >= 0.1) {
+      confidence *= 0.9;
+    }
+
     const senders: number =
       (analysis[HighActivityModule.Key]?.metadata as HighActivityModuleShortMetadata)
         ?.senderCount || 0;
