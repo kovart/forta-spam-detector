@@ -4,6 +4,7 @@ import axios from 'axios';
 import { erc1155Iface, erc20Iface, erc721Iface } from '../../contants';
 import {
   extractLinks,
+  getIndicators,
   isBase64,
   normalizeMetadataUri,
   parseBase64,
@@ -13,8 +14,8 @@ import { AnalyzerModule, ModuleAnalysisResult, ModuleScanReturn, ScanParams } fr
 import { normalizeText } from '../../utils/normalizer';
 import { TokenStandard } from '../../types';
 import Logger from '../../utils/logger';
-import * as url from 'url';
 import AirdropModule, { AirdropModuleMetadata } from './airdrop';
+import SilentMintModule from './silent-mint';
 
 // This module analyzes the metadata of tokens for the presence of a link to a website.
 // If such a link is found, it may suggest a phishing attack, particularly in the case of a large airdrop.
@@ -60,7 +61,7 @@ export const PHISHING_DESCRIPTION_PATTERNS = [
   /\$\s*\d+/,
 ];
 
-export const ERC20_RECEIVERS_THRESHOLD = 1999;
+export const ERC20_RECEIVERS_THRESHOLD = 499;
 
 export type PhishingModuleMetadata = {
   name?: string;
@@ -83,31 +84,28 @@ class PhishingMetadataModule extends AnalyzerModule {
     context[PHISHING_METADATA_MODULE_KEY] = { detected, metadata };
 
     const erc20Phishing = await this.scanErc20Phishing(params);
-    context[PHISHING_METADATA_MODULE_KEY].detected = erc20Phishing.detected;
-    context[PHISHING_METADATA_MODULE_KEY].metadata = erc20Phishing.metadata;
-    if (erc20Phishing.detected) {
-      return;
-    }
+    detected = erc20Phishing.detected;
+    metadata = { ...metadata, ...erc20Phishing.metadata };
 
     const erc721Phishing = await this.scanErc721Phishing(params);
-    if (erc721Phishing.detected) {
-      context[PHISHING_METADATA_MODULE_KEY].detected = erc721Phishing.detected;
-      context[PHISHING_METADATA_MODULE_KEY].metadata = {
-        ...context[PHISHING_METADATA_MODULE_KEY].metadata,
-        ...erc721Phishing.metadata,
-      };
-      return;
-    }
+    detected = detected || erc721Phishing.detected;
+    metadata = {
+      ...metadata,
+      ...erc721Phishing.metadata,
+      urls: [...(metadata?.urls || []), ...(erc721Phishing.metadata?.urls || [])],
+    };
 
     const erc1155Phishing = await this.scanErc1155Phishing(params);
-    if (erc1155Phishing.detected) {
-      context[PHISHING_METADATA_MODULE_KEY].detected = erc1155Phishing.detected;
-      context[PHISHING_METADATA_MODULE_KEY].metadata = {
-        ...context[PHISHING_METADATA_MODULE_KEY].metadata,
-        ...erc1155Phishing.metadata,
-      };
-      return;
-    }
+    detected = detected || erc1155Phishing.detected;
+    metadata = {
+      ...metadata,
+      ...erc1155Phishing.metadata,
+      urls: [...(metadata?.urls || []), ...(erc1155Phishing.metadata?.urls || [])],
+    };
+
+    metadata.urls = [...new Set(metadata.urls)];
+
+    context[PHISHING_METADATA_MODULE_KEY] = { detected, metadata };
   }
 
   private async scanErc20Phishing(
@@ -167,6 +165,17 @@ class PhishingMetadataModule extends AnalyzerModule {
       }
     }
 
+    // If the token has another triggered indicator, and it has a link, then we assume this is a phishing
+    if (!detected && urls.length >= 1) {
+      const suspiciousIndicators = getIndicators(context).filter(
+        (i) => ![AirdropModule.Key, PhishingMetadataModule.Key, SilentMintModule.Key].includes(i),
+      );
+
+      if (suspiciousIndicators.length >= 1) {
+        detected = true;
+      }
+    }
+
     return { detected, metadata };
   }
 
@@ -218,7 +227,7 @@ class PhishingMetadataModule extends AnalyzerModule {
           detected = true;
           metadata.descriptionByTokenId = metadata.descriptionByTokenId || {};
           metadata.descriptionByTokenId[tokenId] = tokenMetadata?.description;
-          metadata.urls = phishing.urls;
+          metadata.urls = [...(metadata.urls || []), ...phishing.urls];
         }
       }
     } catch (e) {
@@ -283,7 +292,7 @@ class PhishingMetadataModule extends AnalyzerModule {
           detected = true;
           metadata.descriptionByTokenId = metadata.descriptionByTokenId || {};
           metadata.descriptionByTokenId[tokenId] = tokenMetadata?.description;
-          metadata.urls = phishing.urls;
+          metadata.urls = [...(metadata.urls || []), ...phishing.urls];
         }
       }
     } catch (e) {
