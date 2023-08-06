@@ -1,6 +1,6 @@
 {
   "name": "spam-detector",
-  "version": "0.0.22",
+  "version": "0.0.23",
   "description": "Identify spam tokens and NFTs",
   "repository": "https://github.com/kovart/forta-spam-detector",
   "chainIds": [
@@ -56,6 +56,7 @@
     "forta-helpers": "^1.0.9",
     "forta-sharding": "^1.0.0",
     "lodash": "^4.17.21",
+    "parse-url": "^8.1.0",
     "pino": "^8.11.0",
     "pino-pretty": "^10.0.0",
     "sqlite3": "^5.1.6",
