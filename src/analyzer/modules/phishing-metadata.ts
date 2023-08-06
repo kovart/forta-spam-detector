@@ -16,6 +16,7 @@ import { TokenStandard } from '../../types';
 import Logger from '../../utils/logger';
 import AirdropModule, { AirdropModuleMetadata } from './airdrop';
 import SilentMintModule from './silent-mint';
+import ObservationTimeModule from './observation-time';
 
 // This module analyzes the metadata of tokens for the presence of a link to a website.
 // If such a link is found, it may suggest a phishing attack, particularly in the case of a large airdrop.
@@ -168,7 +169,13 @@ class PhishingMetadataModule extends AnalyzerModule {
     // If the token has another triggered indicator, and it has a link, then we assume this is a phishing
     if (!detected && urls.length >= 1) {
       const suspiciousIndicators = getIndicators(context).filter(
-        (i) => ![AirdropModule.Key, PhishingMetadataModule.Key, SilentMintModule.Key].includes(i),
+        (i) =>
+          ![
+            AirdropModule.Key,
+            ObservationTimeModule.Key,
+            PhishingMetadataModule.Key,
+            SilentMintModule.Key,
+          ].includes(i),
       );
 
       if (suspiciousIndicators.length >= 1) {

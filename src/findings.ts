@@ -10,6 +10,7 @@ import TokenImpersonation, {
 import PhishingMetadataModule, {
   PhishingModuleMetadata,
 } from './analyzer/modules/phishing-metadata';
+import { getIndicators } from './utils/helpers';
 
 const BASE_SPAM_ALERT_ID = 'SPAM-TOKEN';
 const NEW_SPAM_ALERT_ID = `${BASE_SPAM_ALERT_ID}-NEW`;
@@ -39,12 +40,6 @@ const formatTriggeredModules = (analysis: AnalysisContext) => {
 };
 
 const formatConfidence = (val: number) => Number(val.toFixed(2));
-
-export function getIndicators(analysis: AnalysisContext): string[] {
-  return Object.entries(analysis)
-    .filter((e) => e[1].detected && e[0] !== ObservationTimeModule.Key)
-    .map((e) => e[0]);
-}
 
 export function getLabels(
   token: Token,

@@ -14,6 +14,7 @@ import {
   erc721Iface,
   INTERFACE_ID_BY_TYPE,
 } from '../contants';
+import { AnalysisContext } from '../analyzer/types';
 
 export function isBurnAddress(address: string) {
   return BURN_ADDRESSES.has(address.toLowerCase()) || address.indexOf('00000000000000') > -1;
@@ -429,4 +430,10 @@ export function parseLocation(href: string) {
     pathname: match.pathname,
     search: match.search,
   };
+}
+
+export function getIndicators(analysis: AnalysisContext): string[] {
+  return Object.entries(analysis)
+    .filter((e) => e[1].detected)
+    .map((e) => e[0]);
 }

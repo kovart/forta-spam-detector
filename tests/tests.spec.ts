@@ -1,5 +1,4 @@
 import { ethers } from 'ethers';
-import { Network } from 'forta-agent';
 import SqlDatabase from '../src/database';
 import { TokenContract } from '../src/types';
 import { AVERAGE_BLOCK_TIME, TEST_DB_PATH, TEST_ETHEREUM_PRC_URLS } from './constants';
@@ -27,7 +26,7 @@ describe('TokenAnalyzer', () => {
 
     database = new SqlDatabase(TEST_DB_PATH);
     lastBlockNumber = await providers[0].getBlockNumber();
-    analyzer = await getTokenAnalyzer(Network.MAINNET, database);
+    analyzer = await getTokenAnalyzer(database, providers[0]);
   });
 
   async function getToken(address: string): Promise<TokenContract> {

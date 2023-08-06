@@ -38,13 +38,10 @@ export function getPreloadStorage(dataPath: string, filePath: string) {
   );
 }
 
-export async function getTokenAnalyzer(chainId: Network, database: SqlDatabase) {
-  const providers = await filterGoodProviders(
-    PUBLIC_RPC_URLS_BY_NETWORK[chainId].map(
-      (url) => new ethers.providers.JsonRpcBatchProvider(url),
-    ),
-  );
-
+export async function getTokenAnalyzer(
+  database: SqlDatabase,
+  provider: ethers.providers.JsonRpcBatchProvider,
+) {
   const memoizer = new Memoizer();
   const storage = new DataStorage(database);
   const leaderStorage = new JsonStorage<any>(BOT_DATA_PATH, 'leaders.json');
@@ -56,13 +53,14 @@ export async function getTokenAnalyzer(chainId: Network, database: SqlDatabase) 
     new Set(await honeypotStorage.read()),
   );
 
-  return new TokenAnalyzer(providers[0], honeyPotChecker, tokenProvider, storage, memoizer);
+  return new TokenAnalyzer(provider, honeyPotChecker, tokenProvider, storage, memoizer);
 }
 
 export async function filterGoodProviders(
   providers: ethers.providers.JsonRpcBatchProvider[],
 ): Promise<ethers.providers.JsonRpcBatchProvider[]> {
   const goodProviders: ethers.providers.JsonRpcBatchProvider[] = [];
+
   for (const provider of providers) {
     try {
       await provider.getNetwork();
