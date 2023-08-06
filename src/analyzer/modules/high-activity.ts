@@ -17,8 +17,8 @@ export const HIGH_ACTIVITY_MODULE_KEY = 'HighActivity';
 export const MIN_UNIQUE_SENDERS_TOTAL = 250;
 export const MIN_UNIQUE_SENDERS_IN_WINDOW = 120;
 export const WINDOW_PERIOD = 7 * 24 * 60 * 60; // 7d
-export const MIN_ACTIVE_RECEIVER_COUNT = 5;
-export const MIN_ACTIVE_RECEIVER_RATE = 0.2; // 20%
+export const MIN_ACTIVE_RECEIVER_COUNT = 10;
+export const MIN_ACTIVE_RECEIVER_RATE = 0.15; // 15%
 
 export type HighActivityModuleMetadata = {
   senders: string[];
@@ -88,7 +88,7 @@ class HighActivityModule extends AnalyzerModule {
     // Check active receivers
 
     detected =
-      activeReceivers.length > MIN_ACTIVE_RECEIVER_COUNT &&
+      activeReceivers.length >= MIN_ACTIVE_RECEIVER_COUNT &&
       activeReceivers.length / receiverSet.size >= MIN_ACTIVE_RECEIVER_RATE;
 
     // Check total active accounts
