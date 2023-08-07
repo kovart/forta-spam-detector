@@ -132,12 +132,16 @@ class TokenProvider {
     let perPage = 100;
     let total = Infinity;
     while (nfts.length < total) {
-      const response = await axios.get<CoinGeckoNft[]>(COINGECKO_NFT_API_URL, {
-        params: {
-          per_page: perPage,
-          page: page,
-        },
-      });
+      const response = await retry(
+        () =>
+          axios.get<CoinGeckoNft[]>(COINGECKO_NFT_API_URL, {
+            params: {
+              per_page: perPage,
+              page: page,
+            },
+          }),
+        { wait: 5 * 60 * 1000, attempts: 3 },
+      );
 
       total = Number(response.headers?.total || 0);
       nfts.push(...response.data);
