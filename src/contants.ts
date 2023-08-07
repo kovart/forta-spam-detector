@@ -39,7 +39,9 @@ export const PUBLIC_RPC_URLS_BY_NETWORK = {
   [Network.MAINNET]: [
     'https://rpc.ankr.com/eth',
     'https://eth-rpc.gateway.pokt.network',
+    'https://eth.llamarpc.com',
     'https://1rpc.io/eth',
+    'https://ethereum.publicnode.com',
   ],
   [Network.POLYGON]: ['https://rpc.ankr.com/polygon', 'https://polygon-rpc.com'],
   [Network.BSC]: ['https://rpc.ankr.com/bsc'],
