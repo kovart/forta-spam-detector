@@ -186,6 +186,7 @@ function getPhishingLabels(
       confidence: confidence,
       remove: false,
       metadata: {
+        urls: JSON.stringify(urls),
         deployer: token.deployer,
       },
     },
