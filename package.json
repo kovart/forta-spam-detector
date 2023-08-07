@@ -1,6 +1,6 @@
 {
   "name": "spam-detector",
-  "version": "0.0.23",
+  "version": "0.0.24",
   "description": "Identify spam tokens and NFTs",
   "repository": "https://github.com/kovart/forta-spam-detector",
   "chainIds": [
@@ -43,7 +43,6 @@
     "keyfile": "forta-agent keyfile"
   },
   "dependencies": {
-    "@sentry/node": "^7.47.0",
     "async": "^3.2.4",
     "async-mutex": "^0.4.0",
     "bignumber.js": "^9.1.1",
