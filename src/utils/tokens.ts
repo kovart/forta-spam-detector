@@ -99,7 +99,7 @@ class TokenProvider {
         await this.fetch();
       } catch (e) {
         if (this.cache) {
-          Logger.error(e, 'Caught fetch error. Fallback to the cached version');
+          Logger.error(e, 'Caught fetch error. Fallback to the cached tokens');
           return this.cache.tokens;
         }
 
@@ -129,30 +129,30 @@ class TokenProvider {
     let nfts: CoinGeckoNft[] = [];
 
     let page = 0;
-    let perPage = 100;
-    let total = Infinity;
-    while (nfts.length < total) {
+    let limit = 100;
+    let lastResponse: any[] | null = null;
+    while (!lastResponse || lastResponse.length === limit) {
       const response = await retry(
         () =>
           axios.get<CoinGeckoNft[]>(COINGECKO_NFT_API_URL, {
             params: {
-              per_page: perPage,
+              per_page: limit,
               page: page,
             },
           }),
         { wait: 5 * 60 * 1000, attempts: 3 },
       );
 
-      total = Number(response.headers?.total || 0);
+      lastResponse = response.data;
       nfts.push(...response.data);
       page++;
 
-      Logger.debug(`[${nfts.length}/${total}] Fetched page: ${page}`);
+      Logger.debug(`[${page}] Fetched NFTs: ${nfts.length}`);
 
       await delay(10 * 1000);
     }
 
-    Logger.info(`Successfully fetched ${nfts.length} NFTs.`);
+    Logger.debug(`Successfully fetched ${nfts.length} NFTs.`);
 
     const tokens: TokenRecord[] = nfts
       .filter((nft) => NETWORK_BY_COINGECKO_PLATFORM_ID[nft.asset_platform_id])
@@ -314,7 +314,7 @@ class TokenProvider {
             // Some tokens return metadata in a slightly different standard.
             // For example, this token returns bytes instead of strings, which causes an error when retrieving this data:
             // https://etherscan.io/address/0x0d88ed6e74bbfd96b831231638b66c05571e824f#readContract
-            Logger.info('Skip token');
+            Logger.debug('Skip token');
           }
         }
       }
