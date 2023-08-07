@@ -104,7 +104,13 @@ class PhishingMetadataModule extends AnalyzerModule {
       urls: [...(metadata?.urls || []), ...(erc1155Phishing.metadata?.urls || [])],
     };
 
-    metadata.urls = [...new Set(metadata.urls)];
+    const urlSet = new Set<string>();
+    for (const url of metadata.urls || []) {
+      const normalizedUrl = url.replace('https://', '');
+      urlSet.add(normalizedUrl);
+    }
+
+    metadata.urls = [...urlSet];
 
     context[PHISHING_METADATA_MODULE_KEY] = { detected, metadata };
   }
