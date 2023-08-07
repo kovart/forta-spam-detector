@@ -152,6 +152,8 @@ class TokenProvider {
       await delay(10 * 1000);
     }
 
+    Logger.info(`Successfully fetched ${nfts.length} NFTs.`);
+
     const tokens: TokenRecord[] = nfts
       .filter((nft) => NETWORK_BY_COINGECKO_PLATFORM_ID[nft.asset_platform_id])
       .map((nft) => ({
@@ -163,7 +165,7 @@ class TokenProvider {
         type: 'nft',
       }));
 
-    Logger.info(`Successfully fetched ${tokens.length} NFTs.`);
+    Logger.info(`Monitored NFTs: ${tokens.length}.`);
 
     await this.updateMetadata(tokens);
 
@@ -211,7 +213,7 @@ class TokenProvider {
       });
     }
 
-    Logger.info(`Successfully fetched ${coins.length} coins.`);
+    Logger.info(`Monitored coins: ${coins.length}.`);
 
     await this.updateMetadata(tokens);
 
@@ -232,7 +234,7 @@ class TokenProvider {
 
         const [symbol, name] = await retry(
           () => Promise.all([contract.symbol(), contract.name()]),
-          { wait: random(1, 3) * 1000 },
+          { wait: random(1, 4) * 1000 },
         );
 
         return { symbol, name };
@@ -262,7 +264,7 @@ class TokenProvider {
 
     // Get correct values for symbol() and name()
     let failedTokens = 0;
-    const maxFailedTokens = 3;
+    const maxFailedTokens = 8;
     for (let i = 0; i < tokens.length; i++) {
       const token = tokens[i];
 
@@ -303,7 +305,7 @@ class TokenProvider {
           token.name = meta.name;
           failedTokens = 0;
         } catch (e) {
-          Logger.error('Failed to get token metadata.');
+          Logger.debug('Failed to get token metadata.');
           failedTokens++;
           if (failedTokens >= maxFailedTokens) {
             Logger.error(`Already failed ${failedTokens} tokens. Break the updating process`);
@@ -312,7 +314,7 @@ class TokenProvider {
             // Some tokens return metadata in a slightly different standard.
             // For example, this token returns bytes instead of strings, which causes an error when retrieving this data:
             // https://etherscan.io/address/0x0d88ed6e74bbfd96b831231638b66c05571e824f#readContract
-            Logger.warn('Skip token');
+            Logger.info('Skip token');
           }
         }
       }

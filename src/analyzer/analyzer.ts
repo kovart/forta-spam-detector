@@ -215,7 +215,7 @@ class TokenAnalyzer {
     };
   }
 
-  private calcConfidence(analysis: AnalysisContext): number {
+  public calcConfidence(analysis: AnalysisContext): number {
     const indicators = getIndicators(analysis);
 
     const isTokenImpersonation = indicators.includes(TokenImpersonationModule.Key);
