@@ -1,8 +1,11 @@
 {
   "name": "spam-detector",
   "version": "0.0.24",
-  "description": "Identify spam tokens and NFTs",
   "repository": "https://github.com/kovart/forta-spam-detector",
+  "displayName": "Token Spam Detector",
+  "description": "Identify spam tokens and NFTs.",
+  "longDescription": "This bot detects spam tokens (ERC20, 721 and 1155) using advanced algorithms that consider token metadata analysis, compliance with declared token standards, distribution rationality and analysis of token creator and recipient behavior.",
+  "licenseUrl": "https://github.com/kovart/forta-spam-detector/blob/main/LICENSE",
   "chainIds": [
     1,
     56,
