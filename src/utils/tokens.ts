@@ -115,6 +115,8 @@ class TokenProvider {
 
   private async fetch() {
     const coins = await this.fetchCoins();
+    // wait a bit and then fetch NFTs
+    await delay(10 * 1000);
     const nfts = await this.fetchNfts();
 
     this.cache = {
