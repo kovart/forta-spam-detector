@@ -1,11 +1,16 @@
-# Spam Token Detector
+# Spam Detector
 
-## 💬 Description
+## About Artem Kovalchuk
 
-This bot detects spam tokens using advanced algorithms that analyze multiple indicators.
-These indicators include token metadata analysis, compliance with declared token standards, distribution rationality and
-analysis of creator and recipient behavior. Additionally, the bot has the ability to adjust its assessment during the
-lifespan of the token, providing up-to-date characterization of spam tokens.
+I am a contractor for the Forta Foundation, and have been a bot developer since the Forta Network launched in Fall 2021.
+You can [read more](#about-the-author) about my experience below.
+
+## 💬 Bot Summary
+
+This bot detects spam tokens using advanced algorithms that analyze multiple indicators. These indicators include token
+metadata analysis, compliance with declared token standards, distribution rationality and analysis of creator and
+recipient behavior. Additionally, the bot has the ability to adjust its assessment during the lifespan of the token,
+providing up-to-date characterization of spam tokens.
 
 ## 🛠️ How it Works
 
@@ -16,8 +21,15 @@ The result of each module’s analysis is captured in the overall analysis of th
 modules. Additionally, some modules can interrupt the execution of other modules and determine the final evaluation of
 the token, i.e. `ObservationTimeIsOver` module.
 
-The [TokenAnalyzer](./src/analyzer/analyzer.ts), which operates like an analysis engine, ingests the results from different modules and determines whether the token is spam or not. To summarize the logic applied by the TokenAnalyzer - the presence of negative indicators and an absence of positive indicators, along with the detection of a passive airdrop, suggests the token is spam. When a spam determination is made, the bot emits an alert that includes information about the token and the context of the modules used to evaluate it. The token contract also receives a persistent label in the Forta Graphql database. If there are changes during token monitoring, such as when a module finds additional signs of spam, the bot will emit an updated alert to indicate the change. If there is a change that alters the evaluation, such that the token is no longer considered spam, the bot will emit an alert instructing Forta to remove the spam label.
-
+The [TokenAnalyzer](./src/analyzer/analyzer.ts), which operates like an analysis engine, ingests the results from
+different modules and determines whether the token is spam or not. To summarize the logic applied by the TokenAnalyzer -
+the presence of negative indicators and an absence of positive indicators suggests the token is spam. When a spam
+determination is made, the bot emits an alert that includes information about the token and the context of the modules
+used to evaluate it. The token contract, its deployer, and the urls involved in the attack receive persistent labels in
+the Forta Graphql database. If there are changes during token monitoring, such as when a module finds additional signs
+that change the confidence score, the bot will emit an updated alert to indicate the change. If there is a change that
+alters the evaluation, such that the token is no longer considered spam, the bot will emit an alert instructing Forta to
+remove the spam label.
 
 ## 🕵️‍♀️ Modules
 
@@ -68,10 +80,11 @@ Here is a table containing all the indicator modules utilized in the project.
         - `tokenStandard`: the standard implemented by the token, such as ERC-20, ERC-721, or ERC-1155
         - `tokenDeployer`: the account that deployed the token
         - `analysis`: a stringified object containing a simplified overview of each indicator's execution context
+        - `confidence`: a value from 0 to 1
 
 
 - SPAM-TOKEN-UPDATE
-    - Fired when new indicators of spam are detected, or when the previously identified signs of spam become irrelevant
+    - Fired when the confidence score is changed or when the previously identified signs of spam become irrelevant
     - Severity: "low"
     - Type: "suspicious"
     - Metadata:
@@ -79,6 +92,7 @@ Here is a table containing all the indicator modules utilized in the project.
         - `tokenStandard`: the standard implemented by the token, such as ERC-20, ERC-721, or ERC-1155
         - `tokenDeployer`: the account that deployed the token
         - `analysis`: a stringified object containing a simplified overview of each indicator's execution context
+        - `confidence`: a value from 0 to 1
 
 
 - SPAM-TOKEN-REMOVE
@@ -91,18 +105,89 @@ Here is a table containing all the indicator modules utilized in the project.
         - `tokenDeployer`: the account that deployed the token
         - `analysis`: a stringified object containing a simplified overview of each indicator's execution context
 
-## 🏷️  Labels
-- Spam
-  - `entityType`: EntityType.Address
-  - `label`: "Spam"
-  - `entity`: token address
-  - `confidence`: 0.7
+- PHISHING-TOKEN-NEW
+    - Fired when the phishing indicator is triggered, indicating the detection of a phishing token
+    - Severity: "low"
+    - Type: "suspicious"
+    - Metadata:
+        - `tokenAddress`: the address of the detected token
+        - `tokenStandard`: the standard implemented by the token, such as ERC-20, ERC-721, or ERC-1155
+        - `tokenDeployer`: the account that deployed the token
+        - `analysis`: a stringified object containing a simplified overview of the phishing indicator execution context
+        - `urls`: a stringified array of urls detected in token metadata
+        - `confidence`: a value from 0 to 1
+      
+- PHISHING-TOKEN-UPDATE
+    - Fired when the confidence score is changed or when the previously identified signs of spam become irrelevant
+    - Severity: "low"
+    - Type: "suspicious"
+    - Metadata:
+        - `tokenAddress`: the address of the detected token
+        - `tokenStandard`: the standard implemented by the token, such as ERC-20, ERC-721, or ERC-1155
+        - `tokenDeployer`: the account that deployed the token
+        - `analysis`: a stringified object containing a simplified overview of the phishing indicator execution context
+        - `urls`: a stringified array of urls detected in token metadata
+        - `confidence`: a value from 0 to 1
+      
+- PHISHING-TOKEN-REMOVE
+    - Fired when the positive reputation indicators for a token outweigh the negative reputation indicators
+    - Severity: "info"
+    - Type: "info"
+    - Metadata:
+        - `tokenAddress`: the address of the detected token
+        - `tokenStandard`: the standard implemented by the token, such as ERC-20, ERC-721, or ERC-1155
+        - `tokenDeployer`: the account that deployed the token
+        - `urls`: a stringified array of urls detected in token metadata
+
+## 🏷️ Labels
+
+- Spam Token
+    - `entityType`: EntityType.Address
+    - `label`: "Spam Token"
+    - `entity`: token address
+    - `confidence`: is a value of 0-1, calculated by the number of triggered indicators as well as secondary data such
+      as number of recipients, number of active recipients, number of urls detected, etc.
+    - `metadata`:
+        - `indicators`: a stringified array of triggered indicators
 
 - Spammer
-  - `entityType`: EntityType.Address
-  - `label`: "Spammer"
-  - `entity`: address of token deployer
-  - `confidence`: 0.7
+    - `entityType`: EntityType.Address
+    - `label`: "Spammer"
+    - `entity`: address of token deployer
+    - `confidence`: is a value of 0-1, calculated by the number of triggered indicators as well as secondary data such
+      as number of recipients, number of active recipients, number of urls detected, etc.
+    - `metadata`:
+        - `indicators`: a stringified array of triggered indicators
+
+- Phishing Token
+    - `entityType`: EntityType.Address
+    - `label`: "Phishing Token"
+    - `entity`: token address
+    - `confidence`: is a value of 0-1, calculated by the number of triggered indicators as well as secondary data such
+      as number of recipients, number of active recipients, number of urls detected, etc.
+    - `metadata`:
+        - `urls`: a stringified array of urls detected in the token
+        - `deployer`: the account that deployed the token
+
+- Scammer
+    - `entityType`: EntityType.Address
+    - `label`: "Scammer"
+    - `entity`: address of a phishing token deployer
+    - `confidence`: is a value of 0-1, calculated by the number of triggered indicators as well as secondary data such
+      as number of recipients, number of active recipients, number of urls detected, etc.
+    - `metadata`:
+        - `urls`: a stringified array of urls detected in the token
+        - `token`: the address of the token deployed by the scammer
+
+- Phishing URL
+    - `entityType`: EntityType.Url
+    - `label`: "Phishing URL"
+    - `entity`: detected url
+    - `confidence`: is a value of 0-1, calculated by the number of triggered indicators as well as secondary data such
+      as number of recipients, number of active recipients, number of urls detected, etc.
+    - `metadata`:
+        - `token`: the token address containing the url
+        - `deployer`: the account that deployed the token
 
 ## 🐛 Testing
 
@@ -191,6 +276,18 @@ spam token, while the second alert will update the analysis as one more indicato
   }
 }
 ```
+
+## About the Author
+
+I am a web developer by training, and have been an active member of the Forta Community since its inception in the Fall 2021. 
+I participated in several early bot development contests hosted by the Forta Foundation, and won four of them. In
+the Summer 2022, I was approached by the Foundation about contributing to Forta in a more formal capacity. I entered
+into an independent contractor agreement with the Foundation and have been participating in core development related
+activities for the last year, including leading the redesign of the Forta Explorer and Bot Profile pages, and supporting
+the development of the Attack Detector.
+
+I also developed and maintained one of the most popular bots on the network, the Attack Simulation Bot, which is
+currently used by the Forta Foundation’s Attack Detector.
 
 ## 🗄️ Data Sources
 
