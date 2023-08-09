@@ -273,6 +273,11 @@ class TokenProvider {
       let tokenCache: TokenRecord | undefined = undefined;
 
       for (const address of Object.values(token.deployments)) {
+        // check if it is a future deployment (e.g. PayPal USD)
+        if (address == '') {
+          break;
+        }
+
         tokenCache = tokenCacheByAddress.get(address);
         if (tokenCache) break;
       }
