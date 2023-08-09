@@ -74,7 +74,7 @@ class TokenProvider {
 
   private storage: JsonStorage<TokenProviderCache>;
 
-  constructor(storage: JsonStorage<TokenProviderCache>, ttl: number = 6 * 60 * 60 * 1000) {
+  constructor(storage: JsonStorage<TokenProviderCache>, ttl: number = 12 * 60 * 60 * 1000) {
     this.storage = storage;
     this.mutex = new Mutex();
     this.ttl = ttl;
