@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { queue } from 'async';
 import { ethers } from 'ethers';
-import { chunk, shuffle } from 'lodash';
+import { chunk, random, shuffle } from 'lodash';
 
 import Logger from '../../utils/logger';
 import { isBase64, normalizeMetadataUri, parseBase64, retry } from '../../utils/helpers';
@@ -148,7 +148,10 @@ class Erc721NonUniqueTokensModule extends AnalyzerModule {
           async ({ tokenId, uri }, callback) => {
             try {
               const metadata = await memo('axios.get', [uri], async () => {
-                const { data } = await retry(() => axios.get(uri));
+                const { data } = await retry(() => axios.get(uri), {
+                  attempts: 3,
+                  wait: random(2, 8, true) * 1000,
+                });
                 return data;
               });
 
