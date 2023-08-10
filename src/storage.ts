@@ -52,7 +52,8 @@ class DataStorage {
 
     const transactionId = await this.db.addTransaction(transaction);
 
-    for (const log of logs) {
+    for (let i = 0; i < logs.length; i++) {
+      const log = logs[i];
       const contractAddress = log.address.toLowerCase();
 
       try {
@@ -164,6 +165,9 @@ class DataStorage {
       } catch {
         // ignore
       }
+
+      // memory optimization
+      if ((i + 1) % 250 == 0) await this.db.wait();
     }
   }
 
