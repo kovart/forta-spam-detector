@@ -38,6 +38,8 @@ export const PHISHING_NAME_KEYWORDS = [
 export const PHISHING_NAME_PATTERNS = [
   // $ 3000
   /\$\s*\d+/,
+  // 3000 $
+  /\d+\s*\$/,
   // $ aave.site
   /\$\s+(http(s)?:\/\/.)?(www\.)?[a-zA-Z0-9]{1,256}([-a-zA-Z0-9@:%._\+~#=]*)\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)/,
 ];
