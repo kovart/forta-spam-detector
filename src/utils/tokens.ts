@@ -293,7 +293,7 @@ class TokenProvider {
         const deployment = Object.entries(token.deployments).find((v) => v[1]);
 
         if (!deployment) {
-          Logger.error(`Cannot find deployed contract for token ${token.name} (${token.symbol})`, {
+          Logger.debug(`Cannot find deployed contract for token ${token.name} (${token.symbol})`, {
             tokenDeployments: token.deployments,
           });
           continue;
