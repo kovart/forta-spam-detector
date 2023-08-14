@@ -1,9 +1,10 @@
 # Build stage: compile Typescript to Javascript
-FROM --platform=linux/x86_64 node:18.15-alpine AS builder
+FROM node:18.15-alpine AS builder
 WORKDIR /app
 COPY . .
-RUN npm ci
-RUN npm run build
+RUN apk add --no-cache linux-headers python3 make g++ && rm -rf /var/cache/apk/*
+RUN npm ci --loglevel verbose
+RUN npm run build --loglevel verbose
 
 # Final stage: copy compiled Javascript from previous stage and install production dependencies
 FROM --platform=linux/x86_64 node:18.15-alpine
@@ -16,5 +17,6 @@ COPY .env.public .
 COPY package*.json ./
 COPY data ./data
 COPY LICENSE ./
-RUN npm ci --production
+RUN apk add --no-cache linux-headers python3 make g++ && rm -rf /var/cache/apk/*
+RUN npm ci --production --loglevel verbose
 CMD sh -c "source .env.public && npm run start:prod"

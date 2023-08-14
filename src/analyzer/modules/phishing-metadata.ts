@@ -1,4 +1,5 @@
 import { ethers } from 'ethers';
+import { random } from 'lodash';
 import axios from 'axios';
 
 import { erc1155Iface, erc20Iface, erc721Iface } from '../../contants';
@@ -218,7 +219,7 @@ class PhishingMetadataModule extends AnalyzerModule {
     }
 
     // in order to optimize performance we only check each 50th token
-    const tokenIds = [...tokenIdSet].filter((v, index) => index % 50 === 0);
+    const tokenIds = [...tokenIdSet].filter((v, index) => index % 50 === 0).slice(0, 15);
 
     try {
       const erc721Contract = new ethers.Contract(token.address, erc721Iface, provider);
@@ -383,11 +384,13 @@ class PhishingMetadataModule extends AnalyzerModule {
 
       try {
         metadata = await memo('axios.get', [url], async () => {
-          const { data } = await retry(() => axios.get(url));
+          const { data } = await retry(() => axios.get(url), {
+            wait: random(5, 15) * 1000,
+          });
           return data;
         });
       } catch (e) {
-        Logger.error('Metadata fetching error', { error: e });
+        Logger.debug({ error: e }, 'Metadata fetching error');
       }
     }
 

@@ -1,7 +1,7 @@
 import { Finding, HandleBlock, HandleTransaction, TransactionEvent } from 'forta-agent';
 import { Contract, ethers, providers, utils } from 'ethers';
 import { queue } from 'async';
-import urlRegex from 'url-regex';
+import urlRegex from 'url-regex-safe';
 import parseUrl from 'parse-url';
 
 import Logger from './logger';

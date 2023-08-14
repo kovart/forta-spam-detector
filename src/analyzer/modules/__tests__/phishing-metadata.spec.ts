@@ -87,7 +87,7 @@ describe('PhishingMetadata', () => {
       await run(['https://site.cc/test#link?query=12', 'Visit this']);
       expect(result.detected).toStrictEqual(true);
       expect(result.metadata!.urls).toHaveLength(1);
-      expect(result.metadata!.urls).toContain('https://site.cc/test#link?query=12');
+      expect(result.metadata!.urls).toContain('site.cc/test#link?query=12');
     });
 
     it('should detect phishing for "site[.]cc (Visit this)"', async () => {
@@ -280,14 +280,14 @@ describe('PhishingMetadata', () => {
         expect(result.detected).toStrictEqual(true);
         expect(result.metadata!.urls).toHaveLength(2);
         expect(result.metadata!.urls).toContain('t.ly/n-6g');
-        expect(result.metadata!.urls).toContain('https://site.cc');
+        expect(result.metadata!.urls).toContain('site.cc');
       });
 
       it('should not extract "(" and ")" symbols in url', async () => {
         await run(TokenStandard.Erc721, 'Visit our discord (https://discord.gg/av66rnpc).//');
         expect(result.detected).toStrictEqual(true);
         expect(result.metadata!.urls).toHaveLength(1);
-        expect(result.metadata!.urls).toContain('https://discord.gg/av66rnpc');
+        expect(result.metadata!.urls).toContain('discord.gg/av66rnpc');
       });
 
       it('should detect description with a link and keywords', async () => {
@@ -363,7 +363,7 @@ describe('PhishingMetadata', () => {
         expect(result.detected).toStrictEqual(true);
         expect(result.metadata!.urls).toHaveLength(2);
         expect(result.metadata!.urls).toContain('site.com');
-        expect(result.metadata!.urls).toContain('https://bit.ly/shortlink#test?query=id');
+        expect(result.metadata!.urls).toContain('bit.ly/shortlink#test?query=id');
       });
     });
   });

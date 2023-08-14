@@ -1,6 +1,6 @@
 {
   "name": "spam-detector",
-  "version": "0.0.25",
+  "version": "0.0.26",
   "repository": "https://github.com/kovart/forta-spam-detector",
   "displayName": "Token Spam Detector",
   "description": "Identify spam tokens and NFTs.",
@@ -61,8 +61,9 @@
     "parse-url": "^8.1.0",
     "pino": "^8.11.0",
     "pino-pretty": "^10.0.0",
+    "re2": "^1.20.1",
     "sqlite3": "^5.1.6",
-    "url-regex": "^5.0.0"
+    "url-regex-safe": "^3.0.0"
   },
   "devDependencies": {
     "@types/async": "^3.2.18",
@@ -70,6 +71,7 @@
     "@types/lodash": "^4.14.191",
     "@types/minimist": "^1.2.2",
     "@types/nodemon": "^1.19.0",
+    "@types/url-regex-safe": "^1.0.0",
     "@typescript-eslint/eslint-plugin": "^5.54.1",
     "axios-mock-adapter": "^1.21.5",
     "cheerio": "^1.0.0-rc.12",
