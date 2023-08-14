@@ -23,6 +23,8 @@ class DataStorage {
   }
 
   addToken(token: TokenContract) {
+    if (this.tokenByAddress.has(token.address)) return;
+
     this.tokenByAddress.set(token.address, token);
     this.db.addToken(token);
   }
@@ -167,7 +169,7 @@ class DataStorage {
       }
 
       // memory optimization
-      if ((i + 1) % 250 == 0) await this.db.wait();
+      if ((i + 1) % 40 == 0) await this.db.wait();
     }
   }
 
