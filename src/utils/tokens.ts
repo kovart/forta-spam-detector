@@ -64,6 +64,7 @@ export type TokenRecord = {
 
 export type TokenProviderCache = {
   updatedAt: number;
+  requestedAt?: number;
   tokens: TokenRecord[];
 };
 
@@ -90,7 +91,11 @@ class TokenProvider {
         }
       }
 
-      if (this.cache && Date.now() - this.cache.updatedAt <= this.ttl) {
+      if (
+        this.cache &&
+        (Date.now() - this.cache.updatedAt <= this.ttl ||
+          Date.now() - (this.cache.requestedAt || 0) <= this.ttl)
+      ) {
         Logger.debug('Using tokens cache');
         return this.cache.tokens;
       }
@@ -99,7 +104,21 @@ class TokenProvider {
         await this.fetch();
       } catch (e) {
         if (this.cache) {
-          Logger.error(e, 'Caught fetch error. Fallback to the cached tokens');
+          this.cache.requestedAt = Date.now();
+
+          Logger.error('Caught fetch error. Fallback to the cached tokens');
+          if (axios.isAxiosError(e)) {
+            Logger.error(
+              {
+                url: e.config.url,
+                params: e.config.params,
+              },
+              `${e.code}: ${e.message}`,
+            );
+          } else {
+            Logger.error(e);
+          }
+
           return this.cache.tokens;
         }
 
@@ -121,6 +140,7 @@ class TokenProvider {
 
     this.cache = {
       updatedAt: Date.now(),
+      requestedAt: Date.now(),
       tokens: [...coins, ...nfts],
     };
   }
