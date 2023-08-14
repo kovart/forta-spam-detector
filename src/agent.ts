@@ -7,6 +7,7 @@ import {
   Initialize,
   TransactionEvent,
 } from 'forta-agent';
+import axios from 'axios';
 import dayjs from 'dayjs';
 import { BotSharding } from 'forta-sharding';
 import { createTicker } from 'forta-helpers';
@@ -43,6 +44,7 @@ import {
 } from './contants';
 import { JsonStorage, mkdir, rmFile } from './utils/storage';
 import { AlertMitigation } from './utils/mitigation';
+import { random } from 'lodash';
 
 dayjs.extend(duration);
 Logger.level = 'info';
@@ -109,9 +111,9 @@ const provideInitialize = (data: DataContainer, isDevelopment: boolean): Initial
     data.analysisByToken = new Map();
 
     await data.detector.initialize();
+    await data.sharding.sync(network.chainId);
 
     Logger.warn(`Bot has been successfully initialized.`);
-    data.detector.logStats();
 
     data.isInitialized = true;
   };
@@ -200,6 +202,7 @@ const provideHandleBlock = (data: DataContainer): HandleBlock => {
 
 const provideHandleTransaction = (data: DataContainer): HandleTransaction => {
   const isTimeToSync = createTicker(5 * 60 * 1000); // 5m
+  const isTimeToLogSharding = createTicker(2 * 60 * 60 * 1000); // 2h
 
   return async function handleTransaction(txEvent: TransactionEvent) {
     // TODO filter db by current block number
@@ -209,6 +212,12 @@ const provideHandleTransaction = (data: DataContainer): HandleTransaction => {
 
     if (isTimeToSync(txEvent.timestamp)) {
       await data.sharding.sync(txEvent.network);
+    }
+
+    if (isTimeToLogSharding(txEvent.timestamp)) {
+      Logger.info(
+        `Shards: ${data.sharding.getShardCount()}. Shard index: ${data.sharding.getShardIndex()}`,
+      );
     }
 
     // Sharded logic
@@ -244,16 +253,18 @@ const provideHandleTransaction = (data: DataContainer): HandleTransaction => {
 };
 
 const provideAlertMitigation = (data: DataContainer): HandleBlock => {
+  const isTimeToOptimizeStorage = createTicker(24 * 60 * 60 * 1000 * random(1, 1.2));
+  const isTimeToFetchFalseFindings = createTicker(2 * 60 * 60 * 1000 * random(1, 1.2));
+
   return async (blockEvent: BlockEvent) => {
     if (IS_DEVELOPMENT) return [];
 
     try {
-      // We use such a block number so that it can be executed at different times with fetching false findings
-      if (blockEvent.blockNumber % 5_010 === 0) {
+      if (isTimeToOptimizeStorage(blockEvent.block.timestamp)) {
         await data.alertMitigation.optimizeStorage();
       }
 
-      if (blockEvent.blockNumber % 250 === 0) {
+      if (isTimeToFetchFalseFindings(blockEvent.block.timestamp)) {
         const tokens = await data.alertMitigation.getFalseFindings();
 
         if (tokens.length > 0) {
@@ -283,12 +294,24 @@ const provideAlertMitigation = (data: DataContainer): HandleBlock => {
       }
     } catch (e) {
       Logger.error('Alert mitigation error');
-      Logger.error(e);
+      if (axios.isAxiosError(e)) {
+        Logger.error(`${e.code}: ${e.message}`);
+      } else {
+        Logger.error(e);
+      }
     }
 
     return [];
   };
 };
+
+process.on('uncaughtException', (e) => {
+  console.error(e);
+});
+
+process.on('unhandledRejection', (e) => {
+  console.error(e);
+});
 
 export default {
   initialize: provideInitialize(data, IS_DEVELOPMENT),

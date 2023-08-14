@@ -2,6 +2,7 @@ import axios from 'axios';
 import { uniqBy } from 'lodash';
 import { IBotStorage } from 'forta-bot-analytics';
 import Logger from './logger';
+import { retry } from './helpers';
 
 type ManuallyRemovedFinding<T> = T & {
   removedAt: number;
@@ -84,9 +85,11 @@ export class AlertMitigation<T> {
           .map((f) => this.getHash(f)),
       );
 
-      Logger.warn(
-        `[AlertManager] Removed ${notPresentRemovedFindingsSet.size} findings from cache since as they are no longer present in the url of false findings`,
-      );
+      if (notPresentRemovedFindingsSet.size > 0) {
+        Logger.warn(
+          `[AlertManager] Removed ${notPresentRemovedFindingsSet.size} findings from cache since as they are no longer present in the url of false findings`,
+        );
+      }
 
       newStorageState.removedFindings = removedFindings.filter(
         (f) => !notPresentRemovedFindingsSet.has(this.getHash(f)),
@@ -100,7 +103,10 @@ export class AlertMitigation<T> {
   private async fetchFalseFindingsMap(): Promise<{ [chainId: string]: T[] }> {
     if (!this.falseFindingsUrl) return {};
 
-    const { data } = await axios.get(this.falseFindingsUrl);
+    const { data } = await retry(() => axios.get(this.falseFindingsUrl!), {
+      wait: 5 * 1000,
+      attempts: 3,
+    });
     return data || {};
   }
 
