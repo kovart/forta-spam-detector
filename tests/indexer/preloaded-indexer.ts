@@ -1,8 +1,7 @@
 import { erc1155Iface, erc20Iface, erc721Iface, retry, TokenStandard } from 'forta-helpers';
 import { BigNumber as EtherBigNumber } from '@ethersproject/bignumber/lib/bignumber';
-import { chunk, random } from 'lodash';
+import { chunk, random, shuffle } from 'lodash';
 import { ethers } from 'ethers';
-import dayjs from 'dayjs';
 import { IBlockchainIndexer, IndexerEvent, IndexerInterval } from './indexer';
 import {
   Erc1155ApprovalForAllEvent,
@@ -127,19 +126,23 @@ export class PreloadedIndexer implements IBlockchainIndexer {
 
     Logger.debug(`Fetching ${params.hashes.length} transactions...`);
 
+    const providers = shuffle(this.providers);
+
+    const concurrency = Math.min(
+      Math.ceil(params.hashes.length / this.providers.length),
+      this.performanceConfig.concurrency,
+    );
+
     const blockNumberSet = new Set<number>();
-    for (const batch of chunk(
-      params.hashes,
-      this.performanceConfig.concurrency * this.providers.length,
-    )) {
+    for (const batch of chunk(params.hashes, concurrency * this.providers.length)) {
       const t0 = performance.now();
 
       const providersResponse = await Promise.all(
         chunk(batch, this.performanceConfig.concurrency).map(async (hashes, i) => {
-          const provider = new ethers.providers.JsonRpcBatchProvider(this.providers[i].connection);
+          const provider = new ethers.providers.JsonRpcBatchProvider(providers[i].connection);
 
           return retry(() => Promise.all(hashes.map((hash) => provider.getTransaction(hash))), {
-            wait: random(1, 3, true) * 1000,
+            wait: random(1, 1.25, true) * 1000,
           });
         }),
       );
@@ -198,19 +201,16 @@ export class PreloadedIndexer implements IBlockchainIndexer {
 
     let blockCounter = 0;
     const timestampByBlockNumber = new Map<number, number>();
-    for (const batch of chunk(
-      [...blockNumberSet],
-      this.performanceConfig.concurrency * this.providers.length,
-    )) {
+    for (const batch of chunk([...blockNumberSet], concurrency * this.providers.length)) {
       const t0 = performance.now();
 
       const providersResponse = await Promise.all(
         chunk(batch, this.performanceConfig.concurrency).map((blockNumbers, i) => {
-          const provider = new ethers.providers.JsonRpcBatchProvider(this.providers[i].connection);
+          const provider = new ethers.providers.JsonRpcBatchProvider(providers[i].connection);
 
           return retry(
             () => Promise.all(blockNumbers.map((blockNumber) => provider.getBlock(blockNumber))),
-            { wait: random(1, 3, true) },
+            { wait: random(1, 1.25, true) },
           );
         }),
       );
@@ -418,8 +418,6 @@ export class PreloadedIndexer implements IBlockchainIndexer {
   }
 
   private async fetchLogs(params: { blockNumbers: number[]; contract: string; topic: string }) {
-    const requests = this.performanceConfig.logsConcurrency; // parallel requests
-
     const logs: ethers.providers.Log[] = [];
     const blockNumbers: number[] = [];
 
@@ -435,13 +433,22 @@ export class PreloadedIndexer implements IBlockchainIndexer {
       }
     }
 
-    for (const largeBatch of chunk(blockNumbers, requests * this.providers.length)) {
-      const providerBatches = chunk(largeBatch, requests);
+    blockNumbers.sort();
+
+    const providers = shuffle(this.providers);
+
+    const concurrency = Math.min(
+      Math.ceil(params.blockNumbers.length / providers.length),
+      this.performanceConfig.logsConcurrency,
+    );
+
+    for (const largeBatch of chunk(blockNumbers, concurrency * providers.length)) {
+      const providerBatches = chunk(largeBatch, concurrency);
 
       const result = await Promise.all(
         providerBatches.map(async (batch, i) => {
           // re-initialize provider to avoid "no-network" error
-          const provider = new ethers.providers.JsonRpcBatchProvider(this.providers[i].connection);
+          const provider = new ethers.providers.JsonRpcBatchProvider(providers[i].connection);
 
           const logs = await Promise.all(
             batch.map((blockNumber) => {
