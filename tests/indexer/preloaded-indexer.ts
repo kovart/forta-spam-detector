@@ -39,11 +39,7 @@ export class PreloadedIndexer implements IBlockchainIndexer {
   private alternativeProviders: ethers.providers.JsonRpcBatchProvider[];
   private performanceConfig: HybridIndexerPerformanceConfig;
 
-  private logsCache: {
-    [blockNumber: number]: {
-      [contract: string]: ethers.providers.Log[];
-    };
-  } = [];
+  private logsCache = new Map<number, Map<string, Set<ethers.providers.Log>>>();
 
   constructor(
     preloadedRows: PreloadRow[],
@@ -142,7 +138,7 @@ export class PreloadedIndexer implements IBlockchainIndexer {
           const provider = new ethers.providers.JsonRpcBatchProvider(providers[i].connection);
 
           return retry(() => Promise.all(hashes.map((hash) => provider.getTransaction(hash))), {
-            wait: random(1, 1.25, true) * 1000,
+            wait: random(1, 3, true) * 1000,
           });
         }),
       );
@@ -401,13 +397,18 @@ export class PreloadedIndexer implements IBlockchainIndexer {
     });
 
     for (const log of logs) {
-      const parsedLog = params.parseLog(log);
-      arr.push({
-        contract: log.address.toLowerCase(),
-        logIndex: log.logIndex,
-        transactionHash: log.transactionHash,
-        ...params.getArgs(parsedLog),
-      });
+      try {
+        const parsedLog = params.parseLog(log);
+        arr.push({
+          contract: log.address.toLowerCase(),
+          logIndex: log.logIndex,
+          transactionHash: log.transactionHash,
+          ...params.getArgs(parsedLog),
+        });
+      } catch (e) {
+        // ignore
+        Logger.error(e, 'Error while parsing log');
+      }
     }
 
     Logger.debug(
@@ -417,23 +418,29 @@ export class PreloadedIndexer implements IBlockchainIndexer {
     return arr;
   }
 
-  private async fetchLogs(params: { blockNumbers: number[]; contract: string; topic: string }) {
-    const logs: ethers.providers.Log[] = [];
-    const blockNumbers: number[] = [];
+  private async fetchLogs(params: {
+    blockNumbers: number[];
+    contract: string;
+    topic: string;
+  }): Promise<Set<ethers.providers.Log>> {
+    const logs: Set<ethers.providers.Log> = new Set();
+    const missingBlockNumbers: number[] = [];
 
     for (const blockNumber of params.blockNumbers) {
-      if (this.logsCache[blockNumber]?.[params.contract]) {
-        for (const log of this.logsCache[blockNumber][params.contract]) {
+      const cachedLogSet = this.logsCache.get(blockNumber)?.get(params.contract) || new Set();
+
+      if (cachedLogSet.size > 0) {
+        for (const log of cachedLogSet) {
           if (log.topics[0] === params.topic) {
-            logs.push(log);
+            logs.add(log);
           }
         }
       } else {
-        blockNumbers.push(blockNumber);
+        missingBlockNumbers.push(blockNumber);
       }
     }
 
-    blockNumbers.sort();
+    missingBlockNumbers.sort();
 
     const providers = shuffle(this.providers);
 
@@ -442,7 +449,7 @@ export class PreloadedIndexer implements IBlockchainIndexer {
       this.performanceConfig.logsConcurrency,
     );
 
-    for (const largeBatch of chunk(blockNumbers, concurrency * providers.length)) {
+    for (const largeBatch of chunk(missingBlockNumbers, concurrency * providers.length)) {
       const providerBatches = chunk(largeBatch, concurrency);
 
       const result = await Promise.all(
@@ -459,7 +466,7 @@ export class PreloadedIndexer implements IBlockchainIndexer {
                     fromBlock: blockNumber,
                     toBlock: blockNumber,
                   }),
-                { wait: random(1, 4) * 1000 },
+                { wait: random(1, 3, true) * 1000 },
               );
             }),
           );
@@ -472,20 +479,24 @@ export class PreloadedIndexer implements IBlockchainIndexer {
 
       // Cache logs
       for (const log of resultLogs) {
-        if (!this.logsCache[log.blockNumber]) {
-          this.logsCache[log.blockNumber] = {};
+        let blockLogsMap = this.logsCache.get(log.blockNumber);
+        if (!blockLogsMap) {
+          blockLogsMap = new Map();
+          this.logsCache.set(log.blockNumber, blockLogsMap);
         }
 
-        if (!this.logsCache[log.blockNumber][params.contract]) {
-          this.logsCache[log.blockNumber][params.contract] = [];
+        let logSet = blockLogsMap.get(params.contract);
+        if (!logSet) {
+          logSet = new Set();
+          blockLogsMap.set(params.contract, logSet);
         }
 
-        this.logsCache[log.blockNumber][params.contract].push(log);
+        logSet.add(log);
       }
 
       const targetLogs = resultLogs.filter((l) => l.topics[0] === params.topic);
       for (const log of targetLogs) {
-        logs.push(log);
+        logs.add(log);
       }
 
       Logger.info(`Successfully fetched: ${targetLogs.length} logs`);
@@ -495,6 +506,6 @@ export class PreloadedIndexer implements IBlockchainIndexer {
   }
 
   public clearCache() {
-    this.logsCache = {};
+    this.logsCache = new Map();
   }
 }
