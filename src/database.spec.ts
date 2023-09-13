@@ -464,17 +464,17 @@ describe('sql database', () => {
     expect(txsToToken1[0]).toEqual(token1Tx2);
     expect(token1ApprovalEvents).toHaveLength(1);
     expect(token1ApprovalEvents).toContainEqual({
-      ...omit(token1ApprovalEvent, 'transaction_id'),
+      ...omit(token1ApprovalEvent, 'transactionId'),
       transaction: token1Tx1,
     });
     expect(token1TransferEvents).toHaveLength(1);
     expect(token1TransferEvents).toContainEqual({
-      ...omit(token1TransferEvent, 'transaction_id'),
+      ...omit(token1TransferEvent, 'transactionHash'),
       transaction: token1Tx2,
     });
     expect(token2TransferEvents).toHaveLength(1);
     expect(token2TransferEvents).toContainEqual({
-      ...omit(token2TransferEvent, 'transaction_id'),
+      ...omit(token2TransferEvent, 'transactionId'),
       transaction: token2Tx,
     });
 
