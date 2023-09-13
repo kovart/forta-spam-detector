@@ -210,7 +210,7 @@ class SqlDatabase {
 
   async getTransactions(params: { to: string | null }): Promise<SimplifiedTransaction[]> {
     return (
-      await this.all<SimplifiedTransaction[]>(
+      await this.all<(Omit<SimplifiedTransaction, 'index'> & { txIndex: number })[]>(
         `SELECT t.hash, t.tx_index AS "txIndex", t.sighash, t.timestamp, t.block_number AS "blockNumber", from_a.address AS "from", "${wrapNull(
           params.to,
         )}" AS "to"
@@ -235,7 +235,7 @@ class SqlDatabase {
       from: v.from,
       blockNumber: v.blockNumber,
       timestamp: v.timestamp,
-      index: v.index,
+      index: v.txIndex,
     }));
   }
 
