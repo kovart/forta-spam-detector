@@ -18,6 +18,7 @@ import Logger from '../../utils/logger';
 import AirdropModule, { AirdropModuleMetadata } from './airdrop';
 import SilentMintModule from './silent-mint';
 import ObservationTimeModule from './observation-time';
+import TokenImpersonation from './token-impersonation';
 
 // This module analyzes the metadata of tokens for the presence of a link to a website.
 // If such a link is found, it may suggest a phishing attack, particularly in the case of a large airdrop.

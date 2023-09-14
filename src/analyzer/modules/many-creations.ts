@@ -5,6 +5,7 @@ import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
 import { erc20Iface } from '../../contants';
 import { retry } from '../../utils/helpers';
 import { AIRDROP_MODULE_KEY } from './airdrop';
+import { TOKEN_IMPERSONATION_MODULE_KEY } from './token-impersonation';
 
 // This module analyzes the frequency with which a token creator produces unique tokens.
 // If the creator generates tokens excessively, it may suggest spammy behavior.
@@ -30,7 +31,8 @@ class TooManyCreationsModule extends AnalyzerModule {
 
     context[TOO_MANY_CREATIONS_MODULE_KEY] = { detected, metadata };
 
-    if (!context[AIRDROP_MODULE_KEY]?.detected) return;
+    if (![AIRDROP_MODULE_KEY, TOKEN_IMPERSONATION_MODULE_KEY].some((key) => context[key]?.detected))
+      return;
 
     const memo = memoizer.getScope(token.address);
 

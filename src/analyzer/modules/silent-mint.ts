@@ -1,6 +1,7 @@
 import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
 import { TokenStandard } from '../../types';
 import { AIRDROP_MODULE_KEY } from './airdrop';
+import { TOKEN_IMPERSONATION_MODULE_KEY } from './token-impersonation';
 
 // The purpose of this module is to detect if a user has a negative balance.
 // A negative balance is typically associated with fraudulent tokens,
@@ -32,7 +33,9 @@ class SilentMintModule extends AnalyzerModule {
 
     context[SILENT_MINT_MODULE_KEY] = { detected, metadata };
 
-    if (!context[AIRDROP_MODULE_KEY]?.detected) return;
+    if (![AIRDROP_MODULE_KEY, TOKEN_IMPERSONATION_MODULE_KEY].some((key) => context[key]?.detected))
+      return;
+
     if (token.type !== TokenStandard.Erc20) return;
 
     const balanceByAccount = await transformer.balanceByAccount(token);

@@ -1,5 +1,6 @@
 import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
-import AirdropModule, { AirdropModuleMetadata } from './airdrop';
+import { AIRDROP_MODULE_KEY, AirdropModuleMetadata } from './airdrop';
+import { TOKEN_IMPERSONATION_MODULE_KEY } from './token-impersonation';
 
 export const TOO_MUCH_AIRDROP_ACTIVITY_MODULE_KEY = 'TooMuchAirdropActivity';
 export const AIRDROP_DURATION_THRESHOLD = 1 * 30 * 24 * 60 * 60; // 1 month
@@ -21,9 +22,13 @@ class TooMuchAirdropActivityModule extends AnalyzerModule {
 
     context[TOO_MUCH_AIRDROP_ACTIVITY_MODULE_KEY] = { detected, metadata };
 
-    if (!context[AirdropModule.Key]?.detected) return;
+    if (
+      ![AIRDROP_MODULE_KEY, TOKEN_IMPERSONATION_MODULE_KEY].some((key) => context[key]?.detected)
+    ) {
+      return;
+    }
 
-    const airdropMetadata = context[AirdropModule.Key].metadata as AirdropModuleMetadata;
+    const airdropMetadata = context[AIRDROP_MODULE_KEY].metadata as AirdropModuleMetadata;
     const { receivers, startTime, endTime } = airdropMetadata;
 
     const duration = endTime - startTime;

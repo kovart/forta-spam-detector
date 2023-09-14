@@ -4,6 +4,7 @@ import { DetailedErc721TransferEvent, TokenStandard } from '../../types';
 import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
 import { erc721Iface } from '../../contants';
 import { AIRDROP_MODULE_KEY } from './airdrop';
+import { TOKEN_IMPERSONATION_MODULE_KEY } from './token-impersonation';
 
 // Detect when single token in the ERC721 collection
 // has been transferred to multiple owners indicating fraudulent transfers.
@@ -56,7 +57,8 @@ class Erc721MultipleOwnersModule extends AnalyzerModule {
 
     context[MULTIPLE_OWNERS_MODULE_KEY] = { detected, metadata };
 
-    if (!context[AIRDROP_MODULE_KEY]?.detected) return;
+    if (![AIRDROP_MODULE_KEY, TOKEN_IMPERSONATION_MODULE_KEY].some((key) => context[key]?.detected))
+      return;
 
     if (token.type !== TokenStandard.Erc721) return;
 

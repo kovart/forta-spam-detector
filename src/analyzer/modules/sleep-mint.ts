@@ -7,6 +7,7 @@ import { isAccountAbstraction, isBurnAddress } from '../../utils/helpers';
 import AirdropModule, { AIRDROP_MODULE_KEY, AirdropModuleMetadata } from './airdrop';
 import { erc20Iface } from '../../contants';
 import Logger from '../../utils/logger';
+import { TOKEN_IMPERSONATION_MODULE_KEY } from './token-impersonation';
 
 export const SLEEP_MINT_MODULE_KEY = 'SleepMint';
 export const SLEEP_MINT_RECEIVERS_THRESHOLD = 3;
@@ -47,7 +48,8 @@ class SleepMintModule extends AnalyzerModule {
 
     context[SLEEP_MINT_MODULE_KEY] = { detected, metadata };
 
-    if (!context[AIRDROP_MODULE_KEY]?.detected) return;
+    if (![AIRDROP_MODULE_KEY, TOKEN_IMPERSONATION_MODULE_KEY].some((key) => context[key]?.detected))
+      return;
 
     const memo = memoizer.getScope(token.address);
 

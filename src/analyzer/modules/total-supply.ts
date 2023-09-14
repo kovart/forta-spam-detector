@@ -4,7 +4,6 @@ import { erc721Iface } from '../../contants';
 import { TokenStandard } from '../../types';
 import { retry } from '../../utils/helpers';
 import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
-import { AIRDROP_MODULE_KEY } from './airdrop';
 
 export const FALSE_TOTAL_SUPPLY_MODULE_KEY = 'Erc721FalseTotalSupply';
 
@@ -23,8 +22,6 @@ class Erc721FalseTotalSupplyModule extends AnalyzerModule {
     let metadata: Erc721FalseTotalSupplyModuleMetadata | undefined = undefined;
 
     context[FALSE_TOTAL_SUPPLY_MODULE_KEY] = { detected, metadata };
-
-    if (!context[AIRDROP_MODULE_KEY]?.detected) return;
 
     const memo = memoizer.getScope(token.address);
 
