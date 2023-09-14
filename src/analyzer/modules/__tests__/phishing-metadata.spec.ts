@@ -290,6 +290,16 @@ describe('PhishingMetadata', () => {
         expect(result.metadata!.urls).toContain('discord.gg/av66rnpc');
       });
 
+      it('should extract links correctly from markdown document', async () => {
+        await run(
+          TokenStandard.Erc721,
+          'Visit our [discord.gg/adidas](https://discord.gg/adidas).//',
+        );
+        expect(result.detected).toStrictEqual(true);
+        expect(result.metadata!.urls).toHaveLength(1);
+        expect(result.metadata!.urls).toContain('discord.gg/adidas');
+      });
+
       it('should detect description with a link and keywords', async () => {
         await run(TokenStandard.Erc721, 'Some text. Visit site.com');
         expect(result.detected).toStrictEqual(true);
@@ -353,6 +363,16 @@ describe('PhishingMetadata', () => {
         expect(result.detected).toStrictEqual(true);
         expect(result.metadata!.urls).toHaveLength(1);
         expect(result.metadata!.urls).toContain('site.com');
+      });
+
+      it('should extract links correctly from markdown document', async () => {
+        await run(
+          TokenStandard.Erc1155,
+          'Visit our [discord.gg/adidas](https://discord.gg/adidas).//',
+        );
+        expect(result.detected).toStrictEqual(true);
+        expect(result.metadata!.urls).toHaveLength(1);
+        expect(result.metadata!.urls).toContain('discord.gg/adidas');
       });
 
       it('should detect multiple urls', async () => {

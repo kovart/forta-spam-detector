@@ -309,6 +309,16 @@ export function containsLink(str: string): boolean {
 }
 
 export function extractLinks(str: string): string[] {
+  // unwrap markdown links
+  // [text](link) -> text link
+  const regex = /\[[^\]]+\]\([^)]+\)/gm;
+
+  const matches = str.match(regex) || [];
+
+  for (const match of matches) {
+    str = str.replace(match, match.replace(/[\[\]\(\)]+/gm, ' '));
+  }
+
   return [
     ...new Set(
       (str.match(urlRegex({ strict: false })) || [])
