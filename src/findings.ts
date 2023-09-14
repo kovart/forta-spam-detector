@@ -58,16 +58,20 @@ export function getLabels(
       confidence: confidence,
       metadata: {
         indicators: JSON.stringify(indicators),
+        analysis: JSON.stringify(analysis, null, 2),
+        deployer: token.deployer,
       },
     }),
     Label.fromObject({
-      label: 'Spammer',
+      label: 'Scammer',
       entity: token.deployer,
       remove: remove,
       entityType: EntityType.Address,
       confidence: confidence,
       metadata: {
+        token: token.address,
         indicators: JSON.stringify(indicators),
+        analysis: JSON.stringify(analysis, null, 2),
       },
     }),
   ];
@@ -186,8 +190,8 @@ function getPhishingLabels(
       confidence: confidence,
       remove: false,
       metadata: {
-        urls: JSON.stringify(urls),
         deployer: token.deployer,
+        urls: JSON.stringify(urls),
       },
     },
     {
@@ -197,8 +201,8 @@ function getPhishingLabels(
       confidence: confidence,
       remove: remove,
       metadata: {
-        urls: JSON.stringify(urls),
         token: token.address,
+        urls: JSON.stringify(urls),
       },
     },
     ...urls.map((url) => ({
