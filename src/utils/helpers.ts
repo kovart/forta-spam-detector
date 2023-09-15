@@ -324,7 +324,9 @@ export function extractLinks(str: string): string[] {
       (str.match(urlRegex({ strict: false })) || [])
         // fix links that contain parentheses: "(site.com).test"
         .map((url) => /([^\)]+)/.exec(url)?.[0])
-        .filter((v) => !!v) as string[],
+        .filter((v) => !!v)
+        // filter out text like blockv.nrf::DonationCertificate
+        .filter((v) => !v!.includes('::')) as string[],
     ),
   ];
 }
@@ -429,17 +431,25 @@ export function combine(...fns: (HandleTransaction | HandleBlock)[]) {
 }
 
 export function parseLocation(href: string) {
-  const match: any = parseUrl(href, true);
+  // unicode causes parse error
+  if (/[^\u0000-\u00ff]/.test(href)) return null;
 
-  if (!match) return null;
+  try {
+    const match: any = parseUrl(href, true);
 
-  return {
-    href: match.href,
-    protocol: match.protocol,
-    host: match.resource,
-    pathname: match.pathname,
-    search: match.search,
-  };
+    if (!match) return null;
+
+    return {
+      href: match.href,
+      protocol: match.protocol,
+      host: match.resource,
+      pathname: match.pathname,
+      search: match.search,
+    };
+  } catch (e) {
+    Logger.error(e);
+    return null;
+  }
 }
 
 export function getIndicators(analysis: AnalysisContext): string[] {
