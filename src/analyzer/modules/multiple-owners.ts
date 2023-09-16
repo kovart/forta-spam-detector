@@ -3,6 +3,8 @@ import { groupBy, max, sortBy } from 'lodash';
 import { DetailedErc721TransferEvent, TokenStandard } from '../../types';
 import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
 import { erc721Iface } from '../../contants';
+import Logger from '../../utils/logger';
+import { retry } from '../../utils/helpers';
 import { AIRDROP_MODULE_KEY } from './airdrop';
 import { TOKEN_IMPERSONATION_MODULE_KEY } from './token-impersonation';
 
@@ -81,6 +83,9 @@ class Erc721MultipleOwnersModule extends AnalyzerModule {
       map.set(key, arr);
     };
 
+    const maxErrorCount = 10;
+    let errorCounter = 0;
+
     // tokenId -> transfers[]
     const allTransfersByTokenId = new Map<string, DetailedErc721TransferEvent[]>();
     for (const [block, transfers] of transferEntries) {
@@ -114,30 +119,45 @@ class Erc721MultipleOwnersModule extends AnalyzerModule {
 
               const isFirstTransferInBlock = i === 0;
               if (isFirstTransferInBlock) {
-                // Check with blockchain data
-                const contract = new ethers.Contract(token.address, erc721Iface, provider);
-                const prevBlockchainOwner = (
-                  await contract.ownerOf(tokenId, {
-                    blockTag: blockNumber - 1,
-                  })
-                ).toLowerCase();
-                const currentBlockchainOwner = (
-                  await contract.ownerOf(tokenId, {
-                    blockTag: blockNumber,
-                  })
-                ).toLowerCase();
+                try {
+                  // Check with blockchain data
+                  const contract = new ethers.Contract(token.address, erc721Iface, provider);
+                  const prevBlockchainOwner = (
+                    await retry<string>(
+                      () =>
+                        contract.ownerOf(tokenId, {
+                          blockTag: blockNumber - 1,
+                        }),
+                      { wait: 3 * 1000, attempts: 3 },
+                    )
+                  ).toLowerCase();
 
-                if (
-                  prevBlockchainOwner !== currTokenTransfer.from ||
-                  currentBlockchainOwner !== currTokenTransfer.to
-                ) {
-                  // We've confirmed detection with blockchain data
+                  const currentBlockchainOwner = (
+                    await retry<string>(
+                      () =>
+                        contract.ownerOf(tokenId, {
+                          blockTag: blockNumber,
+                        }),
+                      { wait: 3 * 1000, attempts: 3 },
+                    )
+                  ).toLowerCase();
 
-                  append(duplicationsByTokenId, tokenId, {
-                    txHash: currTokenTransfer.transaction.hash,
-                    from: currTokenTransfer.from,
-                    to: currTokenTransfer.to,
-                  });
+                  if (
+                    prevBlockchainOwner !== currTokenTransfer.from ||
+                    currentBlockchainOwner !== currTokenTransfer.to
+                  ) {
+                    // We've confirmed detection with blockchain data
+
+                    append(duplicationsByTokenId, tokenId, {
+                      txHash: currTokenTransfer.transaction.hash,
+                      from: currTokenTransfer.from,
+                      to: currTokenTransfer.to,
+                    });
+                  }
+                } catch (e: any) {
+                  Logger.error(e);
+                  errorCounter++;
+                  break;
                 }
               } else {
                 append(duplicationsByTokenId, tokenId, {
@@ -151,6 +171,14 @@ class Erc721MultipleOwnersModule extends AnalyzerModule {
 
           append(allTransfersByTokenId, tokenId, currTokenTransfer);
         }
+
+        if (errorCounter >= maxErrorCount) {
+          break;
+        }
+      }
+
+      if (errorCounter >= maxErrorCount) {
+        break;
       }
     }
 
