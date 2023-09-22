@@ -37,10 +37,11 @@ export const INTERFACE_ID_BY_TYPE = {
 
 export const PUBLIC_RPC_URLS_BY_NETWORK = {
   [Network.MAINNET]: [
-    'https://rpc.ankr.com/eth',
     'https://eth-rpc.gateway.pokt.network',
+    'https://eth.meowrpc.com',
     'https://eth.llamarpc.com',
-    'https://1rpc.io/eth',
+    'https://rpc.eth.gateway.fm',
+    'https://rpc.ankr.com/eth',
     'https://ethereum.publicnode.com',
   ],
   [Network.POLYGON]: ['https://rpc.ankr.com/polygon', 'https://polygon-rpc.com'],
