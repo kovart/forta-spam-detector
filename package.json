@@ -1,6 +1,6 @@
 {
   "name": "spam-detector",
-  "version": "0.0.26",
+  "version": "0.0.27",
   "repository": "https://github.com/kovart/forta-spam-detector",
   "displayName": "Token Spam Detector",
   "description": "Identify spam tokens and NFTs.",
@@ -52,7 +52,7 @@
     "dayjs": "^1.11.7",
     "dotenv": "^16.0.3",
     "fast-csv": "^4.3.6",
-    "forta-agent": "^0.1.36",
+    "forta-agent": "^0.1.40",
     "forta-agent-tools": "^3.2.7",
     "forta-bot-analytics": "^0.0.4",
     "forta-helpers": "^1.0.9",
