@@ -204,7 +204,7 @@ class TokenProvider {
 
     Logger.debug(`Coins have been successfully fetched: ${coins.length}`);
 
-    const tokens: TokenRecord[] = [];
+    let tokens: TokenRecord[] = [];
 
     for (const coin of coins) {
       const platformEntries = Object.entries(coin.platforms).filter(
@@ -238,6 +238,8 @@ class TokenProvider {
     Logger.info(`Monitored coins: ${coins.length}.`);
 
     await this.updateMetadata(tokens);
+
+    tokens = tokens.filter((t) => t.symbol !== 'UNI-V2');
 
     return tokens;
   }
