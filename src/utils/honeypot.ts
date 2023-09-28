@@ -195,14 +195,14 @@ class HoneyPotChecker {
 
     metadata['HighBalance'] = {
       detected: balance.gt(this.highBalanceByChainId[network.chainId]),
-      balance: balance.toString(),
+      balance: ethers.utils.formatEther(balance),
     };
 
     metadata['VeryHighBalance'] = {
       detected: balance.gt(
         this.highBalanceByChainId[network.chainId].mul(HoneyPotChecker.VERY_HIGH_MULTIPLIER),
       ),
-      balance: balance.toString(),
+      balance: ethers.utils.formatEther(balance),
     };
 
     const nonce = await retry(() => provider.getTransactionCount(address));
