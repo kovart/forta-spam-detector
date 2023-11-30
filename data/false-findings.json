@@ -1,3 +1,13 @@
 {
-  "1": []
+  "1": [
+    {
+      "type": 20,
+      "address": "0x12e2b8033420270db2F3b328E32370Cb5B2Ca134",
+      "deployer": "0xBAc93b5b19FeC3D8Da65A81bBf79F23D33A50a2D"
+    },{
+      "type": 20,
+      "address": "0x137dDB47Ee24EaA998a535Ab00378d6BFa84F893",
+      "deployer": "0x48733dDD686D726A49F20A3e4cdA9d9C9E2276Ae"
+    }
+  ]
 }
