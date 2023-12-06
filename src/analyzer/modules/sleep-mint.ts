@@ -63,19 +63,27 @@ class SleepMintModule extends AnalyzerModule {
     const passiveApprovals = new Map<string, Set<string>>();
 
     // Collect and normalize approval events so that we can apply common handlers for them
-    const allApprovalEvents: (TokenEvent & { owner: string; spender: string })[] = [];
+    const allApprovalEvents = new Set<TokenEvent & { owner: string; spender: string }>();
 
     if (token.type === TokenStandard.Erc20) {
-      allApprovalEvents.push(...(await storage.getErc20ApprovalEvents(token.address)));
+      for (const event of await storage.getErc20ApprovalEvents(token.address)) {
+        allApprovalEvents.add(event);
+      }
     } else if (token.type === TokenStandard.Erc721) {
       const approvalEvents = await storage.getErc721ApprovalEvents(token.address);
-      const approvalForAllEvents = await storage.getErc721ApprovalForAllEvents(token.address);
+      for (const event of approvalEvents) {
+        allApprovalEvents.add({ ...event, spender: event.approved });
+      }
 
-      approvalEvents.forEach((e) => allApprovalEvents.push({ ...e, spender: e.approved }));
-      approvalForAllEvents.forEach((e) => allApprovalEvents.push({ ...e, spender: e.operator }));
+      const approvalForAllEvents = await storage.getErc721ApprovalForAllEvents(token.address);
+      for (const event of approvalForAllEvents) {
+        allApprovalEvents.add({ ...event, spender: event.operator });
+      }
     } else if (token.type === TokenStandard.Erc1155) {
       const approvalForAllEvents = await storage.getErc1155ApprovalForAllEvents(token.address);
-      approvalForAllEvents.forEach((e) => allApprovalEvents.push({ ...e, spender: e.operator }));
+      for (const event of approvalForAllEvents) {
+        allApprovalEvents.add({ ...event, spender: event.operator });
+      }
     }
 
     // Prepare approval sets (performance optimizations)
