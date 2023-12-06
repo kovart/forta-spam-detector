@@ -10,6 +10,7 @@ import {
   TokenStandard,
 } from '../../types';
 import { PROVIDER_CONCURRENCY } from '../../contants';
+import Logger from '../../utils/logger';
 
 // This module detects airdrops by the following criteria:
 // 1. The person receiving the mint didn't initiate (no claim action)
@@ -55,6 +56,7 @@ export const AIRDROP_MODULE_KEY = 'Airdrop';
 export const MIN_RECEIVERS_PER_TX = 9;
 export const MIN_RECEIVERS_PER_SENDER = 20;
 export const AIRDROP_WINDOW = 5 * 24 * 60 * 60; // 5d
+export const MAX_RECEIVERS_PER_AIRDROP = 10_000; // break loop if more
 
 class AirdropModule extends AnalyzerModule {
   static Key = AIRDROP_MODULE_KEY;
@@ -92,6 +94,8 @@ class AirdropModule extends AnalyzerModule {
         string,
         Set<{ receiver: string; tx: SimplifiedTransaction }>
       >();
+
+      let p0 = performance.now();
 
       for (const transferEvent of transferEvents) {
         const sender = transferEvent.transaction.from;
@@ -190,6 +194,11 @@ class AirdropModule extends AnalyzerModule {
               txHashSet.add(endTransfer.tx.hash);
 
               endIndex = t;
+
+              if (receiverSet.size > MAX_RECEIVERS_PER_AIRDROP) {
+                // enough to confirm airdrop
+                break;
+              }
             }
 
             if (isAirdropDetected) {
