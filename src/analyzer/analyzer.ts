@@ -36,11 +36,11 @@ class TokenAnalyzer {
   private modules: AnalyzerModule[];
   private storage: DataStorage;
   private transformer: DataTransformer;
-  private provider: ethers.providers.StaticJsonRpcProvider;
+  private provider: ethers.providers.JsonRpcProvider;
   private memoizer: Memoizer;
 
   constructor(
-    provider: ethers.providers.StaticJsonRpcProvider,
+    provider: ethers.providers.JsonRpcProvider,
     honeyPotChecker: HoneyPotChecker,
     tokenProvider: TokenProvider,
     storage: DataStorage,

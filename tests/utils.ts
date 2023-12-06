@@ -2,7 +2,6 @@ import { Network } from 'forta-agent';
 import { ethers } from 'ethers';
 import Memoizer from '../src/utils/cache';
 import DataStorage from '../src/storage';
-import SqlDatabase from '../src/database';
 import { JsonStorage } from '../src/utils/storage';
 import { DATA_PATH as BOT_DATA_PATH, PUBLIC_RPC_URLS_BY_NETWORK } from '../src/contants';
 import TokenProvider from '../src/utils/tokens';
@@ -12,6 +11,7 @@ import { getLogger } from '../src/utils/logger';
 import { CsvStorage } from 'forta-helpers';
 import { TokenStandard } from '../src/types';
 import { PreloadRow } from './indexer/preloaded-indexer';
+import { ISqlDatabase } from '../src/database/types';
 
 export const Logger = getLogger({ colorize: true, console: true, file: true });
 
@@ -39,8 +39,8 @@ export function getPreloadStorage(dataPath: string, filePath: string) {
 }
 
 export async function getTokenAnalyzer(
-  database: SqlDatabase,
-  provider: ethers.providers.JsonRpcBatchProvider,
+  database: ISqlDatabase,
+  provider: ethers.providers.JsonRpcProvider,
 ) {
   const memoizer = new Memoizer();
   const storage = new DataStorage(database);

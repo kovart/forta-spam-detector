@@ -15,7 +15,7 @@ import {
   TokenContract,
   TokenEvent,
   TokenStandard,
-} from './types';
+} from '../types';
 
 const autoAddress = (
   (i) => () =>

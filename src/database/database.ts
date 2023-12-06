@@ -12,7 +12,8 @@ import {
   SimplifiedTransaction,
   TokenContract,
   TokenEvent,
-} from './types';
+} from '../types';
+import { ISqlDatabase } from './types';
 
 export type EventWithTransactionId = { transactionId: number };
 export type EventWithTransactionHash = { transactionHash: string };
@@ -25,7 +26,7 @@ export type TokenInsertEvent<T extends TokenEvent> = Omit<T, 'transaction'> &
 const wrapNull = (v: any) => (v == null ? 'NULL' : v);
 const unwrapNull = (v: any) => (v === 'NULL' ? null : v);
 
-class SqlDatabase {
+class SqlDatabase implements ISqlDatabase {
   public db: sqlite3.Database;
 
   constructor(filename = ':memory:') {
@@ -843,8 +844,13 @@ class SqlDatabase {
     );
   }
 
-  close(cb: ((err: Error | null) => void) | undefined) {
-    this.db.close(cb);
+  close() {
+    return new Promise((res, rej) => {
+      this.db.close((err) => {
+        if (err) rej();
+        else res(true);
+      });
+    });
   }
 
   async wait() {

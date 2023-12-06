@@ -1,16 +1,16 @@
 import { BigNumber as EtherBigNumber } from 'ethers';
 import { TransactionEvent } from 'forta-agent';
 
-import SqlDatabase from './database';
 import { SimplifiedTransaction, TokenContract } from './types';
 import { erc1155Iface, erc20Iface, erc721Iface } from './contants';
+import { ISqlDatabase } from './database/types';
 
 class DataStorage {
   private tokenByAddress = new Map<string, TokenContract>();
   private lastBlockNumber: number | null = null;
   private lastTxIndex: number | null = null;
 
-  constructor(public db: SqlDatabase) {}
+  constructor(public db: ISqlDatabase) {}
 
   async initialize() {
     await this.db.initialize();

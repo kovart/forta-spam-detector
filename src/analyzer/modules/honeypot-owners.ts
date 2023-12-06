@@ -79,6 +79,7 @@ class TooManyHoneyPotOwnersModule extends AnalyzerModule {
     const cexs: CEXInfo[] = [];
     const holderQueue = queue<string>(async (receiver, callback) => {
       try {
+        await provider.ready;
         const { isHoneypot, metadata } = await memo('honeypot', [receiver], () => {
           Logger.debug(`HoneyPot scanning: ${receiver}`);
           return this.honeypotChecker.testAddress(receiver, provider, blockNumber);

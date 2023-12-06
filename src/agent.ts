@@ -25,7 +25,7 @@ import {
   createSpamUpdateFinding,
 } from './findings';
 import { SpamDetector } from './detector';
-import SqlDatabase from './database';
+import SqlDatabase from './database/database';
 import HoneyPotChecker, { EnsLeaderBoard } from './utils/honeypot';
 import TokenAnalyzer from './analyzer/analyzer';
 import TokenProvider from './utils/tokens';

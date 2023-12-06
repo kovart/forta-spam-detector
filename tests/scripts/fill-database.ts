@@ -2,7 +2,7 @@ import { ethers } from 'ethers';
 import { filterGoodProviders, getPreloadStorage, Logger } from '../utils';
 import { DATA_PATH, TEST_ETHEREUM_PRC_URLS, TEST_DB_PATH, TOKEN_ADDRESSES } from '../constants';
 import { TokenContract, TokenStandard } from '../../src/types';
-import SqlDatabase from '../../src/database';
+import SqlDatabase from '../../src/database/database';
 import { TOKEN_OBSERVATION_TIME } from '../../src/analyzer/modules/observation-time';
 import { PreloadedIndexer } from '../indexer/preloaded-indexer';
 
@@ -202,14 +202,13 @@ function exitHandler(error?: any) {
     });
 
     Logger.warn('Exiting...');
-    database.close((err) => {
-      if (err) {
+    database
+      .close()
+      .then(() => Logger.warn('Database has been closed'))
+      .catch((err) => {
         Logger.error(err);
-      } else {
-        Logger.warn('Database has been closed');
-      }
-      process.exit();
-    });
+      })
+      .finally(() => process.exit());
   } else {
     process.exit();
   }

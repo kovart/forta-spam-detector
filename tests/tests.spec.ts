@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import SqlDatabase from '../src/database';
+import SqlDatabase from '../src/database/database';
 import { TokenContract } from '../src/types';
 import { AVERAGE_BLOCK_TIME, TEST_DB_PATH, TEST_ETHEREUM_PRC_URLS } from './constants';
 import { filterGoodProviders, getTokenAnalyzer } from './utils';

@@ -139,6 +139,8 @@ export class EnsLeaderBoard {
 class HoneyPotChecker {
   static VERY_HIGH_MULTIPLIER = 10;
 
+  private providerCounter = 0;
+
   constructor(
     private leaderboard: EnsLeaderBoard,
     private honeypotSet: Set<string>,
@@ -159,7 +161,7 @@ class HoneyPotChecker {
 
   async testAddress(
     address: string,
-    provider: ethers.providers.StaticJsonRpcProvider,
+    provider: ethers.providers.Provider,
     blockNumber?: number,
   ): Promise<HoneypotAnalysisResult> {
     // In the context of this bot,
@@ -187,7 +189,7 @@ class HoneyPotChecker {
       };
     }
 
-    const network = provider.network;
+    const network = await retry(() => provider.getNetwork());
     const balance = await retry(() => provider.getBalance(address, blockNumber));
 
     if (!this.highBalanceByChainId[network.chainId])
@@ -214,9 +216,13 @@ class HoneyPotChecker {
       nonce: nonce,
     };
 
-    let ensProvider: ethers.providers.StaticJsonRpcProvider = provider;
-    if (provider.network.chainId !== Network.MAINNET) {
-      ensProvider = PUBLIC_ENS_PROVIDER;
+    let ensProvider: ethers.providers.Provider = provider;
+    if (network.chainId !== Network.MAINNET) {
+      ensProvider = new ethers.providers.JsonRpcProvider(
+        PUBLIC_RPC_URLS_BY_NETWORK[Network.MAINNET][
+          this.providerCounter % PUBLIC_RPC_URLS_BY_NETWORK[Network.MAINNET].length
+        ],
+      );
     }
 
     const name = await retry(() => ensProvider.lookupAddress(address));
