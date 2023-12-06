@@ -20,7 +20,7 @@ export type ScanParams = {
   blockNumber: number;
   context: AnalysisContext;
   memoizer: Memoizer;
-  provider: ethers.providers.StaticJsonRpcProvider;
+  provider: ethers.providers.JsonRpcProvider;
   storage: DataStorage;
   transformer: DataTransformer;
 };

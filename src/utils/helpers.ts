@@ -201,7 +201,7 @@ export async function identifyTokenInterface(
   return null;
 }
 
-export async function isAccountAbstraction(address: string, provider: providers.JsonRpcProvider) {
+export async function isAccountAbstraction(address: string, provider: providers.Provider) {
   try {
     // gnosis iface
     const iface = new ethers.utils.Interface([
