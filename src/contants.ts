@@ -21,7 +21,7 @@ export const erc1155Iface = new utils.Interface(Erc1155Abi);
 export const IS_DEBUG = process.env.DEBUG === '1';
 export const IS_DEVELOPMENT = process.env.NODE_ENV !== 'production';
 export const DEBUG_TARGET_TOKEN = (process.env.TARGET_TOKEN || '').toLowerCase();
-export const PROVIDER_CONCURRENCY = IS_DEVELOPMENT ? 40 : 2;
+export const PROVIDER_CONCURRENCY = IS_DEVELOPMENT ? 5 : 2;
 export const FETCH_CONCURRENCY = IS_DEVELOPMENT ? 50 : 25;
 
 export const DATA_PATH = path.resolve(__dirname, '../data');
@@ -37,12 +37,11 @@ export const INTERFACE_ID_BY_TYPE = {
 
 export const PUBLIC_RPC_URLS_BY_NETWORK = {
   [Network.MAINNET]: [
-    'https://eth-rpc.gateway.pokt.network',
     'https://eth.meowrpc.com',
     'https://eth.llamarpc.com',
+    'https://ethereum.publicnode.com',
     'https://rpc.eth.gateway.fm',
     'https://rpc.ankr.com/eth',
-    'https://ethereum.publicnode.com',
   ],
   [Network.POLYGON]: ['https://rpc.ankr.com/polygon', 'https://polygon-rpc.com'],
   [Network.BSC]: ['https://rpc.ankr.com/bsc'],
