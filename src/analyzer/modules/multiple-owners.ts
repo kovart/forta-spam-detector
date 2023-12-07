@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import { groupBy, max, sortBy } from 'lodash';
+import { max, sortBy } from 'lodash';
 import { DetailedErc721TransferEvent, TokenStandard } from '../../types';
 import { AnalyzerModule, ModuleScanReturn, ScanParams } from '../types';
 import { erc721Iface } from '../../contants';
@@ -15,6 +15,7 @@ import { TOKEN_IMPERSONATION_MODULE_KEY } from './token-impersonation';
 export const MULTIPLE_OWNERS_MODULE_KEY = 'Erc721MultipleOwners';
 export const MIN_DUPLICATED_TOKENS = 10;
 export const MIN_DUPLICATED_TOKENS_FROM_SAME_SENDER = 5;
+export const DUPLICATION_LIMIT = 200; // optimization
 
 export type DuplicatedTransferEvent = {
   from: string;
@@ -69,10 +70,9 @@ class Erc721MultipleOwnersModule extends AnalyzerModule {
     const transferEvents = (await storage.getErc721TransferEvents(token.address)).filter(
       (e) => e.transaction.blockNumber <= blockNumber,
     );
-    const eventsByBlock = groupBy(transferEvents, (e) => e.transaction.blockNumber);
-    const transferEntries = Object.entries(eventsByBlock);
-    // Sort by blockNumber
-    transferEntries.sort((a, b) => Number(a[0]) - Number(b[0]));
+    const eventsByBlock = this.groupBy(transferEvents, (e) => e.transaction.blockNumber);
+    const blockNumbers = Array.from(eventsByBlock.keys());
+    blockNumbers.sort((b1, b2) => b1 - b2);
 
     const append = <T, P>(map: Map<T, P[]>, key: T, value: P) => {
       let arr = map.get(key);
@@ -88,16 +88,16 @@ class Erc721MultipleOwnersModule extends AnalyzerModule {
 
     // tokenId -> transfers[]
     const allTransfersByTokenId = new Map<string, DetailedErc721TransferEvent[]>();
-    for (const [block, transfers] of transferEntries) {
-      const blockNumber = Number(block);
-      const transfersByTokenId = groupBy(transfers, (e) => e.tokenId.toString());
+    for (const blockNumber of blockNumbers) {
+      const transferSet = eventsByBlock.get(blockNumber) || new Set();
+      const transfersByTokenId = this.groupBy(transferSet, (e) => e.tokenId.toString());
 
-      for (const [tokenId, tokenTransfers] of Object.entries(transfersByTokenId)) {
+      for (const [tokenId, tokenTransfers] of transfersByTokenId) {
         // Sort by multiple fields; first transaction index then log index
-        const sortedTransfers = sortBy(tokenTransfers, [
-          (t) => t.transaction.index,
-          (t) => t.logIndex,
-        ]);
+        const sortedTransfers = sortBy(
+          [...tokenTransfers],
+          [(t) => t.transaction.index, (t) => t.logIndex],
+        );
 
         for (let i = 0; i < sortedTransfers.length; i++) {
           const allTokenTransfers = allTransfersByTokenId.get(tokenId);
@@ -177,6 +177,12 @@ class Erc721MultipleOwnersModule extends AnalyzerModule {
         }
       }
 
+      // Too many duplications
+      if (duplicationsByTokenId.size >= DUPLICATION_LIMIT) {
+        break;
+      }
+
+      // Too many errors
       if (errorCounter >= maxErrorCount) {
         break;
       }
@@ -210,6 +216,27 @@ class Erc721MultipleOwnersModule extends AnalyzerModule {
 
     context[MULTIPLE_OWNERS_MODULE_KEY] = { detected, metadata };
   }
+
+  groupBy<T, K>(array: T[] | Set<T>, groupingFunction: (item: T) => K): Map<K, Set<T>> {
+    const map = new Map<K, Set<T>>();
+
+    for (const item of array) {
+      const key = groupingFunction(item);
+      const set = map.get(key);
+
+      if (set) {
+        set.add(item);
+      } else {
+        const set = new Set<T>();
+        set.add(item);
+        map.set(key, set);
+      }
+    }
+
+    return map;
+  }
+
+  // Example usage remains the same
 
   simplifyMetadata(
     metadata: Erc721MultipleOwnersModuleMetadata,
