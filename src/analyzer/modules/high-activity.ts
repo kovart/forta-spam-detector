@@ -83,9 +83,19 @@ class HighActivityModule extends AnalyzerModule {
     }
 
     const transactionSet = await transformer.transactions(token);
-    const senderSet = new Set<string>([...transactionSet].map((t) => t.from));
-    const receiverSet = new Set(airdropMetadata.receivers);
-    const activeReceivers = [...receiverSet].filter((r) => senderSet.has(r));
+
+    const senderSet = new Set<string>();
+    const receiverSet = new Set<string>(airdropMetadata.receivers);
+
+    for (const transaction of transactionSet) {
+      senderSet.add(transaction.from);
+    }
+
+    const activeReceivers: string[] = [];
+    for (const receiver of receiverSet) {
+      if (!senderSet.has(receiver)) continue;
+      activeReceivers.push(receiver);
+    }
 
     // Check active receivers
 
@@ -101,7 +111,14 @@ class HighActivityModule extends AnalyzerModule {
     if (!detected) {
       maxSenderCountInWindow = 0;
 
-      const transactions = Array.from(transactionSet);
+      let transactions = Array.from(transactionSet);
+
+      // If there are extremely many transactions, we only look at the most recent ones (last 100,000).
+      if (transactions.length >= 1_000_000) {
+        transactions.sort((t1, t2) => t1.blockNumber - t2.blockNumber);
+        transactions = transactions.slice(-100_000);
+      }
+
       for (let i = 0; i < transactions.length; i++) {
         const startTransaction = transactions[i];
         const senderSet = new Set<string>();
