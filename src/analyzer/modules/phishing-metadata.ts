@@ -69,6 +69,7 @@ export const PHISHING_DESCRIPTION_PATTERNS = [
 ];
 
 export const ERC20_RECEIVERS_THRESHOLD = 499;
+export const MAX_METADATA_ERROR = 5;
 
 export type PhishingModuleMetadata = {
   name?: string;
@@ -218,12 +219,16 @@ class PhishingMetadataModule extends AnalyzerModule {
 
     let tokenIdSet = new Set<string>();
     for (const event of await storage.getErc721TransferEvents(token.address)) {
+      if (tokenIdSet.size >= 1000) break;
+
       tokenIdSet.add(event.tokenId.toString());
     }
 
     // in order to optimize performance we only check each 50th token
     const tokenIds = [...tokenIdSet].filter((v, index) => index % 50 === 0).slice(0, 15);
+    tokenIds.sort((a, b) => a.localeCompare(b));
 
+    let errorCount = 0;
     try {
       const erc721Contract = new ethers.Contract(token.address, erc721Iface, provider);
 
@@ -235,6 +240,10 @@ class PhishingMetadataModule extends AnalyzerModule {
         const tokenMetadata = await this.getUriMetadata(uri, params);
 
         if (!tokenMetadata) {
+          errorCount++;
+
+          if (errorCount < MAX_METADATA_ERROR) continue;
+
           memo.set('isMetadataProviderBroken', true);
           break;
         }
@@ -278,17 +287,26 @@ class PhishingMetadataModule extends AnalyzerModule {
 
     let tokenIdSet = new Set<string>();
     for (const event of await storage.getErc1155TransferSingleEvents(token.address)) {
+      if (tokenIdSet.size >= 1000) break;
+
       tokenIdSet.add(event.tokenId.toString());
     }
+
     for (const event of await storage.getErc1155TransferBatchEvents(token.address)) {
+      if (tokenIdSet.size >= 1000) break;
+
       for (const tokenId of event.ids) {
+        if (tokenIdSet.size >= 1000) break;
+
         tokenIdSet.add(tokenId.toString());
       }
     }
 
     // in order to optimize performance we only check each 50th token
     const tokenIds = [...tokenIdSet].filter((v, index) => index % 50 === 0);
+    tokenIds.sort((a, b) => a.localeCompare(b));
 
+    let errorCount = 0;
     try {
       const erc1155Contract = new ethers.Contract(token.address, erc1155Iface, provider);
 
@@ -297,9 +315,15 @@ class PhishingMetadataModule extends AnalyzerModule {
           retry<string>(() => erc1155Contract.uri(tokenId)),
         );
 
+        Logger.trace(`Get uri metadata ${uri}`);
+
         const tokenMetadata = await this.getUriMetadata(uri, params);
 
         if (!tokenMetadata) {
+          errorCount++;
+
+          if (errorCount < MAX_METADATA_ERROR) continue;
+
           memo.set('isMetadataProviderBroken', true);
           break;
         }
@@ -387,9 +411,16 @@ class PhishingMetadataModule extends AnalyzerModule {
 
       try {
         metadata = await memo('axios.get', [url], async () => {
-          const { data } = await retry(() => axios.get(url), {
-            wait: random(5, 15) * 1000,
-          });
+          const { data } = await retry(
+            () =>
+              axios.get(url, {
+                timeout: 40 * 1000,
+              }),
+            {
+              wait: random(5, 15) * 1000,
+              attempts: 2,
+            },
+          );
           return data;
         });
       } catch (e) {
